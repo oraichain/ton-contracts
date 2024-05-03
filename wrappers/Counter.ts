@@ -14,11 +14,10 @@ import { crc32 } from '../crc32';
 export type CounterConfig = {
     id: number;
     counter: number;
-    date: number;
 };
 
 export function counterConfigToCell(config: CounterConfig): Cell {
-    return beginCell().storeUint(config.id, 32).storeUint(config.counter, 32).storeUint(config.date, 32).endCell();
+    return beginCell().storeUint(config.id, 32).storeUint(config.counter, 32).endCell();
 }
 
 export const Opcodes = {

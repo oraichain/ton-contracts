@@ -23,7 +23,6 @@ describe('Counter', () => {
                 {
                     id: 0,
                     counter: 0,
-                    date: 10,
                 },
                 code,
             ),
