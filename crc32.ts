@@ -30,13 +30,16 @@ const TABLE = new Int32Array([
     0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d,
 ]);
 
-export const crc32 = (buffer: Uint8Array, previous?: number) => {
+export const crc32 = (source: Uint8Array | string, previous?: number) => {
+    const buffer = typeof source === 'string' ? Buffer.from(source) : source;
     const signed =
         buffer.reduce((crc, item) => TABLE[(crc ^ item) & 0xff] ^ (crc >>> 8), previous === 0 ? 0 : ~~previous! ^ -1) ^
         -1;
 
-    const unsigned = signed >>> 0;
-    return '0x' + unsigned.toString(16);
+    return signed >>> 0;
 };
 
-console.log(crc32(Buffer.from(process.argv[2])));
+// called directly
+if (require.main === module) {
+    console.log('0x' + crc32(process.argv[2]).toString(16));
+}

@@ -1,4 +1,15 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
+import {
+    Address,
+    beginCell,
+    Cell,
+    Contract,
+    contractAddress,
+    ContractProvider,
+    Sender,
+    SendMode,
+    crc32c,
+} from '@ton/core';
+import { crc32 } from '../crc32';
 
 export type CounterConfig = {
     id: number;
@@ -11,7 +22,7 @@ export function counterConfigToCell(config: CounterConfig): Cell {
 }
 
 export const Opcodes = {
-    increase: 0x7e8764ef,
+    increase: crc32('op::increase'), //0x7e8764ef,
 };
 
 export class Counter implements Contract {
