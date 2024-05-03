@@ -31,13 +31,11 @@ const TABLE = new Int32Array([
 ]);
 
 export const crc32 = (buffer: Uint8Array, previous?: number) => {
-    let crc = previous === 0 ? 0 : ~~previous! ^ -1;
+    const signed =
+        buffer.reduce((crc, item) => TABLE[(crc ^ item) & 0xff] ^ (crc >>> 8), previous === 0 ? 0 : ~~previous! ^ -1) ^
+        -1;
 
-    for (const item of buffer) {
-        crc = TABLE[(crc ^ item) & 0xff] ^ (crc >>> 8);
-    }
-
-    const unsigned = (crc ^ -1) >>> 0;
+    const unsigned = signed >>> 0;
     return '0x' + unsigned.toString(16);
 };
 
