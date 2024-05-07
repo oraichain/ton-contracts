@@ -2,6 +2,7 @@
 #include "utils/common.fc";
 #include "utils/varint.fc";
 #include "utils/varbuffer.fc";
+#include "utils/version.fc";
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
 
@@ -88,6 +89,11 @@ slice get_encode(int signed, int number) method_id {
     return varint::encode(signed, number);    
 }
 
+int version_encode_length(cell version) method_id {
+    return version::encode_length(version);
+}
+
 int get_check_signature(slice data, slice signature, int public_key) method_id {
     return check_data_signature(data, signature, public_key);
 }
+

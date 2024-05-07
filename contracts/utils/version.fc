@@ -1,0 +1,68 @@
+#include "../imports/stdlib.fc";
+#include "./varint.fc";
+
+(int) version::encode_length(cell version) {
+    var ds = version.begin_parse();
+    var length = 0;
+
+    cell block_cell = ds~load_ref();
+    slice block_slice = block_cell.begin_parse();
+    if (block_slice.slice_empty?() != -1) {
+        var block_uint = block_slice~load_uint(32);
+        length += varint::encode_length(0, block_uint) + 1;
+    }
+
+    cell app_cell = ds~load_ref();
+    slice app_slice = app_cell.begin_parse();
+    if (app_slice.slice_empty?() != -1) {
+        var app_uint = app_slice~load_uint(32);
+        length += varint::encode_length(0, app_uint) + 1; 
+    }
+
+    return length;
+}
+
+
+
+;; // const Version = {
+;; //   decode(buffer, start = 0, end = buffer.length) {
+;; //     throw Error("Decode not implemented");
+;; //   },
+;; //   encode(version) {
+;; //     let length = Version.encodingLength(version);
+;; //     let buffer = Buffer.alloc(length);
+;; //     let offset = 0;
+
+;; //     let block = Number(version.block);
+;; //     let app = Number(version.app);
+
+;; //     // block field
+;; //     if (block) {
+;; //       buffer[offset] = 0x08;
+;; //       UVarInt.encode(version.block, buffer, offset + 1);
+;; //       offset += UVarInt.encode.bytes + 1;
+;; //     }
+
+;; //     // app field
+;; //     if (app) {
+;; //       buffer[offset] = 0x10;
+;; //       UVarInt.encode(version.app, buffer, offset + 1);
+;; //     }
+
+;; //     CanonicalVote.encode.bytes = length;
+;; //     return buffer;
+;; //   },
+;; //   encodingLength(version) {
+;; //     let block = Number(version.block);
+;; //     let app = Number(version.app);
+
+;; //     let length = 0;
+;; //     if (block) {
+;; //       length += UVarInt.encodingLength(version.block) + 1;
+;; //     }
+;; //     if (app) {
+;; //       length += UVarInt.encodingLength(version.app) + 1;
+;; //     }
+;; //     return length;
+;; //   },
+;; // };
