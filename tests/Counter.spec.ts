@@ -79,25 +79,20 @@ describe('Counter', () => {
         }
     });
 
-<<<<<<< HEAD
     it('do encode_length', async () => {
-=======
-    it('do varint encode length', async () => {
->>>>>>> 3a7fdc4 (update version encoding length)
         const len = await counter.getEncodeLength(100_000n);
         expect(len).toEqual(3);
         console.log('length', len);
     });
 
-<<<<<<< HEAD
     it('do encode_int', async () => {
         const buf = await counter.getEncode(100_000n);
         console.log('buf', buf);
-=======
+    });
+
     it('do version encode length', async () => {
         const len = await counter.getVersionEncodeLength(11);
         console.log('Version: ', len);
->>>>>>> 3a7fdc4 (update version encoding length)
     });
 
     it('check signature', async () => {

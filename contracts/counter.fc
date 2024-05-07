@@ -77,11 +77,11 @@ int get_id() method_id {
 
 
 int get_encode_length(int signed, int number) method_id {
-    return encode_length(signed, number);    
+    return varint::encode_length(signed, number);    
 }
 
 slice get_encode(int signed, int number) method_id {
-    return encode(signed, number);    
+    return varint::encode(signed, number);    
 }
 
 int version_encode_length(cell version) method_id {

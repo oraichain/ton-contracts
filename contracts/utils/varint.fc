@@ -2,7 +2,7 @@
 #include "common.fc";
 
 
-(int) encode_length(int signed,int n) {            
+(int) varint::encode_length(int signed,int n) {            
     if (signed) {
         n *= 2;
     }
@@ -16,8 +16,8 @@
     return (bits / 7 + 1) >> 0;
 }
 
-(slice) encode(int signed, int n) {
-    int length = encode_length(signed, n);
+(slice) varint::encode(int signed, int n) {
+    int length = varint::encode_length(signed, n);
     ;; create a new empty builder
     builder inner_cell = begin_cell(); 
     ;; amino signed varint is multiplied by 2 ¯\_(ツ)_/¯

@@ -7,16 +7,16 @@
 
     cell block_cell = ds~load_ref();
     slice block_slice = block_cell.begin_parse();
-    if (block_slice.slice_empty?() != -1 ) {
+    if (block_slice.slice_empty?() != -1) {
         var block_uint = block_slice~load_uint(32);
-        length += uint::encode_length(block_uint) + 1;
+        length += varint::encode_length(0, block_uint) + 1;
     }
 
     cell app_cell = ds~load_ref();
     slice app_slice = app_cell.begin_parse();
     if (app_slice.slice_empty?() != -1) {
         var app_uint = app_slice~load_uint(32);
-        length += uint::encode_length(app_uint) + 1; 
+        length += varint::encode_length(0, app_uint) + 1; 
     }
 
     return length;
