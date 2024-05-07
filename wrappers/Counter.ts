@@ -80,6 +80,20 @@ export class Counter implements Contract {
         return result.stack.readNumber();
     }
 
+    async getEncode(provider: ContractProvider, value: bigint, signed: boolean = false) {
+        const result = await provider.get('get_encode', [
+            {
+                type: 'int',
+                value: signed ? -1n : 0n, // 0:false, -1:true
+            } as TupleItemInt,
+            {
+                type: 'int',
+                value,
+            } as TupleItemInt,
+        ]);
+        return result.stack.readBuffer();
+    }
+
     async getEncodeLength(provider: ContractProvider, value: bigint, signed: boolean = false) {
         const result = await provider.get('get_encode_length', [
             {

@@ -79,9 +79,15 @@ describe('Counter', () => {
         }
     });
 
-    it('do encode length', async () => {
+    it('do encode_length', async () => {
         const len = await counter.getEncodeLength(100_000n);
+        expect(len).toEqual(3);
         console.log('length', len);
+    });
+
+    it('do encode_int', async () => {
+        const buf = await counter.getEncode(100_000n);
+        console.log('buf', buf);
     });
 
     it('check signature', async () => {

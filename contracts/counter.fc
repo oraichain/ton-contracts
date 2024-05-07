@@ -76,11 +76,11 @@ int get_id() method_id {
 
 
 int get_encode_length(int signed, int number) method_id {
-    if(signed){
-        return int::encode_length(number);
-    }
+    return encode_length(signed, number);    
+}
 
-    return uint::encode_length(number); 
+slice get_encode(int signed, int number) method_id {
+    return encode(signed, number);    
 }
 
 int get_check_signature(slice data, slice signature, int public_key) method_id {
