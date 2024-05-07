@@ -80,8 +80,11 @@ describe('Counter', () => {
     });
 
     it('do encode_length', async () => {
-        const len = await counter.getEncodeLength(100_000n);
+        let len = await counter.getEncodeLength(100_000n);
         expect(len).toEqual(3);
+        console.log('length', len);
+
+        len = await counter.getBufferEncodeLength(Buffer.from('hello world'));
         console.log('length', len);
     });
 

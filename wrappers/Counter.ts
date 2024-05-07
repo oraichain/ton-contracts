@@ -108,6 +108,16 @@ export class Counter implements Contract {
         return result.stack.readNumber();
     }
 
+    async getBufferEncodeLength(provider: ContractProvider, buf: Buffer) {
+        const result = await provider.get('get_buffer_encode_length', [
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(buf).endCell(),
+            } as TupleItemSlice,
+        ]);
+        return result.stack.readNumber();
+    }
+
     async getCheckSignature(provider: ContractProvider, data: Buffer, signature: Buffer, publicKey: Buffer) {
         const result = await provider.get('get_check_signature', [
             {
