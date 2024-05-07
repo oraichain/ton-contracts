@@ -93,4 +93,22 @@ export class Counter implements Contract {
         ]);
         return result.stack.readNumber();
     }
+
+    async getCheckSignature(provider: ContractProvider, data: Buffer, signature: Buffer, publicKey: Buffer) {
+        const result = await provider.get('get_check_signature', [
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(data).endCell(),
+            } as TupleItemSlice,
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(signature).endCell(),
+            } as TupleItemSlice,
+            {
+                type: 'int',
+                value: BigInt(`0x${publicKey.subarray(0, 32).toString('hex')}`),
+            } as TupleItemInt,
+        ]);
+        return result.stack.readNumber() !== 0;
+    }
 }

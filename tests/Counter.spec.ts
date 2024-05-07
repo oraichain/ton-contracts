@@ -83,4 +83,18 @@ describe('Counter', () => {
         const len = await counter.getEncodeLength(100_000n);
         console.log('length', len);
     });
+
+    it('check signature', async () => {
+        const data = Buffer.from(
+            '6e080211fd7032010000000022480a206954b64b90d0a8b177da1a9b14648d3de6f706114eb9c9e1af3ba52b6f8e3c4b122408011220e07e8511743101aa131de4e24c9c8d412abd69f6aee583c8e80dbf23689b60192a0c089190e2b10610e2d6999f0332094f726169636861696e',
+            'hex',
+        );
+        const signature = Buffer.from(
+            '2f042189d233b9113b91177184c699dcb140439f73cf0c7fb0c640d5edc46d76f95470bb54d0322bb0cdabeb7c848226a2d7e318a2d5d741961f8eeccefa3304',
+            'hex',
+        );
+        const publicKey = Buffer.from('10b8dfde73aeda38f81c5ce9c181ccaf2e25d0c66b8d4bfb41732f0ae61ee566', 'hex');
+        const verified = await counter.getCheckSignature(data, signature, publicKey);
+        console.log('verified', verified);
+    });
 });

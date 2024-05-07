@@ -82,3 +82,7 @@ int get_encode_length(int signed, int number) method_id {
 
     return uint::encode_length(number); 
 }
+
+int get_check_signature(slice data, slice signature, int public_key) method_id {
+    return check_data_signature(data, signature, public_key);
+}
