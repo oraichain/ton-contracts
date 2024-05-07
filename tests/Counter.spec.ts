@@ -78,4 +78,9 @@ describe('Counter', () => {
             expect(counterAfter).toBe(counterBefore + increaseBy);
         }
     });
+
+    it('do encode length', async () => {
+        const len = await counter.getEncodeLength(100_000n);
+        console.log('length', len);
+    });
 });

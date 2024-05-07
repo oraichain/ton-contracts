@@ -1,4 +1,6 @@
 #include "imports/stdlib.fc";
+#include "utils/common.fc";
+#include "utils/varint.fc";
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
 
@@ -53,6 +55,8 @@ global int ctx_counter;
         return ();
     }
 
+
+
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
 }
 
@@ -68,4 +72,13 @@ int get_counter() method_id {
 int get_id() method_id {
     load_data();
     return ctx_id;
+}
+
+
+int get_encode_length(int signed, int number) method_id {
+    if(signed){
+        return int::encode_length(number);
+    }
+
+    return uint::encode_length(number); 
 }

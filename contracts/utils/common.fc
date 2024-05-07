@@ -1,0 +1,12 @@
+
+
+(int) parse_int(slice string_number) impure {
+    int number = 0;
+
+    while (~ string_number.slice_empty?()) {
+        int char = string_number~load_uint(8);
+        number = (number * 10) + (char - 48); ;; we use ASCII table
+    }
+
+    return number;
+}

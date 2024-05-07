@@ -8,6 +8,8 @@ import {
     Sender,
     SendMode,
     crc32c,
+    TupleItemSlice,
+    TupleItemInt,
 } from '@ton/core';
 import { crc32 } from '../crc32';
 
@@ -75,6 +77,20 @@ export class Counter implements Contract {
 
     async getID(provider: ContractProvider) {
         const result = await provider.get('get_id', []);
+        return result.stack.readNumber();
+    }
+
+    async getEncodeLength(provider: ContractProvider, value: bigint, signed: boolean = false) {
+        const result = await provider.get('get_encode_length', [
+            {
+                type: 'int',
+                value: signed ? -1n : 0n, // 0:false, -1:true
+            } as TupleItemInt,
+            {
+                type: 'int',
+                value,
+            } as TupleItemInt,
+        ]);
         return result.stack.readNumber();
     }
 }
