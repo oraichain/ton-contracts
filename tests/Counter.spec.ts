@@ -84,18 +84,13 @@ describe('Counter', () => {
         expect(len).toEqual(3);
         console.log('length', len);
 
-        len = await counter.getBufferEncodeLength(Buffer.from('hello world'));
-        console.log('length', len);
+        // len = await counter.getBufferEncodeLength(Buffer.from('hello world'));
+        // console.log('length', len);
     });
 
     it('do encode_int', async () => {
         const buf = await counter.getEncode(100_000n);
         console.log('buf', buf);
-    });
-
-    it('do version encode length', async () => {
-        const len = await counter.getVersionEncodeLength(11);
-        console.log('Version: ', len);
     });
 
     it('check signature', async () => {

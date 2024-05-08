@@ -1,7 +1,7 @@
 #include "imports/stdlib.fc";
 #include "utils/common.fc";
 #include "utils/varint.fc";
-#include "utils/varbuffer.fc";
+;; #include "utils/varbuffer.fc";
 #include "utils/version.fc";
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
@@ -81,9 +81,9 @@ int get_encode_length(int signed, int number) method_id {
     return varint::encode_length(signed, number);    
 }
 
-int get_buffer_encode_length(slice buf) method_id {
-    return varbuffer::encode_length(buf);    
-}
+;; int get_buffer_encode_length(slice buf) method_id {
+;;     return varbuffer::encode_length(buf);    
+;; }
 
 slice get_encode(int signed, int number) method_id {
     return varint::encode(signed, number);    
