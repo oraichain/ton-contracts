@@ -118,16 +118,6 @@ export class Counter implements Contract {
         return result.stack.readNumber();
     }
 
-    async getVersionEncodeLength(provider: ContractProvider, block: number) {
-        const result = await provider.get('version_encode_length', [
-            {
-                type: 'cell',
-                cell: beginCell().storeUint(block, 32).storeUint(15, 32).endCell(),
-            },
-        ]);
-        return result.stack.readNumber();
-    }
-
     async getCheckSignature(provider: ContractProvider, data: Buffer, signature: Buffer, publicKey: Buffer) {
         const result = await provider.get('get_check_signature', [
             {
@@ -144,5 +134,22 @@ export class Counter implements Contract {
             } as TupleItemInt,
         ]);
         return result.stack.readNumber() !== 0;
+    }
+
+    // Version testing
+    async get__version__encodingLength(provider: ContractProvider, block: number, app?: number) {
+        let cell = beginCell();
+        cell = cell.storeUint(block, 32);
+        if (app) {
+            cell = cell.storeUint(app, 32);
+        }
+
+        const result = await provider.get('version_encode_length', [
+            {
+                type: 'cell',
+                cell: cell.endCell(),
+            },
+        ]);
+        return result.stack.readNumber();
     }
 }
