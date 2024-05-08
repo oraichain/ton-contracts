@@ -1,0 +1,42 @@
+#include "varbuffer.fc";
+#include "../imports/math.fc";
+
+(int) cell_utils::is_empty(cell c) inline {
+    return c.cell_hash() == 68134197439415885698044414435951397869210496020759160419881882418413283430343;
+}
+
+;; Notice: cell have to be pushed with step, two cell have to have the same step
+;; step here is how we store cell. Ex: [0x38, 0x16] => step = 8 (8 bit)
+(cell) cell_utils:write_cell_by_offset(cell src, cell dst, int offset, int step) {
+    builder new_cell = begin_cell();
+    
+    slice src_slice = src.begin_parse();
+    int src_length = src_slice.slice_bits() >> math::log2(step);
+    int i = 0;
+    while (i < offset) {
+        int number = src_slice~load_int(step);
+        new_cell = new_cell.store_uint(number, step);
+        i += 1;
+    }
+    ~dump(new_cell);
+
+    slice dst_slice = dst.begin_parse();
+    int dst_length = dst_slice.slice_bits() >> math::log2(step);
+    int i = 0;
+    while (i < dst_length) {
+        int number = dst_slice~load_int(step);
+        new_cell = new_cell.store_uint(number, step);
+        ~dump(new_cell);
+        i += 1;
+    }
+
+
+    int i = offset + dst_length - 1;
+    int final_length = src_length + dst_length - 1;
+    while (i < final_length) {
+        int number = src_slice~load_int(step);
+        new_cell = new_cell.store_uint(number, step);
+        i += 1;
+    }
+    return new_cell.end_cell();
+}

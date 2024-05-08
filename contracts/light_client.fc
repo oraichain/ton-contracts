@@ -3,6 +3,7 @@
 #include "utils/varint.fc";
 ;; #include "utils/varbuffer.fc";
 #include "utils/version.fc";
+#include "utils/cell_utils.fc";
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
 
@@ -95,6 +96,11 @@ int version_encode_length(cell version) method_id {
 
 slice version_encode(cell version) method_id {
     return version::encode(version);
+}
+
+;; #[test_only]
+slice cell_write_cell_by_offset(cell src, cell dst, int offset) method_id {
+    return cell_utils:write_cell_by_offset(src,dst,offset,8).begin_parse();
 }
 
 int get_check_signature(slice data, slice signature, int public_key) method_id {

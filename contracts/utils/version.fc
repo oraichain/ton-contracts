@@ -1,32 +1,6 @@
 #include "../imports/stdlib.fc";
 #include "./varint.fc";
 
-;; encode(version) {
-;;     let length = Version.encodingLength(version);
-;;     let buffer = Buffer.alloc(length);
-;;     let offset = 0;
-
-;;     let block = Number(version.block);
-;;     let app = Number(version.app);
-
-;;     // block field
-;;     if (block) {
-;;       buffer[offset] = 0x08;
-;;       UVarInt.encode(version.block, buffer, offset + 1);
-;;       offset += UVarInt.encode.bytes + 1;
-;;     }
-
-;;     // app field
-;;     if (app) {
-;;       buffer[offset] = 0x10;
-;;       UVarInt.encode(version.app, buffer, offset + 1);
-;;     }
-
-;;     CanonicalVote.encode.bytes = length;
-;;     return buffer;
-;;   },
-
-
 (int) version::encode_length(cell version) {
     var ds = version.begin_parse();
     var length = 0;

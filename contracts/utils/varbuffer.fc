@@ -4,10 +4,14 @@
 ;;     return lengthType.encodingLength(value.length) + value.length
 ;;   }
  
- (int) varbuffer::encode_length(slice value) {            
+(int) varbuffer::encode_length(slice value) {            
     int len = value.slice_bits() >> 3;
     return varint::encode_length(0, len) + len;    
 }
+
+;; (slice) varbuffer::encode(cell buffer, int offset) {
+
+;; }
 
  
 ;;  encode: function encode (value, buffer, offset) {

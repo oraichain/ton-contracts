@@ -1,5 +1,5 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import { Cell, toNano } from '@ton/core';
+import { beginCell, Cell, toNano } from '@ton/core';
 import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
@@ -40,15 +40,18 @@ describe('Version', () => {
         });
     });
 
-    it('test encode length', async () => {
-        expect(await version.get__version__encodingLength(11)).toBe(2);
-        // expect(await version.get__version__encodingLength(11, 5)).toBe(4);
-    });
-
-    xit('test encode', async () => {
-        expect((await version.get__version__encode(11, 15)).toString('hex')).toBe(
-            Buffer.from([8, 11, 16, 15]).toString('hex'),
+    it('test append cell by offset', async () => {
+        let srcCell = beginCell().storeUint(3, 8).storeUint(4, 8).storeUint(5, 8).endCell();
+        let dstCell = beginCell().storeUint(6, 8).storeUint(7, 8).storeUint(8, 8).endCell();
+        expect((await version.get__cell__writeCellByOffset(srcCell, dstCell, 2)).toString('hex')).toBe(
+            Buffer.from([3, 4, 6, 7, 8, 5]).toString('hex'),
         );
-        expect((await version.get__version__encode(3)).toString('hex')).toBe(Buffer.from([8, 3]).toString('hex'));
+        expect((await version.get__cell__writeCellByOffset(srcCell, dstCell, 0)).toString('hex')).toBe(
+            Buffer.from([6, 7, 8, 3, 4, 5]).toString('hex'),
+        );
+        expect((await version.get__cell__writeCellByOffset(srcCell, dstCell, 3)).toString('hex')).toBe(
+            Buffer.from([3, 4, 5, 6, 7, 8]).toString('hex'),
+        );
+        // expect(await version.get__version__encodingLength(11, 5)).toBe(4);
     });
 });
