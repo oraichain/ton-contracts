@@ -97,3 +97,6 @@ int get_check_signature(slice data, slice signature, int public_key) method_id {
     return check_data_signature(data, signature, public_key);
 }
 
+int get_tree_root(slice leaves, int length) method_id {    
+    return hash_from_byte_slice(leaves, length);    
+}

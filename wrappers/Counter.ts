@@ -10,7 +10,9 @@ import {
     crc32c,
     TupleItemSlice,
     TupleItemInt,
+    TupleItemCell,
 } from '@ton/core';
+import crypto from 'crypto';
 import { crc32 } from '../crc32';
 
 export type CounterConfig = {
@@ -147,5 +149,26 @@ export class Counter implements Contract {
             } as TupleItemInt,
         ]);
         return result.stack.readNumber() !== 0;
+    }
+
+    async getHashTreeRoot(provider: ContractProvider, txs: Buffer[]) {
+        let builder = beginCell();
+
+        for (const tx of txs) {
+            builder = builder.storeBuffer(crypto.createHash('sha256').update(tx).digest());
+        }
+
+        const result = await provider.get('get_tree_root', [
+            {
+                type: 'slice',
+                cell: builder.endCell(),
+            } as TupleItemSlice,
+            {
+                type: 'int',
+                value: BigInt(txs.length),
+            } as TupleItemInt,
+        ]);
+
+        return result.stack.readBigNumber();
     }
 }

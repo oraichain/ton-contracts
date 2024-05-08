@@ -1,4 +1,8 @@
 
+#include "../imports/math.fc";
+
+const prefix::leaf = 0x0;
+const prefix::inner = 0x1;
 
 (int) parse_int(slice string_number) impure {
     int number = 0;
@@ -9,4 +13,45 @@
     }
 
     return number;
+}
+
+int bit_length(int n) inline {
+    return (math::log2(n) + 1) >> 0;
+}
+
+int get_split_point(int n)  {
+    if n < 1 {
+        throw(0xffff);
+    }
+
+    int bitlen = n.bit_length();
+    int k = 1 << (bitlen - 1);
+    if k == n {
+        k >>= 1;
+    }
+    return k;
+}
+
+int inner_hash(int left, int right) inline {
+    return  begin_cell().store_uint(prefix::inner, 8).store_uint(left, 256).store_uint(right, 256).end_cell().begin_parse().string_hash();
+}
+
+int leaf_hash(int leaf) inline {    
+    return begin_cell().store_uint(prefix::leaf, 8).store_uint(leaf, 256).end_cell().begin_parse().string_hash();    
+}
+
+
+int hash_from_byte_slice(slice items, int length)  {
+    if (length == 0) {    
+        return "".string_hash();
+    }
+    if(length == 1) {
+        int leaf = items~load_uint(256);        
+        return leaf_hash(leaf);
+    }
+   
+    int k = get_split_point(length);
+    int left = hash_from_byte_slice(items, k);
+    int right = hash_from_byte_slice(items.skip_bits(k * 256), length - k);
+    return inner_hash(left, right);     
 }
