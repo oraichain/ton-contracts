@@ -40,8 +40,15 @@ describe('Version', () => {
         });
     });
 
-    it('encode length', async () => {
+    it('test encode length', async () => {
         expect(await version.get__version__encodingLength(11)).toBe(2);
         expect(await version.get__version__encodingLength(11, 5)).toBe(4);
+    });
+
+    it('test encode', async () => {
+        expect((await version.get__version__encode(11, 15)).toString('hex')).toBe(
+            Buffer.from([8, 11, 16, 15]).toString('hex'),
+        );
+        expect((await version.get__version__encode(3)).toString('hex')).toBe(Buffer.from([8, 3]).toString('hex'));
     });
 });

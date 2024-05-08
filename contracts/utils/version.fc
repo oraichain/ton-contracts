@@ -1,6 +1,32 @@
 #include "../imports/stdlib.fc";
 #include "./varint.fc";
 
+;; encode(version) {
+;;     let length = Version.encodingLength(version);
+;;     let buffer = Buffer.alloc(length);
+;;     let offset = 0;
+
+;;     let block = Number(version.block);
+;;     let app = Number(version.app);
+
+;;     // block field
+;;     if (block) {
+;;       buffer[offset] = 0x08;
+;;       UVarInt.encode(version.block, buffer, offset + 1);
+;;       offset += UVarInt.encode.bytes + 1;
+;;     }
+
+;;     // app field
+;;     if (app) {
+;;       buffer[offset] = 0x10;
+;;       UVarInt.encode(version.app, buffer, offset + 1);
+;;     }
+
+;;     CanonicalVote.encode.bytes = length;
+;;     return buffer;
+;;   },
+
+
 (int) version::encode_length(cell version) {
     var ds = version.begin_parse();
     var length = 0;
@@ -16,4 +42,41 @@
     }
 
     return length;
+}
+
+(slice) version::encode(cell version) {
+    int length = version::encode_length(version);
+    ;; create a new empty builder
+    builder inner_cell = begin_cell(); 
+
+    var ds = version.begin_parse();
+    if (ds.slice_empty?() != -1) {
+        inner_cell = inner_cell.store_uint(8, 8);
+
+        var block_uint = ds~load_uint(32);
+        var encoded_block = varint::encode(0, block_uint);
+        int length = varint::encode_length(0, block_uint);
+        int offset = 0;
+        while (offset < length) {
+            int val = encoded_block~load_uint(8);
+            inner_cell = inner_cell.store_uint(val, 8);
+            offset += 1;
+        }
+    }
+
+    if (ds.slice_empty?() != -1) {
+        inner_cell = inner_cell.store_uint(16, 8);
+
+        var app_uint = ds~load_uint(32);
+        var encoded_app = varint::encode(0, app_uint);
+        int length = varint::encode_length(0, app_uint);
+        int offset = 0;
+        while (offset < length) {
+            int val = encoded_app~load_uint(8);
+            inner_cell = inner_cell.store_uint(val, 8);
+            offset += 1;
+        }
+    }
+
+    return inner_cell.end_cell().begin_parse();
 }

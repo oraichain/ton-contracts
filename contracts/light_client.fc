@@ -93,6 +93,10 @@ int version_encode_length(cell version) method_id {
     return version::encode_length(version);
 }
 
+slice version_encode(cell version) method_id {
+    return version::encode(version);
+}
+
 int get_check_signature(slice data, slice signature, int public_key) method_id {
     return check_data_signature(data, signature, public_key);
 }

@@ -175,4 +175,20 @@ export class LightClient implements Contract {
         ]);
         return result.stack.readNumber();
     }
+
+    async get__version__encode(provider: ContractProvider, block: number, app?: number) {
+        let cell = beginCell();
+        cell = cell.storeUint(block, 32);
+        if (app) {
+            cell = cell.storeUint(app, 32);
+        }
+
+        const result = await provider.get('version_encode', [
+            {
+                type: 'cell',
+                cell: cell.endCell(),
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
 }
