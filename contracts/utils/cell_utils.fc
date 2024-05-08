@@ -18,7 +18,6 @@
         new_cell = new_cell.store_uint(number, step);
         i += 1;
     }
-    ~dump(new_cell);
 
     slice dst_slice = dst.begin_parse();
     int dst_length = dst_slice.slice_bits() >> math::log2(step);
@@ -26,7 +25,6 @@
     while (i < dst_length) {
         int number = dst_slice~load_int(step);
         new_cell = new_cell.store_uint(number, step);
-        ~dump(new_cell);
         i += 1;
     }
 
