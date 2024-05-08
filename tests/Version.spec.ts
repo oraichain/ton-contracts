@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { Counter } from '../wrappers/LightClient';
+import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 
@@ -8,18 +8,18 @@ describe('Version', () => {
     let code: Cell;
 
     beforeAll(async () => {
-        code = await compile('Counter');
+        code = await compile('LightClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let version: SandboxContract<Counter>;
+    let version: SandboxContract<LightClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
         version = blockchain.openContract(
-            Counter.createFromConfig(
+            LightClient.createFromConfig(
                 {
                     id: 0,
                     counter: 0,
