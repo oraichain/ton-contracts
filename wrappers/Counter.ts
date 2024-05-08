@@ -122,10 +122,7 @@ export class Counter implements Contract {
         const result = await provider.get('version_encode_length', [
             {
                 type: 'cell',
-                cell: beginCell()
-                    .storeRef(beginCell().storeUint(block, 32).endCell())
-                    .storeRef(beginCell().storeUint(15, 32).endCell())
-                    .endCell(),
+                cell: beginCell().storeUint(block, 32).storeUint(15, 32).endCell(),
             },
         ]);
         return result.stack.readNumber();
