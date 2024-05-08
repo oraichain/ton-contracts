@@ -1,25 +1,25 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { Counter } from '../wrappers/Counter';
+import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 
-describe('Counter', () => {
+describe('LightClient', () => {
     let code: Cell;
 
     beforeAll(async () => {
-        code = await compile('Counter');
+        code = await compile('LightClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let counter: SandboxContract<Counter>;
+    let lightClient: SandboxContract<LightClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
-        counter = blockchain.openContract(
-            Counter.createFromConfig(
+        lightClient = blockchain.openContract(
+            LightClient.createFromConfig(
                 {
                     id: 0,
                     counter: 0,
@@ -30,11 +30,11 @@ describe('Counter', () => {
 
         deployer = await blockchain.treasury('deployer');
 
-        const deployResult = await counter.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployResult = await lightClient.sendDeploy(deployer.getSender(), toNano('0.05'));
 
         expect(deployResult.transactions).toHaveTransaction({
             from: deployer.address,
-            to: counter.address,
+            to: lightClient.address,
             deploy: true,
             success: true,
         });
@@ -52,7 +52,7 @@ describe('Counter', () => {
 
             const increaser = await blockchain.treasury('increaser' + i);
 
-            const counterBefore = await counter.getCounter();
+            const counterBefore = await lightClient.getCounter();
 
             console.log('counter before increasing', counterBefore);
 
@@ -60,18 +60,18 @@ describe('Counter', () => {
 
             console.log('increasing by', increaseBy);
 
-            const increaseResult = await counter.sendIncrease(increaser.getSender(), {
+            const increaseResult = await lightClient.sendIncrease(increaser.getSender(), {
                 increaseBy,
                 value: toNano('0.05'),
             });
 
             expect(increaseResult.transactions).toHaveTransaction({
                 from: increaser.address,
-                to: counter.address,
+                to: lightClient.address,
                 success: true,
             });
 
-            const counterAfter = await counter.getCounter();
+            const counterAfter = await lightClient.getCounter();
 
             console.log('counter after increasing', counterAfter);
 
@@ -80,7 +80,7 @@ describe('Counter', () => {
     });
 
     it('do encode_length', async () => {
-        let len = await counter.getEncodeLength(100_000n);
+        let len = await lightClient.getEncodeLength(100_000n);
         expect(len).toEqual(3);
         console.log('length', len);
 
@@ -89,7 +89,7 @@ describe('Counter', () => {
     });
 
     it('do encode_int', async () => {
-        const buf = await counter.getEncode(100_000n);
+        const buf = await lightClient.getEncode(100_000n);
         console.log('buf', buf);
     });
 
@@ -103,7 +103,7 @@ describe('Counter', () => {
             'hex',
         );
         const publicKey = Buffer.from('10b8dfde73aeda38f81c5ce9c181ccaf2e25d0c66b8d4bfb41732f0ae61ee566', 'hex');
-        const verified = await counter.getCheckSignature(data, signature, publicKey);
+        const verified = await lightClient.getCheckSignature(data, signature, publicKey);
         console.log('verified', verified);
     });
 
@@ -113,7 +113,7 @@ describe('Counter', () => {
             'CpACCo0CCiQvY29zbXdhc20ud2FzbS52MS5Nc2dFeGVjdXRlQ29udHJhY3QS5AEKK29yYWkxemEwN2pzeGw5aGh3bXUza3RoM3U5M3NxOGpzdHpkNW12cnB2cWsSP29yYWkxOWE1eTI5emo4cWh2Z2V3OWU3dnJnYW16ZmpmNjN0cGRyd3I2NTQ1bDU2OGRkNDBxOWM5czc4ZmszNhp0eyJwcm9wb3NlIjp7ImRhdGEiOnsiT1JBSSI6IjExMjU5NjU4IiwiSU5KIjoiMjM3MzQzNzUiLCJCVEMiOiI2MjM1NTA0OTcwNCIsIkVUSCI6IjMwMDEwMjI1NTMiLCJXRVRIIjoiMzAwMTAyMjU1MyJ9fX0SZwpSCkYKHy9jb3Ntb3MuY3J5cHRvLnNlY3AyNTZrMS5QdWJLZXkSIwohAjfEWpMdTxdv9FkygNkDy0vQ6AIlheQ7mQKfaBervvwrEgQKAggBGNm9AhIRCgsKBG9yYWkSAzIwMRDrnwwaQMIs1fnlspUrZeoaaBf1yqQqq/MQjRU/+PsT4tNUDUy3SaEwDf0niJzvSRmRVam1fRVEiKASkEd/Sh00hsZEtJQ=',
         ].map((tx) => Buffer.from(tx, 'base64'));
 
-        const rootHash = await counter.getHashTreeRoot(txs);
+        const rootHash = await lightClient.getHashTreeRoot(txs);
         const expectedHash = BigInt('0x8EB7CA2F1E0CC60F6F937B5344B67276730B174A5BA88E1FD18C2F5EA72E04BF');
         console.log('Data Hash: ', rootHash.toString(16));
         expect(rootHash).toEqual(expectedHash);

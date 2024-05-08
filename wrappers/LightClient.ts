@@ -15,12 +15,12 @@ import {
 import crypto from 'crypto';
 import { crc32 } from '../crc32';
 
-export type CounterConfig = {
+export type LightClientConfig = {
     id: number;
     counter: number;
 };
 
-export function counterConfigToCell(config: CounterConfig): Cell {
+export function lightClientConfigToCell(config: LightClientConfig): Cell {
     return beginCell().storeUint(config.id, 32).storeUint(config.counter, 32).endCell();
 }
 
@@ -28,20 +28,20 @@ export const Opcodes = {
     increase: crc32('op::increase'), //0x7e8764ef,
 };
 
-export class Counter implements Contract {
+export class LightClient implements Contract {
     constructor(
         readonly address: Address,
         readonly init?: { code: Cell; data: Cell },
     ) {}
 
     static createFromAddress(address: Address) {
-        return new Counter(address);
+        return new LightClient(address);
     }
 
-    static createFromConfig(config: CounterConfig, code: Cell, workchain = 0) {
-        const data = counterConfigToCell(config);
+    static createFromConfig(config: LightClientConfig, code: Cell, workchain = 0) {
+        const data = lightClientConfigToCell(config);
         const init = { code, data };
-        return new Counter(contractAddress(workchain, init), init);
+        return new LightClient(contractAddress(workchain, init), init);
     }
 
     async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {

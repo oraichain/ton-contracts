@@ -1,5 +1,5 @@
 import { toNano } from '@ton/core';
-import { Counter } from '../wrappers/Counter';
+import { Counter } from '../wrappers/LightClient';
 import { compile, NetworkProvider } from '@ton/blueprint';
 
 export async function run(provider: NetworkProvider) {
@@ -10,8 +10,8 @@ export async function run(provider: NetworkProvider) {
                 counter: 0,
                 date: 10,
             },
-            await compile('Counter')
-        )
+            await compile('Counter'),
+        ),
     );
 
     await counter.sendDeploy(provider.sender(), toNano('0.05'));

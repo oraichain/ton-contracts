@@ -1,5 +1,5 @@
 import { Address, toNano } from '@ton/core';
-import { Counter } from '../wrappers/Counter';
+import { Counter } from '../wrappers/LightClient';
 import { NetworkProvider, sleep } from '@ton/blueprint';
 
 export async function run(provider: NetworkProvider, args: string[]) {
