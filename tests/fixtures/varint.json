@@ -1,0 +1,26 @@
+[
+  {
+    "value": 0,
+    "encoding": "00"
+  },
+  {
+    "value": 1,
+    "encoding": "02"
+  },
+  {
+    "value": 255,
+    "encoding": "fe03"
+  },
+  {
+    "value": 256,
+    "encoding": "8004"
+  },
+  {
+    "value": 1234,
+    "encoding": "a413"
+  },
+  {
+    "value": 100000,
+    "encoding": "c09a0c"
+  }
+]

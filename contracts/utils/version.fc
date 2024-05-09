@@ -25,7 +25,7 @@
 
     var ds = version.begin_parse();
     if (ds.slice_empty?() != -1) {
-        inner_cell = inner_cell.store_uint(8, 8);
+        inner_cell~store_uint(8, 8);
 
         var block_uint = ds~load_uint(32);
         var encoded_block = varint::encode(0, block_uint);
@@ -33,13 +33,13 @@
         int offset = 0;
         while (offset < length) {
             int val = encoded_block~load_uint(8);
-            inner_cell = inner_cell.store_uint(val, 8);
+            inner_cell~store_uint(val, 8);
             offset += 1;
         }
     }
 
     if (ds.slice_empty?() != -1) {
-        inner_cell = inner_cell.store_uint(16, 8);
+        inner_cell~store_uint(16, 8);
 
         var app_uint = ds~load_uint(32);
         var encoded_app = varint::encode(0, app_uint);
@@ -47,7 +47,7 @@
         int offset = 0;
         while (offset < length) {
             int val = encoded_app~load_uint(8);
-            inner_cell = inner_cell.store_uint(val, 8);
+            inner_cell~store_uint(val, 8);
             offset += 1;
         }
     }

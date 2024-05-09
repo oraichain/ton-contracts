@@ -28,6 +28,17 @@ export const Opcodes = {
     increase: crc32('op::increase'), //0x7e8764ef,
 };
 
+export function getTimeComponent(timestampz: string){
+    let millis = new Date(timestampz).getTime();
+    let seconds = Math.floor(millis / 1000);
+
+    // ghetto, we're pulling the nanoseconds from the string
+    let withoutZone = timestampz.slice(0, -1);
+    let nanosStr = withoutZone.split(".")[1] || "";
+    let nanoseconds = Number(nanosStr.padEnd(9, "0"));
+    return { seconds, nanoseconds };
+}
+
 export class LightClient implements Contract {
     constructor(
         readonly address: Address,
@@ -206,6 +217,42 @@ export class LightClient implements Contract {
             {
                 type: 'int',
                 value: BigInt(offset),
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
+
+    // Time
+    async getTimeEncodeLength(provider: ContractProvider, timestampz: string, app?:number){
+        const { seconds, nanoseconds } = getTimeComponent(timestampz);
+        let cell = beginCell();
+        cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
+        if (app) {
+            cell = cell.storeUint(app, 32);
+        }
+
+        const result = await provider.get('time_encode_length', [
+            {
+                type: 'cell',
+                cell: cell.endCell(),
+            },
+        ]);
+        return result.stack.readNumber();
+    }
+
+    async getTimeEncode(provider: ContractProvider, timestampz: string, app?:number){
+        const { seconds, nanoseconds } = getTimeComponent(timestampz);
+        let cell = beginCell();
+        cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
+       
+        if (app) {
+            cell = cell.storeUint(app, 32);
+        }
+
+        const result = await provider.get('time_encode', [
+            {
+                type: 'cell',
+                cell: cell.endCell(),
             },
         ]);
         return result.stack.readBuffer();
