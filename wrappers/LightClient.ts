@@ -12,6 +12,7 @@ import {
     TupleItemInt,
     TupleItemCell,
     Builder,
+    Tuple,
 } from '@ton/core';
 import crypto from 'crypto';
 import { crc32 } from '../crc32';
@@ -71,6 +72,15 @@ export type BlockId = {
     };
 };
 
+export type CanonicalVote = {
+    type: number,
+    height: number,
+    round: number,
+    block_id: BlockId;
+    timestamp: string,
+    chain_id: string,
+};
+
 export const getBlockSlice = (blockId: BlockId): Cell => {
     let hashBuffer = Buffer.from(blockId.hash, 'hex');
     let hash = beginCell();
@@ -86,6 +96,38 @@ export const getBlockSlice = (blockId: BlockId): Cell => {
     let parts = beginCell().storeUint(blockId.parts.total, 32).storeRef(partHash.endCell());
     return beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
 };
+
+export const getCanonicalVoteTupleInput = (vote: CanonicalVote): Tuple => {
+    return {
+        type: 'tuple',
+        items: [
+            {
+                type: 'int',
+                value: BigInt(vote.type),
+            },
+            {
+                type: 'int',
+                value: BigInt(vote.height),
+            },
+            {
+                type: 'int',
+                value: BigInt(vote.round),
+            },
+            {
+                type: 'slice',
+                cell: getBlockSlice(vote.block_id),
+            },
+            {
+                type: 'slice',
+                cell: getTimeSlice(vote.timestamp),
+            },
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(Buffer.from(vote.chain_id)).endCell(),
+            }
+        ]
+    }
+}
 
 export class LightClient implements Contract {
     constructor(
@@ -339,5 +381,23 @@ export class LightClient implements Contract {
 
         // 1CCCF41BAB3DD153852B4C59A2194EB90A210E2FF585CC60ED07EBA71B4D5D27
         return result.stack.readBigNumber();
+    }
+
+    async get__Int64LE__encode(provider: ContractProvider, value: bigint | number) {
+        let cell = beginCell();
+        cell = cell.storeInt(value, 64);
+        const result = await provider.get('int64LE_encode', [
+            {
+                type: 'slice',
+                cell: cell.endCell(),
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
+
+    async get__CanonicalVote__encode(provider:ContractProvider, vote:CanonicalVote){
+        let tuple = getCanonicalVoteTupleInput(vote);
+        const result = await provider.get('get_canonical_vote_encode', [tuple]);
+        return result.stack.readBuffer();
     }
 }

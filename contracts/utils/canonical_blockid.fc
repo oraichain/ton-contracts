@@ -1,0 +1,36 @@
+#include "varint.fc";
+#include "blockid.fc";
+
+int canonical_blockid::encode_length(slice ds) { 
+    return blockid::encode_length(ds);
+}
+
+slice canonical_blockid::encode(slice ds) {
+    ~dump(ds);
+    cell hash = ds~load_ref();
+    slice hash_slice = hash.begin_parse();
+
+    builder buffer = begin_cell();
+    ~dump(ds);
+    int hash_str_length = (hash_slice.slice_bits() >> 3);
+    ~dump(ds);
+    buffer = buffer.store_uint(10, 8).store_uint(hash_str_length, 8).store_slice(hash_slice);
+
+    cell parts = ds~load_ref();
+    slice parts_slice = parts.begin_parse();
+    int total = parts_slice~load_uint(32);
+    cell hash = parts_slice~load_ref();
+    slice hash_slice = hash.begin_parse();
+    int parts_str_length = (hash_slice.slice_bits() >> 3) + 4;
+    buffer = buffer
+                .store_uint(18, 8)
+                .store_uint(parts_str_length, 8)
+                .store_uint(8, 8)
+                .store_uint(total, 8)
+                .store_uint(18, 8)
+                .store_uint(parts_str_length - 4, 8)
+                .store_slice(hash_slice)
+                .store_uint(16, 8)
+                .store_uint(total, 8);
+    return buffer.end_cell().begin_parse();
+}

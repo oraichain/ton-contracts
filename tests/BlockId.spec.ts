@@ -60,4 +60,12 @@ describe('Block Id', () => {
             }
         }
     });
+
+    it('test canonical encode', async () => {
+        for (const fixture of Object.values(blockIdFixtures)) {
+            if (fixture?.encoding !== undefined && fixture?.value !== undefined) {
+                console.log((await version.get__blockid__encode(fixture.value)).toString('hex'));
+            }
+        }
+    });
 });

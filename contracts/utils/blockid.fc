@@ -8,7 +8,7 @@
 ;;   }
 ;; }
 
-(int) blockid::encode_length(slice ds) { 
+int blockid::encode_length(slice ds) { 
     int length = 0;
 
     cell hash = ds~load_ref();
@@ -34,7 +34,7 @@
     return length;
 }
 
-(slice) blockid::encode(slice ds) {
+slice blockid::encode(slice ds) {
     cell hash = ds~load_ref();
     slice hash_slice = hash.begin_parse();
 
