@@ -40,13 +40,11 @@ const MAX_INT64 = 0x7FFFFFFFFFFFFFFF;
 slice reverse_buffer_slice_int(int number){
     builder inner_cell = begin_cell();
     slice buffer = begin_cell().store_uint(number, 32).end_cell().begin_parse();
-    buffer~dump();
-    ;; while(buffer.empty?()){
-    ;;     slice last_byte = buffer.slice_last(8);
-    ;;     last_byte~dump();
-    ;;     ;; inner_cell~store_slice(last_byte);
-    ;;     ;; buffer~skip_last_bit(8);
-    ;; }
+    while(buffer.slice_empty?() != -1){
+        slice last_byte = buffer.slice_last(8);
+        inner_cell = inner_cell.store_slice(last_byte);
+        buffer = buffer.skip_last_bits(8);
+    }
 
     return inner_cell.end_cell().begin_parse();
 }

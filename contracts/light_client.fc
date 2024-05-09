@@ -156,6 +156,6 @@ slice blockid_encode(slice data) method_id {
 
 
 ;; Int64LE
-slice  int64LE_encode(slice data) method_id {
+slice int64LE_encode(slice data) method_id {
     return int64LE::encode(data);
 }
