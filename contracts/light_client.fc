@@ -1,7 +1,7 @@
 #include "imports/stdlib.fc";
 #include "utils/common.fc";
 #include "utils/varint.fc";
-;; #include "utils/varbuffer.fc";
+#include "utils/varbuffer.fc";
 #include "utils/version.fc";
 #include "utils/cell_utils.fc";
 #include "utils/time.fc";
@@ -79,16 +79,20 @@ int get_id() method_id {
 }
 
 
-int get_encode_length(int signed, int number) method_id {
-    return varint::encode_length(signed, number);    
+int get_encode_uint_length(int number) method_id {
+    return uvarint::encode_length(number);    
 }
 
-;; int get_buffer_encode_length(slice buf) method_id {
-;;     return varbuffer::encode_length(buf);    
-;; }
+int get_buffer_encode_length(slice buf) method_id {
+    return varbuffer::encode_length(buf);    
+}
 
-slice get_encode(int signed, int number) method_id {
-    return varint::encode(signed, number);    
+slice get_encode_uint(int number) method_id {
+    return uvarint::encode(number);    
+}
+
+slice get_buffer_encode(slice value) method_id {
+    return varbuffer::encode(value);    
 }
 
 int version_encode_length(cell version) method_id {
@@ -108,7 +112,9 @@ int get_check_signature(slice data, slice signature, int public_key) method_id {
     return check_data_signature(data, signature, public_key);
 }
 
-int get_tree_root(slice leaves, int length) method_id {    
+int get_tree_root(slice leaves) method_id {    
+    ;; divided by 256 => length
+    int length = slice_bits(leaves) >> 8;
     return hash_from_byte_slice(leaves, length);    
 }
 

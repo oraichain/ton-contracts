@@ -79,18 +79,17 @@ describe('LightClient', () => {
         }
     });
 
-    it('do encode_length', async () => {
+    it('encode_uint', async () => {
         let len = await lightClient.getEncodeLength(100_000n);
         expect(len).toEqual(3);
         console.log('length', len);
-
-        // len = await counter.getBufferEncodeLength(Buffer.from('hello world'));
-        // console.log('length', len);
-    });
-
-    it('do encode_int', async () => {
         const buf = await lightClient.getEncode(100_000n);
         console.log('buf', buf);
+    });
+
+    it('get_buffer_encode', async () => {
+        const buf = await lightClient.getBufferEncode(Buffer.from('hello world'));
+        console.log('buf', buf.toString('hex'));
     });
 
     it('check signature', async () => {

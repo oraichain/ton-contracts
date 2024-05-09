@@ -93,12 +93,8 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
-    async getEncode(provider: ContractProvider, value: bigint, signed: boolean = false) {
-        const result = await provider.get('get_encode', [
-            {
-                type: 'int',
-                value: signed ? -1n : 0n, // 0:false, -1:true
-            } as TupleItemInt,
+    async getEncode(provider: ContractProvider, value: bigint) {
+        const result = await provider.get('get_encode_uint', [
             {
                 type: 'int',
                 value,
@@ -107,12 +103,8 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    async getEncodeLength(provider: ContractProvider, value: bigint, signed: boolean = false) {
-        const result = await provider.get('get_encode_length', [
-            {
-                type: 'int',
-                value: signed ? -1n : 0n, // 0:false, -1:true
-            } as TupleItemInt,
+    async getEncodeLength(provider: ContractProvider, value: bigint) {
+        const result = await provider.get('get_encode_uint_length', [
             {
                 type: 'int',
                 value,
@@ -129,6 +121,16 @@ export class LightClient implements Contract {
             } as TupleItemSlice,
         ]);
         return result.stack.readNumber();
+    }
+
+    async getBufferEncode(provider: ContractProvider, buf: Buffer) {
+        const result = await provider.get('get_buffer_encode', [
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(buf).endCell(),
+            } as TupleItemSlice,
+        ]);
+        return result.stack.readBuffer();
     }
 
     async getCheckSignature(provider: ContractProvider, data: Buffer, signature: Buffer, publicKey: Buffer) {
@@ -161,10 +163,6 @@ export class LightClient implements Contract {
                 type: 'slice',
                 cell: builder.endCell(),
             } as TupleItemSlice,
-            {
-                type: 'int',
-                value: BigInt(txs.length),
-            } as TupleItemInt,
         ]);
 
         return result.stack.readBigNumber();
