@@ -23,10 +23,9 @@
 
     slice hash_slice = hash.begin_parse();
     if (hash_slice.slice_empty?() != -1) {
-        int hash_length = hash_slice.slice_bits() >> 3 + 2;
+        int hash_length = (hash_slice.slice_bits() >> 3) + 2;
         length += hash_length;
     }
-    ~dump(length);
 
     cell parts = dv~load_ref();
     slice parts_slice = parts.begin_parse();
@@ -36,7 +35,7 @@
 
         slice hash_slice = hash.begin_parse();
         if (hash_slice.slice_empty?() != -1) {
-            int hash_length = hash_slice.slice_bits() >> 3 + 2;
+            int hash_length = (hash_slice.slice_bits() >> 3) + 6;
             length += hash_length;
         }
     }

@@ -3,6 +3,7 @@ import { Cell, toNano } from '@ton/core';
 import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
+import * as versionFixtures from './fixtures/version.json';
 
 describe('Block Id', () => {
     let code: Cell;
@@ -40,8 +41,13 @@ describe('Block Id', () => {
         });
     });
 
-    it('test encode length', async () => {
-        expect(await version.get__version__encodingLength(11, 0)).toBe(2);
-        // expect(await version.get__version__encodingLength(11, 5)).toBe(4);
+    it('test encode', async () => {
+        for (const fixture of Object.values(versionFixtures)) {
+            if (fixture?.value?.block !== undefined && fixture?.value?.app !== undefined) {
+                expect(
+                    (await version.get__version__encode(fixture.value.block, fixture.value.app)).toString('hex'),
+                ).toBe(fixture.encoding);
+            }
+        }
     });
 });
