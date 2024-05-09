@@ -120,6 +120,16 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
+    async getBufferEncode(provider: ContractProvider, buf: Buffer) {
+        const result = await provider.get('get_buffer_encode', [
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(buf).endCell(),
+            } as TupleItemSlice,
+        ]);
+        return result.stack.readBuffer();
+    }
+
     async getCheckSignature(provider: ContractProvider, data: Buffer, signature: Buffer, publicKey: Buffer) {
         const result = await provider.get('get_check_signature', [
             {
@@ -150,10 +160,6 @@ export class LightClient implements Contract {
                 type: 'slice',
                 cell: builder.endCell(),
             } as TupleItemSlice,
-            {
-                type: 'int',
-                value: BigInt(txs.length),
-            } as TupleItemInt,
         ]);
 
         return result.stack.readBigNumber();
