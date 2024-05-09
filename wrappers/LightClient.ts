@@ -257,7 +257,7 @@ export class LightClient implements Contract {
 
         let parts = beginCell().storeUint(lastBlockId.parts.total, 32).storeRef(partHash.endCell());
         let finalCell = beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
-        const result = await provider.get('get_blockid_encoding_length', [
+        const result = await provider.get('blockid_encoding_length', [
             {
                 type: 'cell',
                 cell: finalCell,
@@ -266,7 +266,34 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
+    async get__blockid__encode(provider: ContractProvider, lastBlockId: any) {
+        let hashBuffer = convertStringToUint8Array(lastBlockId.hash);
+        let hash = beginCell();
+        for (const item of hashBuffer) {
+            hash.storeUint(item, 8);
+        }
+        let partHashBuffer = convertStringToUint8Array(lastBlockId.parts.hash);
+        let partHash = beginCell();
+        for (const item of partHashBuffer) {
+            partHash.storeUint(item, 8);
+        }
+
+        let parts = beginCell().storeUint(lastBlockId.parts.total, 32).storeRef(partHash.endCell());
+        let finalCell = beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
+        const result = await provider.get('blockid_encode', [
+            {
+                type: 'cell',
+                cell: finalCell,
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
+
     async getTimeEncode(provider: ContractProvider, timestampz: string) {
+        const { seconds, nanoseconds } = getTimeComponent(timestampz);
+        let cell = beginCell();
+        cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
+
         const result = await provider.get('time_encode', [
             {
                 type: 'slice',
