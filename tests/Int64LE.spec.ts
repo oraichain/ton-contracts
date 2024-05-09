@@ -1,9 +1,14 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { getTimeComponent, LightClient } from '../wrappers/LightClient';
+import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import * as timeFixtures from './fixtures/time.json';
+import {Int64LE as libInt64LE}  from 'varstruct';
+
+const Int64LEFixtures = [
+    0, 1, 0xFFFFFFFF - 2, 0xFFFFFFFF - 1, 0xFFFFFFFF, 0xFFFFFFFF + 1, 0xFFFFFFFF + 2,
+    0xFFFFFFFFFFFFF, 0x1FFFFFFFFFFFFF, -2147483648, -64424509440, -4294967297, -4294967296, -4294967295
+]
 
 describe('Int64LE', () => {
     let code: Cell;
@@ -42,6 +47,9 @@ describe('Int64LE', () => {
     });
 
     it('test encode', async () => {
-        console.log(await Int64LE.get__Int64LE__encode(112351251n));
+        for(const ele of Int64LEFixtures) {
+            expect(Int64LE.get__Int64LE__encode(ele)).resolves.toEqual(libInt64LE.encode(ele));
+        }
+       
     });
 });
