@@ -8,14 +8,6 @@
 ;;   }
 ;; }
 
-;; encodingLength(value) {
-;;     let length = 0;
-;;     if (value.hash) length += value.hash.length / 2 + 2;
-;;     if (value.parts && value.parts.hash) {
-;;       length += value.parts.hash.length / 2 + 6;
-;;     }
-;;     return length;
-;;   },
 (int) blockid::encode_length(cell data) { 
     int length = 0;
     var dv = data.begin_parse();           
@@ -43,3 +35,32 @@
     return length;
 }
 
+;;   encode(value, buffer, offset = 0) {
+;;     let length = BlockID.encodingLength(value);
+;;     buffer = buffer || Buffer.alloc(length);
+
+;;     // TODO: actually do amino encoding stuff
+
+;;     // hash field
+;;     if (value.hash) {
+;;       let hash = Buffer.from(value.hash, "hex");
+;;       buffer[offset + 0] = 0x0a;
+;;       buffer[offset + 1] = hash.length;
+;;       hash.copy(buffer, offset + 2);
+;;       offset += hash.length + 2;
+;;     }
+
+;;     // block parts
+;;     if (value.parts && value.parts.hash) {
+;;       let partsHash = Buffer.from(value.parts.hash, "hex");
+;;       buffer[offset] = 0x12;
+;;       buffer[offset + 1] = partsHash.length + 4;
+
+;;       buffer[offset + 2] = 0x08;
+;;       buffer[offset + 3] = value.parts.total;
+
+;;       buffer[offset + 4] = 0x12;
+;;       buffer[offset + 5] = partsHash.length;
+;;       partsHash.copy(buffer, offset + 6);
+;;       offset += partsHash.length + 4;
+;;     }
