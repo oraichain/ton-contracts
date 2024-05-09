@@ -11,9 +11,11 @@ import {
     TupleItemSlice,
     TupleItemInt,
     TupleItemCell,
+    Builder,
 } from '@ton/core';
 import crypto from 'crypto';
 import { crc32 } from '../crc32';
+import { convertStringToUint8Array } from './helpers/hex';
 
 export type LightClientConfig = {
     id: number;
@@ -28,7 +30,7 @@ export const Opcodes = {
     increase: crc32('op::increase'), //0x7e8764ef,
 };
 
-export function getTimeComponent(timestampz: string) {
+export function getTimeSlice(timestampz: string): Cell {
     let millis = new Date(timestampz).getTime();
     let seconds = Math.floor(millis / 1000);
 
@@ -36,7 +38,11 @@ export function getTimeComponent(timestampz: string) {
     let withoutZone = timestampz.slice(0, -1);
     let nanosStr = withoutZone.split('.')[1] || '';
     let nanoseconds = Number(nanosStr.padEnd(9, '0'));
-    return { seconds, nanoseconds };
+
+    let cell = beginCell();
+    cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
+
+    return cell.endCell();
 }
 
 export class LightClient implements Contract {
@@ -221,36 +227,45 @@ export class LightClient implements Contract {
     }
 
     // Time
-    async getTimeEncodeLength(provider: ContractProvider, timestampz: string, app?: number) {
-        const { seconds, nanoseconds } = getTimeComponent(timestampz);
-        let cell = beginCell();
-        cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
-        if (app) {
-            cell = cell.storeUint(app, 32);
-        }
-
+    async getTimeEncodeLength(provider: ContractProvider, timestampz: string) {
         const result = await provider.get('time_encode_length', [
             {
                 type: 'slice',
-                cell: cell.endCell(),
+                cell: getTimeSlice(timestampz),
             },
         ]);
         return result.stack.readNumber();
     }
 
-    async getTimeEncode(provider: ContractProvider, timestampz: string, app?: number) {
-        const { seconds, nanoseconds } = getTimeComponent(timestampz);
-        let cell = beginCell();
-        cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
-
-        if (app) {
-            cell = cell.storeUint(app, 32);
+    // LightClient testing
+    async get__blockid__encodingLength(provider: ContractProvider, lastBlockId: any) {
+        let hashBuffer = convertStringToUint8Array(lastBlockId.hash);
+        let hash = beginCell();
+        for (const item of hashBuffer) {
+            hash.storeUint(item, 8);
+        }
+        let partHashBuffer = convertStringToUint8Array(lastBlockId.parts.hash);
+        let partHash = beginCell();
+        for (const item of partHashBuffer) {
+            partHash.storeUint(item, 8);
         }
 
+        let parts = beginCell().storeUint(lastBlockId.parts.total, 32).storeRef(partHash.endCell());
+        let finalCell = beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
+        const result = await provider.get('get_blockid_encoding_length', [
+            {
+                type: 'cell',
+                cell: finalCell,
+            },
+        ]);
+        return result.stack.readNumber();
+    }
+
+    async getTimeEncode(provider: ContractProvider, timestampz: string) {
         const result = await provider.get('time_encode', [
             {
                 type: 'slice',
-                cell: cell.endCell(),
+                cell: getTimeSlice(timestampz),
             },
         ]);
         return result.stack.readBuffer();
@@ -260,7 +275,7 @@ export class LightClient implements Contract {
         let cell = beginCell();
         const versionCell = beginCell().storeUint(header.version.block, 32).endCell();
         const chainIdCell = beginCell().storeBuffer(Buffer.from(header.chain_id)).endCell();
-        const timeCell = beginCell().storeBuffer(Buffer.from(header.time)).endCell();
+        const timeCell = getTimeSlice(header.time);
         cell = cell.storeRef(versionCell).storeRef(chainIdCell).storeUint(header.height, 32).storeRef(timeCell);
         const result = await provider.get('get_block_hash', [
             {

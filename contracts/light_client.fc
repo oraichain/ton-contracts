@@ -5,6 +5,7 @@
 #include "utils/version.fc";
 #include "utils/cell_utils.fc";
 #include "utils/time.fc";
+#include "utils/blockid.fc";
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
 
@@ -132,16 +133,19 @@ slice get_block_hash(slice header) method_id {
     cell version = header~load_ref();
     slice chain_id = header~load_ref().begin_parse();
     int height = header~load_uint(32);
-    ;; slice time = header~load_ref().begin_parse();
+    slice time = header~load_ref().begin_parse();
 
     slice ret = begin_cell()    
     .store_slice(version::encode(version))
     .store_uint(prefix::array, 8).store_slice(varbuffer::encode(chain_id))
     .store_uint(prefix::number, 8).store_slice(uvarint::encode(height))
-    ;; .store_slice(time::encode(time))
+    .store_slice(time::encode(time))
     .end_cell().begin_parse();
 
     return ret;
 }
 
 
+int get_blockid_encoding_length(cell data) method_id {
+    return blockid::encode_length(data);
+}

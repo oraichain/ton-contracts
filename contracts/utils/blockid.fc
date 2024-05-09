@@ -1,0 +1,66 @@
+#include "varint.fc";
+
+;; cell {
+;;   hash: cell,
+;;   cell: {
+;;     parts: uint,
+;;     hash: cell,
+;;   }
+;; }
+
+(int) blockid::encode_length(cell data) { 
+    int length = 0;
+    var dv = data.begin_parse();           
+    cell hash = dv~load_ref();
+
+    slice hash_slice = hash.begin_parse();
+    if (hash_slice.slice_empty?() != -1) {
+        int hash_length = (hash_slice.slice_bits() >> 3) + 2;
+        length += hash_length;
+    }
+
+    cell parts = dv~load_ref();
+    slice parts_slice = parts.begin_parse();
+    if (parts_slice.slice_empty?() != -1) {
+        int total = parts_slice~load_uint(32);
+        cell hash = parts_slice~load_ref();
+
+        slice hash_slice = hash.begin_parse();
+        if (hash_slice.slice_empty?() != -1) {
+            int hash_length = (hash_slice.slice_bits() >> 3) + 6;
+            length += hash_length;
+        }
+    }
+
+    return length;
+}
+
+;;   encode(value, buffer, offset = 0) {
+;;     let length = BlockID.encodingLength(value);
+;;     buffer = buffer || Buffer.alloc(length);
+
+;;     // TODO: actually do amino encoding stuff
+
+;;     // hash field
+;;     if (value.hash) {
+;;       let hash = Buffer.from(value.hash, "hex");
+;;       buffer[offset + 0] = 0x0a;
+;;       buffer[offset + 1] = hash.length;
+;;       hash.copy(buffer, offset + 2);
+;;       offset += hash.length + 2;
+;;     }
+
+;;     // block parts
+;;     if (value.parts && value.parts.hash) {
+;;       let partsHash = Buffer.from(value.parts.hash, "hex");
+;;       buffer[offset] = 0x12;
+;;       buffer[offset + 1] = partsHash.length + 4;
+
+;;       buffer[offset + 2] = 0x08;
+;;       buffer[offset + 3] = value.parts.total;
+
+;;       buffer[offset + 4] = 0x12;
+;;       buffer[offset + 5] = partsHash.length;
+;;       partsHash.copy(buffer, offset + 6);
+;;       offset += partsHash.length + 4;
+;;     }

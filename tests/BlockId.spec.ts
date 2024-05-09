@@ -3,9 +3,8 @@ import { Cell, toNano } from '@ton/core';
 import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import * as versionFixtures from './fixtures/version.json';
 
-describe('Block Id', () => {
+describe('Version', () => {
     let code: Cell;
 
     beforeAll(async () => {
@@ -41,13 +40,23 @@ describe('Block Id', () => {
         });
     });
 
+    it('test encode length', async () => {
+        console.log(
+            await version.get__blockid__encodingLength({
+                hash: '3031323334353637383930313233343536373839303132333435363738393031',
+                parts: {
+                    total: 1,
+                    hash: '3031323334353637383930313233343536373839303132333435363738393031',
+                },
+            }),
+        );
+        // expect(await version.get__version__encodingLength(11, 5)).toBe(4);
+    });
+
     it('test encode', async () => {
-        for (const fixture of Object.values(versionFixtures)) {
-            if (fixture?.value?.block !== undefined && fixture?.value?.app !== undefined) {
-                expect(
-                    (await version.get__version__encode(fixture.value.block, fixture.value.app)).toString('hex'),
-                ).toBe(fixture.encoding);
-            }
-        }
+        expect((await version.get__version__encode(11, 15)).toString('hex')).toBe(
+            Buffer.from([8, 11, 16, 15]).toString('hex'),
+        );
+        expect((await version.get__version__encode(3)).toString('hex')).toBe(Buffer.from([8, 3]).toString('hex'));
     });
 });

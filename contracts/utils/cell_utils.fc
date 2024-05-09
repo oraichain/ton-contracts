@@ -38,3 +38,9 @@
     }
     return new_cell.end_cell();
 }
+
+;; ;; Notice: two cell have to have the same step
+;; ;; step here is how we store cell. Ex: [0x38, 0x16] => step = 8 (8 bit)
+;; (cell) cell_utils:copy(cell src, int src_offset, cell dst, int step) {
+
+;; }

@@ -20,29 +20,33 @@ slice time::encode(slice ds){
   
     if(ds.slice_empty?() != -1){
         int seconds = ds~load_uint(32);
-        inner_cell~store_uint(prefix::number, 8);
-        int seconds_encode_length =  varint::encode_length(0, seconds);
-        var encode_seconds = varint::encode(0, seconds);
-        int offset = 0;
+        if (seconds != 0) {
+            inner_cell~store_uint(prefix::number, 8);
+            int seconds_encode_length =  varint::encode_length(0, seconds);
+            var encode_seconds = varint::encode(0, seconds);
+            int offset = 0;
 
-        while(offset < seconds_encode_length){
-            int uint8_bytes = encode_seconds~load_uint(8);
-            inner_cell = inner_cell.store_uint(uint8_bytes,8);
-            offset += 1;
+            while(offset < seconds_encode_length){
+                int uint8_bytes = encode_seconds~load_uint(8);
+                inner_cell = inner_cell.store_uint(uint8_bytes,8);
+                offset += 1;
+            }
         }
     }
 
     if(ds.slice_empty?() != -1){
         int nanoseconds = ds~load_uint(32);
-        inner_cell~store_uint(prefix::inner, 8);
-        int nanoseconds_encode_length = varint::encode_length(0, nanoseconds);
-        var encode_nanoseconds = varint::encode(0, nanoseconds);
-        int offset = 0;
+        if (nanoseconds != 0) {
+            inner_cell~store_uint(prefix::inner, 8);
+            int nanoseconds_encode_length = varint::encode_length(0, nanoseconds);
+            var encode_nanoseconds = varint::encode(0, nanoseconds);
+            int offset = 0;
 
-        while(offset < nanoseconds_encode_length){
-            int uint8_bytes = encode_nanoseconds~load_uint(8);
-            inner_cell = inner_cell.store_uint(uint8_bytes,8);
-            offset += 1;
+            while(offset < nanoseconds_encode_length){
+                int uint8_bytes = encode_nanoseconds~load_uint(8);
+                inner_cell = inner_cell.store_uint(uint8_bytes,8);
+                offset += 1;
+            }
         }
     }
 
