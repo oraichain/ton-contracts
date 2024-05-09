@@ -1,12 +1,12 @@
 #include "../imports/stdlib.fc";
 #include "varint.fc";
  
-(int) varbuffer::encode_length(slice value) {            
+int varbuffer::encode_length(slice value) {            
     int len = value.slice_bits() >> 3;
     return varint::encode_length(0, len) + len;    
 }
 
-(slice) varbuffer::encode(slice value) {    
+slice varbuffer::encode(slice value) {    
     int length = slice_bits(value) >> 3;
     slice buffer = varint::encode(0, length);    
     return begin_cell().store_slice(buffer).store_slice(value).end_cell().begin_parse();    

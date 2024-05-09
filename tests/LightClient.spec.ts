@@ -148,6 +148,6 @@ describe('LightClient', () => {
         };
 
         const buf = await lightClient.getBlockHash(header);
-        console.log(buf.toString('hex'));
+        expect(buf.toString(16)).toEqual('1cccf41bab3dd153852b4c59a2194eb90a210e2ff585cc60ed07eba71b4d5d27');
     });
 });

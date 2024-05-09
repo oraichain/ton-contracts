@@ -128,20 +128,44 @@ slice time_encode(slice time) method_id {
     return time::encode(time);
 }
 
-slice get_block_hash(slice header) method_id {
+int get_block_hash(slice header, slice first_hashes, slice second_hashes) method_id {
     slice version = header~load_ref().begin_parse();
     slice chain_id = header~load_ref().begin_parse();
     int height = header~load_uint(32);
     slice time = header~load_ref().begin_parse();
+    slice block_id = header~load_ref().begin_parse();
+    slice proposer_address = header~load_bits(160);
 
-    slice ret = begin_cell()    
-    .store_slice(version::encode(version))
-    .store_uint(prefix::array, 8).store_slice(varbuffer::encode(chain_id))
-    .store_uint(prefix::number, 8).store_slice(uvarint::encode(height))
-    .store_slice(time::encode(time))
-    .end_cell().begin_parse();
+    slice last_commit_hash = first_hashes~load_ref().begin_parse();
+    slice data_hash = first_hashes~load_ref().begin_parse();
+    slice validators_hash = first_hashes~load_ref().begin_parse();
+    slice next_validators_hash = first_hashes~load_ref().begin_parse();
 
-    return ret;
+
+    slice consensus_hash = second_hashes~load_ref().begin_parse();
+    slice app_hash = second_hashes~load_ref().begin_parse();
+    slice last_results_hash = second_hashes~load_ref().begin_parse();
+    slice evidence_hash = second_hashes~load_ref().begin_parse();    
+
+    tuple chunks = empty_tuple()
+        .tpush(version::encode(version))
+        .tpush(begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(chain_id)).end_cell().begin_parse())
+        .tpush(begin_cell().store_uint(prefix::first, 8).store_slice(uvarint::encode(height)).end_cell().begin_parse())
+        .tpush(time::encode(time))
+        .tpush(blockid::encode(block_id))
+        .tpush(begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(last_commit_hash)).end_cell().begin_parse())
+        .tpush(begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(data_hash)).end_cell().begin_parse())
+        .tpush(begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(validators_hash)).end_cell().begin_parse())
+        .tpush(begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(next_validators_hash)).end_cell().begin_parse())
+        .tpush(begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(consensus_hash)).end_cell().begin_parse())
+        .tpush(begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(app_hash)).end_cell().begin_parse())
+        .tpush(begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(last_results_hash)).end_cell().begin_parse())
+        .tpush(begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(evidence_hash)).end_cell().begin_parse())
+        .tpush(begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(proposer_address)).end_cell().begin_parse());
+    
+    
+    int root = hash_from_tree_slice(chunks, chunks.tlen());              
+    return root;
 }
 
 ;; BlockId

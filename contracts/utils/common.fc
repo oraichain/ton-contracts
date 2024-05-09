@@ -2,10 +2,13 @@
 #include "../imports/math.fc";
 
 const prefix::leaf = 0x00;
-const prefix::inner = 0x10;
+const prefix::inner = 0x01;
 
 const prefix::array = 0x0a;
-const prefix::number = 0x08;
+const prefix::first = 0x08;
+const prefix::second = 0x10;
+
+int tlen(tuple data) asm "TLEN";
 
 (int) parse_int(slice string_number) impure {
     int number = 0;
@@ -57,4 +60,41 @@ int hash_from_byte_slice(slice items, int length)  {
     int left = hash_from_byte_slice(items, k);
     int right = hash_from_byte_slice(items.skip_bits(k * 256), length - k);
     return inner_hash(left, right);     
+}
+
+(tuple) reverse_list(tuple list) impure {    
+    tuple new_list = empty_tuple();
+
+    while (list.tlen() > 0) {
+        new_list~tpush(list~tpop());
+    }
+
+    return new_list;
+}
+
+int hash_from_tree_slice(tuple chunks, int length)  {        
+    if (length == 0) {    
+        ;; empty is 0 in bigint
+        return 0; 
+    }
+    if(length == 1) {
+        slice leaf = chunks.first();                     
+        return begin_cell().store_uint(prefix::leaf, 8).store_slice(leaf).end_cell().begin_parse().string_hash();            
+    }
+   
+    int k = get_split_point(length);    
+
+    tuple right_chunks = empty_tuple();
+
+    repeat (length - k) {        
+        right_chunks~tpush(chunks~tpop());
+    }
+
+    right_chunks = right_chunks.reverse_list();
+
+    int left = hash_from_tree_slice(chunks, k);     
+    int right = hash_from_tree_slice(right_chunks, right_chunks.tlen());        
+    
+    
+    return inner_hash(left, right);            
 }

@@ -44,17 +44,17 @@ describe('Version', () => {
     it('test encode', async () => {
         for (const fixture of Object.values(versionFixtures)) {
             if (fixture?.value?.block !== undefined && fixture?.value?.app !== undefined) {
-                expect(
-                    (await version.get__version__encode(fixture.value.block, fixture.value.app)).toString('hex'),
-                ).toBe(fixture.encoding);
+                expect((await version.get__version__encode(fixture.value)).toString('hex')).toBe(fixture.encoding);
             }
         }
     });
 
     it('test encode length', async () => {
-        expect((await version.get__version__encode(11, 15)).toString('hex')).toBe(
+        expect((await version.get__version__encode({ block: 11, app: 15 })).toString('hex')).toBe(
             Buffer.from([8, 11, 16, 15]).toString('hex'),
         );
-        expect((await version.get__version__encode(3)).toString('hex')).toBe(Buffer.from([8, 3]).toString('hex'));
+        expect((await version.get__version__encode({ block: 3 })).toString('hex')).toBe(
+            Buffer.from([8, 3]).toString('hex'),
+        );
     });
 });

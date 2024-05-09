@@ -40,6 +40,20 @@ export const getTimeComponent = (timestampz: string) => {
     return { seconds, nanoseconds };
 };
 
+export type Version = {
+    block: number;
+    app?: number;
+};
+export const getVersionSlice = (version: Version): Cell => {
+    let cell = beginCell();
+    cell = cell.storeUint(version.block, 32);
+    if (version.app) {
+        cell = cell.storeUint(version.app, 32);
+    }
+
+    return cell.endCell();
+};
+
 export const getTimeSlice = (timestampz: string): Cell => {
     const { seconds, nanoseconds } = getTimeComponent(timestampz);
 
@@ -203,33 +217,21 @@ export class LightClient implements Contract {
     }
 
     // Version testing
-    async get__version__encodingLength(provider: ContractProvider, block: number, app?: number) {
-        let cell = beginCell();
-        cell = cell.storeUint(block, 32);
-        if (app) {
-            cell = cell.storeUint(app, 32);
-        }
-
+    async get__version__encodingLength(provider: ContractProvider, version: Version) {
         const result = await provider.get('version_encode_length', [
             {
                 type: 'slice',
-                cell: cell.endCell(),
+                cell: getVersionSlice(version),
             },
         ]);
         return result.stack.readNumber();
     }
 
-    async get__version__encode(provider: ContractProvider, block: number, app?: number) {
-        let cell = beginCell();
-        cell = cell.storeUint(block, 32);
-        if (app) {
-            cell = cell.storeUint(app, 32);
-        }
-
+    async get__version__encode(provider: ContractProvider, version: Version) {
         const result = await provider.get('version_encode', [
             {
                 type: 'slice',
-                cell: cell.endCell(),
+                cell: getVersionSlice(version),
             },
         ]);
         return result.stack.readBuffer();
@@ -301,17 +303,41 @@ export class LightClient implements Contract {
     }
 
     async getBlockHash(provider: ContractProvider, header: any) {
-        let cell = beginCell();
-        const versionCell = beginCell().storeUint(header.version.block, 32).endCell();
-        const chainIdCell = beginCell().storeBuffer(Buffer.from(header.chain_id)).endCell();
-        const timeCell = getTimeSlice(header.time);
-        cell = cell.storeRef(versionCell).storeRef(chainIdCell).storeUint(header.height, 32).storeRef(timeCell);
+        let cell = beginCell()
+            .storeRef(getVersionSlice(header.version))
+            .storeRef(beginCell().storeBuffer(Buffer.from(header.chain_id)).endCell())
+            .storeUint(header.height, 32)
+            .storeRef(getTimeSlice(header.time))
+            .storeRef(getBlockSlice(header.last_block_id))
+            .storeBuffer(Buffer.from(header.proposer_address, 'hex'));
+
+        let hashCell1 = beginCell()
+            .storeRef(beginCell().storeBuffer(Buffer.from(header.last_commit_hash, 'hex')))
+            .storeRef(beginCell().storeBuffer(Buffer.from(header.data_hash, 'hex')))
+            .storeRef(beginCell().storeBuffer(Buffer.from(header.validators_hash, 'hex')))
+            .storeRef(beginCell().storeBuffer(Buffer.from(header.next_validators_hash, 'hex')));
+
+        let hashCell2 = beginCell()
+            .storeRef(beginCell().storeBuffer(Buffer.from(header.consensus_hash, 'hex')))
+            .storeRef(beginCell().storeBuffer(Buffer.from(header.app_hash, 'hex')))
+            .storeRef(beginCell().storeBuffer(Buffer.from(header.last_results_hash, 'hex')))
+            .storeRef(beginCell().storeBuffer(Buffer.from(header.evidence_hash, 'hex')));
         const result = await provider.get('get_block_hash', [
             {
                 type: 'slice',
                 cell: cell.endCell(),
             },
+            {
+                type: 'slice',
+                cell: hashCell1.endCell(),
+            },
+            {
+                type: 'slice',
+                cell: hashCell2.endCell(),
+            },
         ]);
-        return result.stack.readBuffer();
+
+        // 1CCCF41BAB3DD153852B4C59A2194EB90A210E2FF585CC60ED07EBA71B4D5D27
+        return result.stack.readBigNumber();
     }
 }
