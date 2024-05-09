@@ -119,10 +119,29 @@ int get_tree_root(slice leaves) method_id {
 }
 
 ;; Time 
-int time_encode_length(cell time) method_id {
+int time_encode_length(slice time) method_id {
     return time::encode_length(time);
 }
 
-slice time_encode(cell time) method_id {
+slice time_encode(slice time) method_id {
     return time::encode(time);
 }
+
+slice get_block_hash(slice header) method_id {
+    
+    cell version = header~load_ref();
+    slice chain_id = header~load_ref().begin_parse();
+    int height = header~load_uint(32);
+    ;; slice time = header~load_ref().begin_parse();
+
+    slice ret = begin_cell()    
+    .store_slice(version::encode(version))
+    .store_uint(prefix::array, 8).store_slice(varbuffer::encode(chain_id))
+    .store_uint(prefix::number, 8).store_slice(uvarint::encode(height))
+    ;; .store_slice(time::encode(time))
+    .end_cell().begin_parse();
+
+    return ret;
+}
+
+

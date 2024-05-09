@@ -1,8 +1,11 @@
 
 #include "../imports/math.fc";
 
-const prefix::leaf = 0x0;
-const prefix::inner = 0x1;
+const prefix::leaf = 0x00;
+const prefix::inner = 0x10;
+
+const prefix::array = 0x0a;
+const prefix::number = 0x08;
 
 (int) parse_int(slice string_number) impure {
     int number = 0;

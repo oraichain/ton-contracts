@@ -28,14 +28,14 @@ export const Opcodes = {
     increase: crc32('op::increase'), //0x7e8764ef,
 };
 
-export function getTimeComponent(timestampz: string){
+export function getTimeComponent(timestampz: string) {
     let millis = new Date(timestampz).getTime();
     let seconds = Math.floor(millis / 1000);
 
     // ghetto, we're pulling the nanoseconds from the string
     let withoutZone = timestampz.slice(0, -1);
-    let nanosStr = withoutZone.split(".")[1] || "";
-    let nanoseconds = Number(nanosStr.padEnd(9, "0"));
+    let nanosStr = withoutZone.split('.')[1] || '';
+    let nanoseconds = Number(nanosStr.padEnd(9, '0'));
     return { seconds, nanoseconds };
 }
 
@@ -221,7 +221,7 @@ export class LightClient implements Contract {
     }
 
     // Time
-    async getTimeEncodeLength(provider: ContractProvider, timestampz: string, app?:number){
+    async getTimeEncodeLength(provider: ContractProvider, timestampz: string, app?: number) {
         const { seconds, nanoseconds } = getTimeComponent(timestampz);
         let cell = beginCell();
         cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
@@ -231,25 +231,40 @@ export class LightClient implements Contract {
 
         const result = await provider.get('time_encode_length', [
             {
-                type: 'cell',
+                type: 'slice',
                 cell: cell.endCell(),
             },
         ]);
         return result.stack.readNumber();
     }
 
-    async getTimeEncode(provider: ContractProvider, timestampz: string, app?:number){
+    async getTimeEncode(provider: ContractProvider, timestampz: string, app?: number) {
         const { seconds, nanoseconds } = getTimeComponent(timestampz);
         let cell = beginCell();
         cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
-       
+
         if (app) {
             cell = cell.storeUint(app, 32);
         }
 
         const result = await provider.get('time_encode', [
             {
-                type: 'cell',
+                type: 'slice',
+                cell: cell.endCell(),
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
+
+    async getBlockHash(provider: ContractProvider, header: any) {
+        let cell = beginCell();
+        const versionCell = beginCell().storeUint(header.version.block, 32).endCell();
+        const chainIdCell = beginCell().storeBuffer(Buffer.from(header.chain_id)).endCell();
+        const timeCell = beginCell().storeBuffer(Buffer.from(header.time)).endCell();
+        cell = cell.storeRef(versionCell).storeRef(chainIdCell).storeUint(header.height, 32).storeRef(timeCell);
+        const result = await provider.get('get_block_hash', [
+            {
+                type: 'slice',
                 cell: cell.endCell(),
             },
         ]);

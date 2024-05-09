@@ -117,4 +117,37 @@ describe('LightClient', () => {
         console.log('Data Hash: ', rootHash.toString(16));
         expect(rootHash).toEqual(expectedHash);
     });
+
+    it('encode_time', async () => {
+        const buf = await lightClient.getTimeEncode('2024-05-06T07:34:41.886200108Z');
+        console.log(buf.toString('hex'));
+    });
+
+    it('block_hash', async () => {
+        const header = {
+            version: { block: 11 },
+            chain_id: 'Oraichain',
+            height: 20082942,
+            time: '2024-05-06T07:34:41.886200108Z',
+            last_block_id: {
+                hash: '6954B64B90D0A8B177DA1A9B14648D3DE6F706114EB9C9E1AF3BA52B6F8E3C4B',
+                parts: {
+                    total: 1,
+                    hash: 'E07E8511743101AA131DE4E24C9C8D412ABD69F6AEE583C8E80DBF23689B6019',
+                },
+            },
+            last_commit_hash: '4F2EDA71673E14712E23066F124CF06DE91CF166BF65AE327A94824DF4A58F0F',
+            data_hash: 'B44AC9F1CF13D3EC7B3D7B03C28BEBFE31BBF952D9C0C46E8C28107E16084279',
+            validators_hash: '7049E17D5A9EBDC4C165466F7C432D013BAF899A6EA2AF38240589CF881C2996',
+            next_validators_hash: '7049E17D5A9EBDC4C165466F7C432D013BAF899A6EA2AF38240589CF881C2996',
+            consensus_hash: '048091BC7DDC283F77BFBF91D73C44DA58C3DF8A9CBC867405D8B7F3DAADA22F',
+            app_hash: '23BB5C21FB1843DB9D7494137734648BDC7067E4117D0622F0D7D7B8FD24EAAE',
+            last_results_hash: 'E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855',
+            evidence_hash: 'E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855',
+            proposer_address: 'EDE8D483E839C40BF52CC14E8C3E494BFB5B0B8B',
+        };
+
+        const buf = await lightClient.getBlockHash(header);
+        console.log(buf.toString('hex'));
+    });
 });
