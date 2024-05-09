@@ -400,4 +400,16 @@ export class LightClient implements Contract {
         const result = await provider.get('canonical_vote_encode', [tuple]);
         return result.stack.readBuffer();
     }
+
+    // Pubkey
+    async get__Pubkey__encode(provider: ContractProvider, pubkey: string) {
+        let pubkeyBuffer = Buffer.from(pubkey, 'base64');
+        const result = await provider.get('pubkey_encode', [
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(pubkeyBuffer).endCell(),
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
 }

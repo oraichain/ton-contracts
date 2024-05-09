@@ -3,9 +3,9 @@ import { Cell, toNano } from '@ton/core';
 import { getTimeComponent, LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import * as timeFixtures from './fixtures/time.json';
+import * as pubKeyFixtures from './fixtures/pubkey.json';
 
-describe('Version', () => {
+describe('Time', () => {
     let code: Cell;
 
     beforeAll(async () => {
@@ -14,12 +14,12 @@ describe('Version', () => {
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let time: SandboxContract<LightClient>;
+    let pk: SandboxContract<LightClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
-        time = blockchain.openContract(
+        pk = blockchain.openContract(
             LightClient.createFromConfig(
                 {
                     id: 0,
@@ -31,34 +31,21 @@ describe('Version', () => {
 
         deployer = await blockchain.treasury('deployer');
 
-        const deployResult = await time.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployResult = await pk.sendDeploy(deployer.getSender(), toNano('0.05'));
 
         expect(deployResult.transactions).toHaveTransaction({
             from: deployer.address,
-            to: time.address,
+            to: pk.address,
             deploy: true,
             success: true,
         });
     });
 
-    it('test encode length', async () => {
-        let expectedLength = 0;
-        console.log('Time:', timeFixtures[0].value);
-        const { seconds, nanoseconds } = getTimeComponent(timeFixtures[0].value);
-        const secondsLength = await time.getEncodeLength(BigInt(seconds));
-        const nanosLength = await time.getEncodeLength(BigInt(nanoseconds));
-        expectedLength += 2 + secondsLength + nanosLength;
-        expect(time.getTimeEncodeLength(timeFixtures[0].value)).resolves.toBe(expectedLength);
-    });
-
     it('test encode', async () => {
-        console.log(Object.values(timeFixtures));
-        for (const timeFixture of Object.values(timeFixtures)) {
-            if (timeFixture?.value !== undefined && timeFixture.encoding !== undefined) {
-                console.log('Time:', timeFixture.value);
-                const rawTimeEncode = await time.getTimeEncode(timeFixture.value);
-                console.log(getTimeComponent(timeFixture.value));
-                expect(rawTimeEncode.toString('hex')).toBe(timeFixture.encoding);
+        for (const fixture of Object.values(pubKeyFixtures)) {
+            if (fixture.value !== undefined && fixture.encoding !== undefined) {
+                const rawEncode = await pk.get__Pubkey__encode(fixture.value.value);
+                expect(rawEncode.toString('hex')).toBe(fixture.encoding);
             }
         }
     });
