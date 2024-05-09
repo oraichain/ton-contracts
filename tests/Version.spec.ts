@@ -5,7 +5,7 @@ import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import * as versionFixtures from './fixtures/version.json';
 
-describe('Block Id', () => {
+describe('Version', () => {
     let code: Cell;
 
     beforeAll(async () => {

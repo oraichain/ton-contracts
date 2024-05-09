@@ -1,8 +1,8 @@
 #include "../imports/stdlib.fc";
 #include "./varint.fc";
 
-(int) version::encode_length(cell version) {
-    var ds = version.begin_parse();
+(int) version::encode_length(slice ds) {
+    ;; var ds = version.begin_parse();
     var length = 0;
 
     if (ds.slice_empty?() != -1) {
@@ -18,12 +18,12 @@
     return length;
 }
 
-(slice) version::encode(cell version) {
-    int length = version::encode_length(version);
+(slice) version::encode(slice ds) {
+    int length = version::encode_length(ds);
     ;; create a new empty builder
     builder inner_cell = begin_cell(); 
 
-    var ds = version.begin_parse();
+    ;; var ds = version.begin_parse();
     if (ds.slice_empty?() != -1) {
         var block_uint = ds~load_uint(32);
         if (block_uint != 0) {

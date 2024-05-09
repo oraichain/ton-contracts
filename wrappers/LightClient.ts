@@ -189,7 +189,7 @@ export class LightClient implements Contract {
 
         const result = await provider.get('version_encode_length', [
             {
-                type: 'cell',
+                type: 'slice',
                 cell: cell.endCell(),
             },
         ]);
@@ -205,7 +205,7 @@ export class LightClient implements Contract {
 
         const result = await provider.get('version_encode', [
             {
-                type: 'cell',
+                type: 'slice',
                 cell: cell.endCell(),
             },
         ]);

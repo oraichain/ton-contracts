@@ -96,11 +96,11 @@ slice get_buffer_encode(slice value) method_id {
     return varbuffer::encode(value);    
 }
 
-int version_encode_length(cell version) method_id {
+int version_encode_length(slice version) method_id {
     return version::encode_length(version);
 }
 
-slice version_encode(cell version) method_id {
+slice version_encode(slice version) method_id {
     return version::encode(version);
 }
 
@@ -129,7 +129,7 @@ slice time_encode(slice time) method_id {
 }
 
 slice get_block_hash(slice header) method_id {
-    cell version = header~load_ref();
+    cell version = header~load_ref().begin_parse();
     slice chain_id = header~load_ref().begin_parse();
     int height = header~load_uint(32);
     slice time = header~load_ref().begin_parse();
