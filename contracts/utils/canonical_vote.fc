@@ -1,0 +1,82 @@
+#include "common.fc";
+#include "Int64LE.fc";
+#include "canonical_blockid.fc";
+#include "time.fc";
+
+slice canonical_vote::encode(
+    int typeVote, 
+    int height, 
+    int round, 
+    slice block_id,
+    slice timestamp,
+    slice chain_id
+){
+
+    builder inner_cell = begin_cell();
+    
+    if(typeVote != 0){
+        inner_cell = inner_cell.store_uint(prefix::number, 8);
+        inner_cell = inner_cell.store_uint(typeVote, 8);
+    }
+
+    if(height != 0){
+        inner_cell = inner_cell.store_uint(0x11,8);
+        slice height_slice = begin_cell().store_uint(height, 64).end_cell().begin_parse();
+        slice encoded_height = int64LE::encode(height_slice);
+        int height_encoded_lenght = int64LE::encodeLength();
+        var offset = 0;
+        while(offset < height_encoded_lenght){
+            int byte = encoded_height~load_uint(8);
+            inner_cell = inner_cell.store_uint(byte, 8);
+            offset += 1;
+        }
+    }
+    ~dump(height);
+
+    if(round != 0){
+        inner_cell = inner_cell.store_uint(0x19, 8);
+        slice round_slice = begin_cell().store_uint(round, 64).end_cell().begin_parse();
+        slice encoded_round = int64LE::encode(round_slice);
+        int round_encoded_lenght = int64LE::encodeLength();
+        var offset = 0;
+        while(offset < round_encoded_lenght){
+            int byte = encoded_round~load_uint(8);
+            inner_cell = inner_cell.store_uint(byte, 8);
+            offset += 1;
+        }
+    }
+
+    if(block_id.slice_empty?() != -1){
+        inner_cell = inner_cell.store_uint(0x22, 8);
+        slice encoded_block_id = canonical_blockid::encode(block_id);
+        int block_id_encoded_lenght = canonical_blockid::encode_length(block_id);
+        inner_cell = inner_cell.store_uint(block_id_encoded_lenght,8);
+        var offset = 0;
+        while(offset < block_id_encoded_lenght){
+            int byte = encoded_block_id~load_uint(8);
+            inner_cell = inner_cell.store_uint(byte, 8);
+            offset += 1;
+        }
+    }
+
+
+    ;; time field
+    inner_cell = inner_cell.store_uint(0x2a, 8);
+    slice encoded_timestamp = time::encode(timestamp);
+    int timestamp_encoded_lenght = time::encode_length(timestamp);
+    inner_cell = inner_cell.store_uint(timestamp_encoded_lenght,8);
+    var offset = 0;
+    while(offset < timestamp_encoded_lenght){
+        int byte = encoded_timestamp~load_uint(8);
+        inner_cell = inner_cell.store_uint(byte, 8);
+        offset += 1;
+    }
+
+    ;; chain_id field
+    inner_cell = inner_cell.store_uint(0x32, 8);
+    int chain_id_length = slice_bits(chain_id) >> 3;
+    inner_cell = inner_cell.store_uint(chain_id_length, 8);
+    inner_cell = inner_cell.store_slice(chain_id);
+
+    return inner_cell.end_cell().begin_parse();
+}

@@ -3,28 +3,22 @@ import { Cell, toNano } from '@ton/core';
 import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import {Int64LE as libInt64LE}  from 'varstruct';
 
-const Int64LEFixtures = [
-    0, 1, 0xFFFFFFFF - 2, 0xFFFFFFFF - 1, 0xFFFFFFFF, 0xFFFFFFFF + 1, 0xFFFFFFFF + 2,
-    0xFFFFFFFFFFFFF, 0x1FFFFFFFFFFFFF, -2147483648, -64424509440, -4294967297, -4294967296, -4294967295
-]
 
-describe('Int64LE', () => {
+describe('CanonicalVote', () => {
     let code: Cell;
-
     beforeAll(async () => {
         code = await compile('LightClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let Int64LE: SandboxContract<LightClient>;
+    let CanonicalVote: SandboxContract<LightClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
-        Int64LE = blockchain.openContract(
+        CanonicalVote = blockchain.openContract(
             LightClient.createFromConfig(
                 {
                     id: 0,
@@ -36,19 +30,32 @@ describe('Int64LE', () => {
 
         deployer = await blockchain.treasury('deployer');
 
-        const deployResult = await Int64LE.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployResult = await CanonicalVote.sendDeploy(deployer.getSender(), toNano('0.05'));
 
         expect(deployResult.transactions).toHaveTransaction({
             from: deployer.address,
-            to: Int64LE.address,
+            to: CanonicalVote.address,
             deploy: true,
             success: true,
         });
     });
 
     it('test encode', async () => {
-        for(const ele of Int64LEFixtures) {
-            expect(Int64LE.get__Int64LE__encode(ele)).resolves.toEqual(libInt64LE.encode(ele));
+     console.log(await CanonicalVote.get__CanonicalVote__encode(
+         {
+          "type": 0,
+          "height": 1,
+          "round": 2,
+          "block_id": {
+            "hash": "",
+            "parts": {
+              "total": 0,
+              "hash": ""
+            }
+          },
+          "timestamp": "1973-11-29T21:33:09.123456789Z",
+          chain_id: "Oraichain"
         }
+      ))
     });
 });
