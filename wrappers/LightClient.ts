@@ -30,7 +30,7 @@ export const Opcodes = {
     increase: crc32('op::increase'), //0x7e8764ef,
 };
 
-export function getTimeSlice(timestampz: string): Cell {
+export const getTimeComponent = (timestampz: string) => {
     let millis = new Date(timestampz).getTime();
     let seconds = Math.floor(millis / 1000);
 
@@ -38,12 +38,17 @@ export function getTimeSlice(timestampz: string): Cell {
     let withoutZone = timestampz.slice(0, -1);
     let nanosStr = withoutZone.split('.')[1] || '';
     let nanoseconds = Number(nanosStr.padEnd(9, '0'));
+    return { seconds, nanoseconds };
+};
+
+export const getTimeSlice = (timestampz: string): Cell => {
+    const { seconds, nanoseconds } = getTimeComponent(timestampz);
 
     let cell = beginCell();
     cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
 
     return cell.endCell();
-}
+};
 
 export class LightClient implements Contract {
     constructor(
