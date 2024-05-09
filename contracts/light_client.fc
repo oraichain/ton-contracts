@@ -129,7 +129,7 @@ slice time_encode(slice time) method_id {
 }
 
 slice get_block_hash(slice header) method_id {
-    cell version = header~load_ref().begin_parse();
+    slice version = header~load_ref().begin_parse();
     slice chain_id = header~load_ref().begin_parse();
     int height = header~load_uint(32);
     slice time = header~load_ref().begin_parse();
