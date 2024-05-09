@@ -314,4 +314,16 @@ export class LightClient implements Contract {
         ]);
         return result.stack.readBuffer();
     }
+
+    async get__Int64LE__encode(provider: ContractProvider, value: bigint) {
+        let cell = beginCell();
+        cell = cell.storeInt(value, 64);
+        const result = await provider.get('int64le_encode', [
+            {
+                type:'slice',
+                cell: cell.endCell(),
+            }
+        ]); 
+        return result.stack.readBuffer();
+    }
 }

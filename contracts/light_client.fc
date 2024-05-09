@@ -6,6 +6,7 @@
 #include "utils/cell_utils.fc";
 #include "utils/time.fc";
 #include "utils/blockid.fc";
+#include "utils/Int64LE.fc";
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
 
@@ -151,4 +152,10 @@ int blockid_encoding_length(slice data) method_id {
 
 slice blockid_encode(slice data) method_id {
     return blockid::encode(data);
+}
+
+
+;; Int64LE
+slice  int64LE_encode(slice data) method_id {
+    return int64LE::encode(data);
 }
