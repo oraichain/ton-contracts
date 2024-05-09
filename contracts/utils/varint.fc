@@ -2,7 +2,7 @@
 #include "common.fc";
 
 
-(int) varint::encode_length(int signed,int n) {            
+int varint::encode_length(int signed,int n) {            
     if (signed) {
         n *= 2;
     }
@@ -16,7 +16,7 @@
     return (bits / 7 + 1) >> 0;
 }
 
-(slice) varint::encode(int signed, int n) {
+slice varint::encode(int signed, int n) {
     int length = varint::encode_length(signed, n);
     ;; create a new empty builder
     builder inner_cell = begin_cell(); 
@@ -37,4 +37,13 @@
     ~dump(n & 0xff);
 
     return inner_cell.end_cell().begin_parse();    
+}
+
+
+int uvarint::encode_length(int n) inline {
+    return varint::encode_length(0, n);
+}
+
+slice uvarint::encode(int n) inline {
+    return varint::encode(0, n);
 }

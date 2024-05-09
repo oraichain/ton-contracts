@@ -78,16 +78,16 @@ int get_id() method_id {
 }
 
 
-int get_encode_length(int signed, int number) method_id {
-    return varint::encode_length(signed, number);    
+int get_encode_uint_length(int number) method_id {
+    return uvarint::encode_length(number);    
 }
 
 int get_buffer_encode_length(slice buf) method_id {
     return varbuffer::encode_length(buf);    
 }
 
-slice get_encode(int signed, int number) method_id {
-    return varint::encode(signed, number);    
+slice get_encode_uint(int number) method_id {
+    return uvarint::encode(number);    
 }
 
 slice get_buffer_encode(slice value) method_id {
