@@ -5,7 +5,7 @@ import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import * as versionFixtures from './fixtures/version.json';
 
-describe('Block Id', () => {
+describe('Version', () => {
     let code: Cell;
 
     beforeAll(async () => {
@@ -51,7 +51,7 @@ describe('Block Id', () => {
         }
     });
 
-    it('test encode', async () => {
+    it('test encode length', async () => {
         expect((await version.get__version__encode(11, 15)).toString('hex')).toBe(
             Buffer.from([8, 11, 16, 15]).toString('hex'),
         );

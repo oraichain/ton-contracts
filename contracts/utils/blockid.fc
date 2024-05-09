@@ -8,18 +8,17 @@
 ;;   }
 ;; }
 
-(int) blockid::encode_length(cell data) { 
+(int) blockid::encode_length(slice ds) { 
     int length = 0;
-    var dv = data.begin_parse();           
 
-    cell hash = dv~load_ref();
+    cell hash = ds~load_ref();
     slice hash_slice = hash.begin_parse();
     if (hash_slice.slice_empty?() != -1) {
         int hash_length = (hash_slice.slice_bits() >> 3) + 2;
         length += hash_length;
     }
 
-    cell parts = dv~load_ref();
+    cell parts = ds~load_ref();
     slice parts_slice = parts.begin_parse();
     if (parts_slice.slice_empty?() != -1) {
         int total = parts_slice~load_uint(32);
@@ -35,9 +34,8 @@
     return length;
 }
 
-(slice) blockid::encode(cell data) {
-    var dv = data.begin_parse();           
-    cell hash = dv~load_ref();
+(slice) blockid::encode(slice ds) {
+    cell hash = ds~load_ref();
     slice hash_slice = hash.begin_parse();
 
     builder buffer = begin_cell();
@@ -46,7 +44,7 @@
         buffer = buffer.store_uint(10, 8).store_uint(hash_str_length, 8).store_slice(hash_slice);
     }
 
-    cell parts = dv~load_ref();
+    cell parts = ds~load_ref();
     slice parts_slice = parts.begin_parse();
     if (parts_slice.slice_empty?() != -1) {
         int total = parts_slice~load_uint(32);

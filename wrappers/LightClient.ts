@@ -189,7 +189,7 @@ export class LightClient implements Contract {
 
         const result = await provider.get('version_encode_length', [
             {
-                type: 'cell',
+                type: 'slice',
                 cell: cell.endCell(),
             },
         ]);
@@ -205,7 +205,7 @@ export class LightClient implements Contract {
 
         const result = await provider.get('version_encode', [
             {
-                type: 'cell',
+                type: 'slice',
                 cell: cell.endCell(),
             },
         ]);
@@ -259,7 +259,7 @@ export class LightClient implements Contract {
         let finalCell = beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
         const result = await provider.get('blockid_encoding_length', [
             {
-                type: 'cell',
+                type: 'slice',
                 cell: finalCell,
             },
         ]);
@@ -282,7 +282,7 @@ export class LightClient implements Contract {
         let finalCell = beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
         const result = await provider.get('blockid_encode', [
             {
-                type: 'cell',
+                type: 'slice',
                 cell: finalCell,
             },
         ]);
