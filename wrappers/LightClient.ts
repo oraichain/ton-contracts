@@ -15,7 +15,6 @@ import {
 } from '@ton/core';
 import crypto from 'crypto';
 import { crc32 } from '../crc32';
-import { convertStringToUint8Array } from './helpers/hex';
 
 export type LightClientConfig = {
     id: number;
@@ -48,6 +47,30 @@ export const getTimeSlice = (timestampz: string): Cell => {
     cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
 
     return cell.endCell();
+};
+
+export type BlockId = {
+    hash: string;
+    parts: {
+        hash: string;
+        total: number;
+    };
+};
+
+export const getBlockSlice = (blockId: BlockId): Cell => {
+    let hashBuffer = Buffer.from(blockId.hash, 'hex');
+    let hash = beginCell();
+    for (const item of hashBuffer) {
+        hash.storeUint(item, 8);
+    }
+    let partHashBuffer = Buffer.from(blockId.parts.hash, 'hex');
+    let partHash = beginCell();
+    for (const item of partHashBuffer) {
+        partHash.storeUint(item, 8);
+    }
+
+    let parts = beginCell().storeUint(blockId.parts.total, 32).storeRef(partHash.endCell());
+    return beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
 };
 
 export class LightClient implements Contract {
@@ -243,47 +266,21 @@ export class LightClient implements Contract {
     }
 
     // LightClient testing
-    async get__blockid__encodingLength(provider: ContractProvider, lastBlockId: any) {
-        let hashBuffer = convertStringToUint8Array(lastBlockId.hash);
-        let hash = beginCell();
-        for (const item of hashBuffer) {
-            hash.storeUint(item, 8);
-        }
-        let partHashBuffer = convertStringToUint8Array(lastBlockId.parts.hash);
-        let partHash = beginCell();
-        for (const item of partHashBuffer) {
-            partHash.storeUint(item, 8);
-        }
-
-        let parts = beginCell().storeUint(lastBlockId.parts.total, 32).storeRef(partHash.endCell());
-        let finalCell = beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
+    async get__blockid__encodingLength(provider: ContractProvider, lastBlockId: BlockId) {
         const result = await provider.get('blockid_encoding_length', [
             {
                 type: 'slice',
-                cell: finalCell,
+                cell: getBlockSlice(lastBlockId),
             },
         ]);
         return result.stack.readNumber();
     }
 
-    async get__blockid__encode(provider: ContractProvider, lastBlockId: any) {
-        let hashBuffer = convertStringToUint8Array(lastBlockId.hash);
-        let hash = beginCell();
-        for (const item of hashBuffer) {
-            hash.storeUint(item, 8);
-        }
-        let partHashBuffer = convertStringToUint8Array(lastBlockId.parts.hash);
-        let partHash = beginCell();
-        for (const item of partHashBuffer) {
-            partHash.storeUint(item, 8);
-        }
-
-        let parts = beginCell().storeUint(lastBlockId.parts.total, 32).storeRef(partHash.endCell());
-        let finalCell = beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
+    async get__blockid__encode(provider: ContractProvider, lastBlockId: BlockId) {
         const result = await provider.get('blockid_encode', [
             {
                 type: 'slice',
-                cell: finalCell,
+                cell: getBlockSlice(lastBlockId),
             },
         ]);
         return result.stack.readBuffer();
