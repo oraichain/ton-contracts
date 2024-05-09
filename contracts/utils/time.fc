@@ -28,7 +28,7 @@ slice time::encode(slice ds){
 
             while(offset < seconds_encode_length){
                 int uint8_bytes = encode_seconds~load_uint(8);
-                inner_cell = inner_cell.store_uint(uint8_bytes,8);
+                inner_cell~store_uint(uint8_bytes,8);
                 offset += 1;
             }
         }
@@ -44,7 +44,7 @@ slice time::encode(slice ds){
 
             while(offset < nanoseconds_encode_length){
                 int uint8_bytes = encode_nanoseconds~load_uint(8);
-                inner_cell = inner_cell.store_uint(uint8_bytes,8);
+                inner_cell~store_uint(uint8_bytes,8);
                 offset += 1;
             }
         }
