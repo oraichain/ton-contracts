@@ -43,7 +43,7 @@ slice reverse_buffer_slice_int(int number){
     while(buffer.slice_empty?() != -1){
         slice last_byte = buffer.slice_last(8);
         inner_cell = inner_cell.store_slice(last_byte);
-        buffer = buffer.skip_last_bits(8);
+        buffer~skip_last_bits(8);
     }
 
     return inner_cell.end_cell().begin_parse();
