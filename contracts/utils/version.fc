@@ -2,7 +2,6 @@
 #include "./varint.fc";
 
 (int) version::encode_length(slice ds) {
-    ;; var ds = version.begin_parse();
     var length = 0;
 
     if (ds.slice_empty?() != -1) {
@@ -23,7 +22,6 @@
     ;; create a new empty builder
     builder inner_cell = begin_cell(); 
 
-    ;; var ds = version.begin_parse();
     if (ds.slice_empty?() != -1) {
         var block_uint = ds~load_uint(32);
         if (block_uint != 0) {
