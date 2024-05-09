@@ -144,15 +144,11 @@ slice get_block_hash(slice header) method_id {
     return ret;
 }
 
-
-int get_blockid_encoding_length(cell data) method_id {
-    return blockid::encode_length(data);
-}
 ;; BlockId
-int blockid_encoding_length(cell data) method_id {
+int blockid_encoding_length(slice data) method_id {
     return blockid::encode_length(data);
 }
 
-slice blockid_encode(cell data) method_id {
+slice blockid_encode(slice data) method_id {
     return blockid::encode(data);
 }
