@@ -1,4 +1,4 @@
-
+#include "common.fc";
 ;; const pubkeyAminoPrefix = Buffer.from("1624DE6420", "hex");
 ;; const PubKey = {
 ;;   decode(buffer, start = 0, end = buffer.length) {
@@ -24,3 +24,13 @@
 ;;     return 37;
 ;;   },
 ;; };
+(int) pubkey::encode_length(slice pub) {
+    if (pub.slice_empty?() == -1) {
+        return 1;
+    }
+    return 37;
+}
+
+slice pubkey::encode(slice pub) {
+    return begin_cell().store_slice(pub).end_cell().begin_parse();
+}

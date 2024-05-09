@@ -4,3 +4,5 @@ a[0] = 0x0a;
 a[1] = b.length;
 b.copy(a, 2);
 console.log(a);
+
+console.log(Buffer.from('1624DE6420', 'hex').length);

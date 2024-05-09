@@ -3,7 +3,7 @@ import { Cell, toNano } from '@ton/core';
 import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-
+import * as voteFixtures from './fixtures/vote.json';
 
 describe('CanonicalVote', () => {
     let code: Cell;
@@ -41,21 +41,17 @@ describe('CanonicalVote', () => {
     });
 
     it('test encode', async () => {
-     console.log(await CanonicalVote.get__CanonicalVote__encode(
-         {
-          "type": 0,
-          "height": 1,
-          "round": 2,
-          "block_id": {
-            "hash": "",
-            "parts": {
-              "total": 0,
-              "hash": ""
+        for (const fixture of Object.values(voteFixtures)) {
+            if (fixture.value !== undefined && fixture.encoding !== undefined) {
+                expect(
+                    (
+                        await CanonicalVote.get__CanonicalVote__encode({
+                            ...fixture.value,
+                            chain_id: 'Oraichain',
+                        })
+                    ).toString('hex'),
+                ).toBe(fixture.encoding);
             }
-          },
-          "timestamp": "1973-11-29T21:33:09.123456789Z",
-          chain_id: "Oraichain"
         }
-      ))
     });
 });
