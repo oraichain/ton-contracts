@@ -81,7 +81,7 @@ slice canonical_vote::encode(
     inner_cell = inner_cell.store_uint(chain_id_length, 8);
     inner_cell = inner_cell.store_slice(chain_id);
 
-    slice encoded_data = varbuffer::encode(inner_cell.end_cell().begin_parse());
-    return encoded_data;
-    ;; return inner_cell.end_cell().begin_parse();
+    ;; slice encoded_data = varbuffer::encode(inner_cell.end_cell().begin_parse());
+    ;; return encoded_data;
+    return inner_cell.end_cell().begin_parse();
 }
