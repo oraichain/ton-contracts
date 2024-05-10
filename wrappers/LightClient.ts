@@ -246,25 +246,6 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    // Cell testing
-    async get__cell__writeCellByOffset(provider: ContractProvider, src: Cell, dst: Cell, offset: number) {
-        const result = await provider.get('cell_write_cell_by_offset', [
-            {
-                type: 'cell',
-                cell: src,
-            },
-            {
-                type: 'cell',
-                cell: dst,
-            },
-            {
-                type: 'int',
-                value: BigInt(offset),
-            },
-        ]);
-        return result.stack.readBuffer();
-    }
-
     // Time
     async getTimeEncodeLength(provider: ContractProvider, timestampz: string) {
         const result = await provider.get('time_encode_length', [

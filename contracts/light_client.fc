@@ -4,7 +4,6 @@
 #include "utils/varint.fc";
 #include "utils/varbuffer.fc";
 #include "utils/version.fc";
-#include "utils/cell_utils.fc";
 #include "utils/time.fc";
 #include "utils/blockid.fc";
 #include "utils/merkleize.fc";
@@ -107,11 +106,6 @@ int version_encode_length(slice version) method_id {
 
 slice version_encode(slice version) method_id {
     return version::encode(version);
-}
-
-;; #[test_only]
-slice cell_write_cell_by_offset(cell src, cell dst, int offset) method_id {
-    return cell_utils:write_cell_by_offset(src,dst,offset,8).begin_parse();
 }
 
 int get_check_signature(slice data, slice signature, int public_key) method_id {
