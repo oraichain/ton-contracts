@@ -1,5 +1,5 @@
 #include "common.fc";
-#include "Int64LE.fc";
+#include "int64_le.fc";
 #include "canonical_blockid.fc";
 #include "time.fc";
 #include "varbuffer.fc";
@@ -23,8 +23,8 @@ slice canonical_vote::encode(
     if(height != 0){
         inner_cell = inner_cell.store_uint(0x11,8);
         slice height_slice = begin_cell().store_uint(height, 64).end_cell().begin_parse();
-        slice encoded_height = int64LE::encode(height_slice);
-        int height_encoded_lenght = int64LE::encodeLength();
+        slice encoded_height = int64le::encode(height_slice);
+        int height_encoded_lenght = int64le::encode_length();
         var offset = 0;
         while(offset < height_encoded_lenght){
             int byte = encoded_height~load_uint(8);
@@ -36,8 +36,8 @@ slice canonical_vote::encode(
     if(round != 0){
         inner_cell = inner_cell.store_uint(0x19, 8);
         slice round_slice = begin_cell().store_uint(round, 64).end_cell().begin_parse();
-        slice encoded_round = int64LE::encode(round_slice);
-        int round_encoded_lenght = int64LE::encodeLength();
+        slice encoded_round = int64le::encode(round_slice);
+        int round_encoded_lenght = int64le::encode_length();
         var offset = 0;
         while(offset < round_encoded_lenght){
             int byte = encoded_round~load_uint(8);

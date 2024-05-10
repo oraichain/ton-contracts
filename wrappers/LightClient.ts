@@ -386,7 +386,7 @@ export class LightClient implements Contract {
     async get__Int64LE__encode(provider: ContractProvider, value: bigint | number) {
         let cell = beginCell();
         cell = cell.storeInt(value, 64);
-        const result = await provider.get('int64LE_encode', [
+        const result = await provider.get('int64le_encode', [
             {
                 type: 'slice',
                 cell: cell.endCell(),
