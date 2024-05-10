@@ -1,0 +1,67 @@
+const MAX_UINT32 = 0x00000000FFFFFFFF;
+const MAX_INT53 =  0x001FFFFFFFFFFFFF;
+const MAX_INT64 = 0x7FFFFFFFFFFFFFFF;
+
+(int,()) ones_complement(int value){
+    int number = MAX_INT64 - value;
+    if(number < 0 ){
+        number = (number & 0x7FFFFFFF) + 0x80000000;
+    }
+    return (number,());
+}
+
+(int,int) uint_high_low(int number){
+    var high = 0;
+    var signbit = number & 0xFFFFFFFF;
+    var low = signbit < 0 ? (number & 0x7FFFFFFF) + 0x80000000 : signbit;
+    if(number > MAX_UINT32){
+        high = (number - low) / (MAX_UINT32 + 1);
+    }
+    return (high,low);
+}
+
+(int, int) int_high_low(int number){
+    if(number > -1){
+        return uint_high_low(number);
+    }
+    var number = 0 - number;
+    (int high, int low) = uint_high_low(number);
+    high~ones_complement();
+    low~ones_complement();
+    if(low == MAX_UINT32){
+        high += 1;
+        low = 0;
+    } else {
+        low += 1;
+    }
+    return (high, low);
+}
+
+slice reverse_buffer_slice_int(int number){
+    builder inner_cell = begin_cell();
+    slice buffer = begin_cell().store_uint(number, 32).end_cell().begin_parse();
+    while(buffer.slice_empty?() != -1){
+        slice last_byte = buffer.slice_last(8);
+        inner_cell = inner_cell.store_slice(last_byte);
+        buffer~skip_last_bits(8);
+    }
+
+    return inner_cell.end_cell().begin_parse();
+}
+
+slice int53::writeInt64LE(int number){
+    (int high, int low) = number.int_high_low();
+    return begin_cell()
+            .store_slice(reverse_buffer_slice_int(low))
+            .store_slice(reverse_buffer_slice_int(high))
+            .end_cell()
+            .begin_parse();
+}
+
+slice int64le::encode(slice value){
+    return int53::writeInt64LE(value~load_uint(64)); ;;8 bytes
+}
+
+int int64le::encode_length(){
+    return 8;
+}
