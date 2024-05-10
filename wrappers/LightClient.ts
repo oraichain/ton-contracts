@@ -78,26 +78,18 @@ export type CanonicalVote = {
 };
 
 export const getBlockSlice = (blockId: BlockId): Cell => {
-    let hashBuffer = Buffer.from(blockId.hash, 'hex');
-    let hash = beginCell();
-    for (const item of hashBuffer) {
-        hash.storeUint(item, 8);
-    }
-    let partHashBuffer = Buffer.from(blockId.parts.hash, 'hex');
-    let partHash = beginCell();
-    for (const item of partHashBuffer) {
-        partHash.storeUint(item, 8);
-    }
-
-    let parts = beginCell().storeUint(blockId.parts.total, 32).storeRef(partHash.endCell());
-    return beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
+    return beginCell()
+        .storeUint(blockId.hash ? BigInt('0x' + blockId.hash) : 0n, 256)
+        .storeUint(blockId.parts.hash ? BigInt('0x' + blockId.parts.hash) : 0n, 256)
+        .storeUint(blockId.parts.total, 8)
+        .endCell();
 };
 
 export const getCanonicalVoteSlice = (vote: CanonicalVote): Cell => {
     return beginCell()
-        .storeInt(vote.type, 32)
-        .storeInt(vote.height, 32)
-        .storeInt(vote.round, 32)
+        .storeUint(vote.type, 32)
+        .storeUint(vote.height, 32)
+        .storeUint(vote.round, 32)
         .storeRef(getBlockSlice(vote.block_id))
         .storeRef(getTimeSlice(vote.timestamp))
         .storeRef(beginCell().storeBuffer(Buffer.from(vote.chain_id)).endCell())
@@ -305,15 +297,11 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    async getTimeEncode(provider: ContractProvider, timestampz: string) {
-        const { seconds, nanoseconds } = getTimeComponent(timestampz);
-        let cell = beginCell();
-        cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
-
+    async getTimeEncode(provider: ContractProvider, timestamp: string) {
         const result = await provider.get('time_encode', [
             {
                 type: 'slice',
-                cell: getTimeSlice(timestampz),
+                cell: getTimeSlice(timestamp),
             },
         ]);
         return result.stack.readBuffer();
@@ -358,13 +346,11 @@ export class LightClient implements Contract {
         return result.stack.readBigNumber();
     }
 
-    async get__Int64LE__encode(provider: ContractProvider, value: bigint | number) {
-        let cell = beginCell();
-        cell = cell.storeInt(value, 64);
-        const result = await provider.get('int64le_encode', [
+    async get__UInt64LE__encode(provider: ContractProvider, value: bigint | number) {
+        const result = await provider.get('uint64le_encode', [
             {
-                type: 'slice',
-                cell: cell.endCell(),
+                type: 'int',
+                value: BigInt(value),
             },
         ]);
         return result.stack.readBuffer();

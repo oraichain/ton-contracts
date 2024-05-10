@@ -1,67 +1,48 @@
 #include "varint.fc";
 
-;; cell {
-;;   hash: cell,
-;;   cell: {
-;;     parts: uint,
-;;     hash: cell,
-;;   }
-;; }
-
-int blockid::encode_length(slice ds) { 
-    int length = 0;
-
-    cell hash = ds~load_ref();
-    slice hash_slice = hash.begin_parse();
-    if (hash_slice.slice_empty?() != -1) {
-        int hash_length = (hash_slice.slice_bits() >> 3) + 2;
-        length += hash_length;
-    }
-
-    cell parts = ds~load_ref();
-    slice parts_slice = parts.begin_parse();
-    if (parts_slice.slice_empty?() != -1) {
-        int total = parts_slice~load_uint(32);
-        cell hash = parts_slice~load_ref();
-
-        slice hash_slice = hash.begin_parse();
-        if (hash_slice.slice_empty?() != -1) {
-            int hash_length = (hash_slice.slice_bits() >> 3) + 6;
-            length += hash_length;
-        }
+int blockid::encode_length(slice ds) inline {     
+    int length = 0; 
+    int hash_slice = ds~load_uint(256);    
+    int parts_slice = ds~load_uint(256);   
+    if(hash_slice != 0){
+        length += 32 + 2;
+    }   
+    if(parts_slice != 0) {
+        length += 32 + 6;
     }
 
     return length;
 }
 
+builder blockid::inner_encode(int hash_slice, int parts_slice, int total) {               
+
+    builder inner_cell = begin_cell();
+
+    if(hash_slice != 0){
+        inner_cell = inner_cell.store_uint(10, 8)
+            .store_uint(32, 8)
+            .store_uint(hash_slice, 256);
+    }
+    
+    if(parts_slice != 0){
+        inner_cell = inner_cell.store_uint(0x12, 8)
+            .store_uint(32 + 4, 8)
+            .store_uint(0x08, 8)
+            .store_uint(total, 8)
+            .store_uint(0x12, 8)
+            .store_uint(32, 8)
+            .store_uint(parts_slice, 256);
+    }
+
+    return inner_cell;
+}
+
 slice blockid::encode(slice ds) {
-    cell hash = ds~load_ref();
-    slice hash_slice = hash.begin_parse();
+    int hash_slice = ds~load_uint(256);    
+    int parts_slice = ds~load_uint(256);    
+    int total = ds~load_uint(8);                
 
-    builder buffer = begin_cell();
-    if (hash_slice.slice_empty?() != -1) {
-        int hash_str_length = (hash_slice.slice_bits() >> 3);
-        buffer = buffer.store_uint(10, 8).store_uint(hash_str_length, 8).store_slice(hash_slice);
-    }
+    builder inner_cell = blockid::inner_encode(hash_slice, parts_slice, total);
 
-    cell parts = ds~load_ref();
-    slice parts_slice = parts.begin_parse();
-    if (parts_slice.slice_empty?() != -1) {
-        int total = parts_slice~load_uint(32);
-        cell hash = parts_slice~load_ref();
-
-        slice hash_slice = hash.begin_parse();
-        if (hash_slice.slice_empty?() != -1) {
-            int parts_str_length = (hash_slice.slice_bits() >> 3) + 4;
-            buffer = buffer
-                        .store_uint(18, 8)
-                        .store_uint(parts_str_length, 8)
-                        .store_uint(8, 8)
-                        .store_uint(total, 8)
-                        .store_uint(18, 8)
-                        .store_uint(parts_str_length - 4, 8)
-                        .store_slice(hash_slice);
-        }
-    }
-    return buffer.end_cell().begin_parse();
+    return inner_cell.end_cell().begin_parse();
 }

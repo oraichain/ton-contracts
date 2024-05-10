@@ -1,6 +1,6 @@
 #include "common.fc";
-#include "int64_le.fc";
-#include "canonical_blockid.fc";
+#include "uint64_le.fc";
+#include "blockid.fc";
 #include "time.fc";
 #include "varbuffer.fc";
 
@@ -16,72 +16,38 @@ slice canonical_vote::encode(
     builder inner_cell = begin_cell();
     
     if(vote_type != 0){
-        inner_cell = inner_cell.store_uint(prefix::number, 8);
-        inner_cell = inner_cell.store_uint(vote_type, 8);
+        inner_cell = inner_cell.store_uint(prefix::number, 8)
+            .store_uint(vote_type, 8);
     }
 
-    if(height != 0){
-        inner_cell = inner_cell.store_uint(0x11,8);
-        slice height_slice = begin_cell().store_uint(height, 64).end_cell().begin_parse();
-        slice encoded_height = int64le::encode(height_slice);
-        int height_encoded_lenght = int64le::encode_length();
-        var offset = 0;
-        while(offset < height_encoded_lenght){
-            int byte = encoded_height~load_uint(8);
-            inner_cell = inner_cell.store_uint(byte, 8);
-            offset += 1;
-        }
+    if(height > 0){
+        inner_cell = inner_cell.store_uint(0x11,8)
+            .store_slice(uint64le::encode(height));       
     }
 
-    if(round != 0){
-        inner_cell = inner_cell.store_uint(0x19, 8);
-        slice round_slice = begin_cell().store_uint(round, 64).end_cell().begin_parse();
-        slice encoded_round = int64le::encode(round_slice);
-        int round_encoded_lenght = int64le::encode_length();
-        var offset = 0;
-        while(offset < round_encoded_lenght){
-            int byte = encoded_round~load_uint(8);
-            inner_cell = inner_cell.store_uint(byte, 8);
-            offset += 1;
-        }
+    if(round > 0){
+        inner_cell = inner_cell.store_uint(0x19, 8)
+            .store_slice(uint64le::encode(round));       
     }
 
-    if(block_id.slice_empty?() != -1){
-        (slice next_block_id, cell hash) = block_id.load_ref();
-        slice hash_slice = hash.begin_parse();
-        if (hash_slice.slice_empty?() != -1) {
-            inner_cell = inner_cell.store_uint(0x22, 8);
-            slice encoded_block_id = canonical_blockid::encode(block_id);
-            int block_id_encoded_length = canonical_blockid::encode_length(block_id);
-            inner_cell = inner_cell.store_uint(block_id_encoded_length, 8);
-            var offset = 0;
-            while(offset < block_id_encoded_length){
-                int byte = encoded_block_id~load_uint(8);
-                inner_cell = inner_cell.store_uint(byte, 8);
-                offset += 1;
-            }
-        }
+    if(block_id.slice_empty?() != -1){        
+        inner_cell = inner_cell.store_uint(0x22, 8)          
+            .store_uint(blockid::encode_length(block_id), 8)
+            .store_slice(blockid::encode(block_id));          
+        
     }
 
     ;; time field
-    inner_cell = inner_cell.store_uint(0x2a, 8);
-    slice encoded_timestamp = time::encode(timestamp);
-    int timestamp_encoded_length = time::encode_length(timestamp);
-    inner_cell = inner_cell.store_uint(timestamp_encoded_length,8);
-    var offset = 0;
-    while(offset < timestamp_encoded_length){
-        int byte = encoded_timestamp~load_uint(8);
-        inner_cell = inner_cell.store_uint(byte, 8);
-        offset += 1;
-    }
+    inner_cell = inner_cell.store_uint(0x2a, 8)
+        .store_uint(time::encode_length(timestamp), 8)
+        .store_slice(time::encode(timestamp));    
+   
 
-    ;; chain_id field
-    inner_cell = inner_cell.store_uint(0x32, 8);
-    int chain_id_length = slice_bits(chain_id) >> 3;
-    inner_cell = inner_cell.store_uint(chain_id_length, 8);
-    inner_cell = inner_cell.store_slice(chain_id);
+    ;; chain_id field    
+    inner_cell = inner_cell.store_uint(0x32, 8)
+        .store_uint(slice_bits(chain_id) >> 3, 8)
+        .store_slice(chain_id);
 
-    ;; slice encoded_data = varbuffer::encode(inner_cell.end_cell().begin_parse());
-    ;; return encoded_data;
+    
     return inner_cell.end_cell().begin_parse();
 }

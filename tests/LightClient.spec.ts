@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { LightClient } from '../wrappers/LightClient';
+import { BlockId, LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 
@@ -88,7 +88,7 @@ describe('LightClient', () => {
     });
 
     it('get_buffer_encode', async () => {
-        const buf = await lightClient.getBufferEncode(Buffer.from('hello world'));
+        const buf = await lightClient.getBufferEncode(Buffer.from('Oraichain'));
         console.log('buf', buf.toString('hex'));
     });
 
@@ -119,8 +119,20 @@ describe('LightClient', () => {
     });
 
     it('encode_time', async () => {
-        const buf = await lightClient.getTimeEncode('2024-05-06T07:34:41.886200108Z');
+        const buf = await lightClient.getTimeEncode('2024-05-06T07:34:41.886488234Z');
         console.log(buf.toString('hex'));
+    });
+
+    it('block_id_encode', async () => {
+        const blockId: BlockId = {
+            hash: '6954B64B90D0A8B177DA1A9B14648D3DE6F706114EB9C9E1AF3BA52B6F8E3C4B',
+            parts: {
+                total: 1,
+                hash: 'E07E8511743101AA131DE4E24C9C8D412ABD69F6AEE583C8E80DBF23689B6019',
+            },
+        };
+        const buf = await lightClient.get__blockid__encode(blockId);
+        console.log('buf', buf.toString('hex'));
     });
 
     it('block_hash', async () => {
@@ -154,7 +166,7 @@ describe('LightClient', () => {
     it('vote_sign_bytes', async () => {
         const vote = {
             type: 2,
-            timestamp: '2024-05-06T07:34:41.884384398Z',
+            timestamp: '2024-05-06T07:34:41.886488234Z',
             block_id: {
                 hash: '6954B64B90D0A8B177DA1A9B14648D3DE6F706114EB9C9E1AF3BA52B6F8E3C4B',
                 parts: {
@@ -167,6 +179,8 @@ describe('LightClient', () => {
             chain_id: 'Oraichain',
         };
         const signBytes = await lightClient.getVoteSignBytes(vote);
-        console.log(signBytes.toString('hex'));
+        expect(signBytes.toString('hex')).toEqual(
+            '6e080211fd7032010000000022480a206954b64b90d0a8b177da1a9b14648d3de6f706114eb9c9e1af3ba52b6f8e3c4b122408011220e07e8511743101aa131de4e24c9c8d412abd69f6aee583c8e80dbf23689b60192a0c089190e2b10610aaf9daa60332094f726169636861696e',
+        );
     });
 });

@@ -8,7 +8,7 @@
 #include "utils/time.fc";
 #include "utils/blockid.fc";
 #include "utils/merkleize.fc";
-#include "utils/int64_le.fc";
+#include "utils/uint64_le.fc";
 #include "utils/canonical_vote.fc";
 #include "utils/pubkey.fc";
 
@@ -184,8 +184,8 @@ slice blockid_encode(slice data) method_id {
 
 
 ;; Int64LE
-slice int64le_encode(slice data) method_id {
-    return int64le::encode(data);
+slice uint64le_encode(int value) method_id {
+    return uint64le::encode(value);
 }
 
 slice canonical_vote_encode(slice vote) method_id {

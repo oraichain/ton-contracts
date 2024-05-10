@@ -6,28 +6,15 @@ int canonical_blockid::encode_length(slice ds) inline {
 }
 
 slice canonical_blockid::encode(slice ds) {
-    cell hash = ds~load_ref();
-    slice hash_slice = hash.begin_parse();
+    slice hash_slice = ds~load_bits(256);    
+    slice parts_slice = ds~load_bits(256);    
+    int total = ds~load_uint(8);                
 
-    builder buffer = begin_cell();
-    int hash_str_length = (hash_slice.slice_bits() >> 3);
-    buffer = buffer.store_uint(10, 8).store_uint(hash_str_length, 8).store_slice(hash_slice);
-
-    cell parts = ds~load_ref();
-    slice parts_slice = parts.begin_parse();
-    int total = parts_slice~load_uint(32);
-    cell hash = parts_slice~load_ref();
-    slice hash_slice = hash.begin_parse();
-    int parts_str_length = (hash_slice.slice_bits() >> 3) + 4;
-    buffer = buffer
-                .store_uint(18, 8)
-                .store_uint(parts_str_length, 8)
-                .store_uint(8, 8)
-                .store_uint(total, 8)
-                .store_uint(18, 8)
-                .store_uint(parts_str_length - 4, 8)
-                .store_slice(hash_slice)
-                .store_uint(16, 8)
-                .store_uint(total, 8);
-    return buffer.end_cell().begin_parse();
+    builder inner_cell = blockid::inner_encode(hash_slice, parts_slice, total);
+    
+    return inner_cell
+        .store_uint(0x10, 8)
+        .store_uint(total, 8)
+        .end_cell()
+        .begin_parse();
 }
