@@ -150,4 +150,23 @@ describe('LightClient', () => {
         const buf = await lightClient.getBlockHash(header);
         expect(buf.toString(16)).toEqual('1cccf41bab3dd153852b4c59a2194eb90a210e2ff585cc60ed07eba71b4d5d27');
     });
+
+    it('vote_sign_bytes', async () => {
+        const vote = {
+            type: 2,
+            timestamp: '2024-05-06T07:34:41.884384398Z',
+            block_id: {
+                hash: '6954B64B90D0A8B177DA1A9B14648D3DE6F706114EB9C9E1AF3BA52B6F8E3C4B',
+                parts: {
+                    total: 1,
+                    hash: 'E07E8511743101AA131DE4E24C9C8D412ABD69F6AEE583C8E80DBF23689B6019',
+                },
+            },
+            height: 20082941,
+            round: 0,
+            chain_id: 'Oraichain',
+        };
+        const signBytes = await lightClient.getVoteSignBytes(vote);
+        console.log(signBytes.toString('hex'));
+    });
 });

@@ -392,4 +392,15 @@ export class LightClient implements Contract {
         ]);
         return result.stack.readBuffer();
     }
+
+    async getVoteSignBytes(provider: ContractProvider, vote: CanonicalVote) {
+        const voteCell = getCanonicalVoteSlice(vote);
+        const result = await provider.get('get_vote_sign_bytes', [
+            {
+                type: 'slice',
+                cell: voteCell,
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
 }

@@ -207,3 +207,8 @@ int pubkey_encode_length(slice pub) method_id {
 slice pubkey_encode(slice pub) method_id {
     return pubkey::encode(pub);
 }
+
+slice get_vote_sign_bytes(slice vote) method_id {    
+    slice encoded =  canonical_vote_encode(vote);
+    return varbuffer::encode(encoded);
+}
