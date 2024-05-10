@@ -2,22 +2,22 @@ const MAX_UINT32 = 0x00000000FFFFFFFF;
 const MAX_INT53 =  0x001FFFFFFFFFFFFF;
 const MAX_INT64 = 0x7FFFFFFFFFFFFFFF;
 
-(int,()) ones_complement(int value){
+(int, ()) ones_complement(int value){
     int number = MAX_INT64 - value;
     if(number < 0 ){
         number = (number & 0x7FFFFFFF) + 0x80000000;
     }
-    return (number,());
+    return (number, ());
 }
 
-(int,int) uint_high_low(int number){
+(int, int) uint_high_low(int number){
     var high = 0;
     var signbit = number & 0xFFFFFFFF;
     var low = signbit < 0 ? (number & 0x7FFFFFFF) + 0x80000000 : signbit;
     if(number > MAX_UINT32){
         high = (number - low) / (MAX_UINT32 + 1);
     }
-    return (high,low);
+    return (high, low);
 }
 
 (int, int) int_high_low(int number){
@@ -49,7 +49,7 @@ slice reverse_buffer_slice_int(int number){
     return inner_cell.end_cell().begin_parse();
 }
 
-slice int53::writeInt64LE(int number){
+slice int53::write_int64_le(int number){
     (int high, int low) = number.int_high_low();
     return begin_cell()
             .store_slice(reverse_buffer_slice_int(low))
@@ -59,7 +59,7 @@ slice int53::writeInt64LE(int number){
 }
 
 slice int64le::encode(slice value){
-    return int53::writeInt64LE(value~load_uint(64)); ;;8 bytes
+    return int53::write_int64_le(value~load_uint(64)); ;;8 bytes
 }
 
 int int64le::encode_length(){
