@@ -1,5 +1,5 @@
 #include "varbuffer.fc";
-#include "../imports/math.fc";
+#include "../imports/stdlib.fc";
 
 (int) cell_utils::is_empty(cell c) inline {
     return c.cell_hash() == 68134197439415885698044414435951397869210496020759160419881882418413283430343;
@@ -11,7 +11,7 @@
     builder new_cell = begin_cell();
     
     slice src_slice = src.begin_parse();
-    int src_length = src_slice.slice_bits() >> math::log2(step);
+    int src_length = src_slice.slice_bits() >> log2(step);
     int i = 0;
     while (i < offset) {
         int number = src_slice~load_int(step);
@@ -20,7 +20,7 @@
     }
 
     slice dst_slice = dst.begin_parse();
-    int dst_length = dst_slice.slice_bits() >> math::log2(step);
+    int dst_length = dst_slice.slice_bits() >> log2(step);
     int i = 0;
     while (i < dst_length) {
         int number = dst_slice~load_int(step);

@@ -1,4 +1,4 @@
-#include "../imports/math.fc";
+#include "../imports/stdlib.fc";
 #include "common.fc";
 
 
@@ -12,7 +12,7 @@ int varint::encode_length(int signed,int n) {
             throw(0xffff);
         }
     }    
-    int bits = math::log2(n + 1);
+    int bits = log2(n + 1);
     return (bits / 7 + 1) >> 0;
 }
 

@@ -1,7 +1,7 @@
 #include "varint.fc";
 #include "blockid.fc";
 
-int canonical_blockid::encode_length(slice ds) { 
+int canonical_blockid::encode_length(slice ds) inline { 
     return blockid::encode_length(ds);
 }
 

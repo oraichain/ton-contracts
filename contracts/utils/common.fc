@@ -1,7 +1,5 @@
 
-#include "../imports/math.fc";
-
-int tlen(tuple data) asm "TLEN";
+#include "../imports/stdlib.fc";
 
 const prefix::leaf = 0x00;
 const prefix::inner = 0x01;
@@ -25,7 +23,7 @@ int parse_int(slice string_number) impure {
 }
 
 int bit_length(int n) inline {
-    return (math::log2(n) + 1) >> 0;
+    return (log2(n) + 1) >> 0;
 }
 
 int get_split_point(int n)  {
@@ -49,7 +47,7 @@ int leaf_hash(int leaf) inline {
     return begin_cell().store_uint(prefix::leaf, 8).store_uint(leaf, 256).end_cell().begin_parse().string_hash();    
 }
 
-tuple reverse_list(tuple list) impure {    
+tuple reverse_list(tuple list) {    
     tuple new_list = empty_tuple();
 
     while (list.tlen() > 0) {
