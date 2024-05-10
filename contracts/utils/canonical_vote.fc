@@ -2,6 +2,7 @@
 #include "Int64LE.fc";
 #include "canonical_blockid.fc";
 #include "time.fc";
+#include "varbuffer.fc";
 
 slice canonical_vote::encode(
     int typeVote, 
@@ -31,7 +32,6 @@ slice canonical_vote::encode(
             offset += 1;
         }
     }
-    ~dump(height);
 
     if(round != 0){
         inner_cell = inner_cell.store_uint(0x19, 8);
@@ -47,26 +47,29 @@ slice canonical_vote::encode(
     }
 
     if(block_id.slice_empty?() != -1){
-        inner_cell = inner_cell.store_uint(0x22, 8);
-        slice encoded_block_id = canonical_blockid::encode(block_id);
-        int block_id_encoded_lenght = canonical_blockid::encode_length(block_id);
-        inner_cell = inner_cell.store_uint(block_id_encoded_lenght,8);
-        var offset = 0;
-        while(offset < block_id_encoded_lenght){
-            int byte = encoded_block_id~load_uint(8);
-            inner_cell = inner_cell.store_uint(byte, 8);
-            offset += 1;
+        (slice next_block_id, cell hash) = block_id.load_ref();
+        slice hash_slice = hash.begin_parse();
+        if (hash_slice.slice_empty?() != -1) {
+            inner_cell = inner_cell.store_uint(0x22, 8);
+            slice encoded_block_id = canonical_blockid::encode(block_id);
+            int block_id_encoded_length = canonical_blockid::encode_length(block_id);
+            inner_cell = inner_cell.store_uint(block_id_encoded_length, 8);
+            var offset = 0;
+            while(offset < block_id_encoded_length){
+                int byte = encoded_block_id~load_uint(8);
+                inner_cell = inner_cell.store_uint(byte, 8);
+                offset += 1;
+            }
         }
     }
-
 
     ;; time field
     inner_cell = inner_cell.store_uint(0x2a, 8);
     slice encoded_timestamp = time::encode(timestamp);
-    int timestamp_encoded_lenght = time::encode_length(timestamp);
-    inner_cell = inner_cell.store_uint(timestamp_encoded_lenght,8);
+    int timestamp_encoded_length = time::encode_length(timestamp);
+    inner_cell = inner_cell.store_uint(timestamp_encoded_length,8);
     var offset = 0;
-    while(offset < timestamp_encoded_lenght){
+    while(offset < timestamp_encoded_length){
         int byte = encoded_timestamp~load_uint(8);
         inner_cell = inner_cell.store_uint(byte, 8);
         offset += 1;
@@ -78,5 +81,7 @@ slice canonical_vote::encode(
     inner_cell = inner_cell.store_uint(chain_id_length, 8);
     inner_cell = inner_cell.store_slice(chain_id);
 
-    return inner_cell.end_cell().begin_parse();
+    slice encoded_data = varbuffer::encode(inner_cell.end_cell().begin_parse());
+    return encoded_data;
+    ;; return inner_cell.end_cell().begin_parse();
 }

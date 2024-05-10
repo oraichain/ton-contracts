@@ -9,6 +9,8 @@ const prefix::first = 0x08;
 const prefix::second = 0x10;
 
 int tlen(tuple data) asm "TLEN";
+const prefix::number = 0x08;
+const prefix::pubkey_amino_prefix = 0x05;
 
 (int) parse_int(slice string_number) impure {
     int number = 0;

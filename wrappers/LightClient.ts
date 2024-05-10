@@ -73,12 +73,12 @@ export type BlockId = {
 };
 
 export type CanonicalVote = {
-    type: number,
-    height: number,
-    round: number,
+    type: number;
+    height: number;
+    round: number;
     block_id: BlockId;
-    timestamp: string,
-    chain_id: string,
+    timestamp: string;
+    chain_id: string;
 };
 
 export const getBlockSlice = (blockId: BlockId): Cell => {
@@ -124,10 +124,10 @@ export const getCanonicalVoteTupleInput = (vote: CanonicalVote): Tuple => {
             {
                 type: 'slice',
                 cell: beginCell().storeBuffer(Buffer.from(vote.chain_id)).endCell(),
-            }
-        ]
-    }
-}
+            },
+        ],
+    };
+};
 
 export class LightClient implements Contract {
     constructor(
@@ -395,9 +395,21 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    async get__CanonicalVote__encode(provider:ContractProvider, vote:CanonicalVote){
+    async get__CanonicalVote__encode(provider: ContractProvider, vote: CanonicalVote) {
         let tuple = getCanonicalVoteTupleInput(vote);
-        const result = await provider.get('get_canonical_vote_encode', [tuple]);
+        const result = await provider.get('canonical_vote_encode', [tuple]);
+        return result.stack.readBuffer();
+    }
+
+    // Pubkey
+    async get__Pubkey__encode(provider: ContractProvider, pubkey: string) {
+        let pubkeyBuffer = Buffer.from(pubkey, 'base64');
+        const result = await provider.get('pubkey_encode', [
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(pubkeyBuffer).endCell(),
+            },
+        ]);
         return result.stack.readBuffer();
     }
 }

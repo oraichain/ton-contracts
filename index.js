@@ -3,4 +3,6 @@ let b = Buffer.from('30313233343536373839303132333435363738393031323334353637383
 a[0] = 0x0a;
 a[1] = b.length;
 b.copy(a, 2);
-console.log(a);
+// console.log(a);
+
+console.log(Buffer.from('1624DE6420', 'hex'));

@@ -1,26 +1,21 @@
+#include "common.fc";
 
-;; const pubkeyAminoPrefix = Buffer.from("1624DE6420", "hex");
-;; const PubKey = {
-;;   decode(buffer, start = 0, end = buffer.length) {
-;;     throw Error("Decode not implemented");
-;;   },
-;;   encode(pub, buffer, offset = 0) {
-;;     let length = PubKey.encodingLength(pub);
-;;     buffer = buffer || Buffer.alloc(length);
-;;     if (pub == null) {
-;;       buffer[offset] = 0;
-;;     } else {
-;;       pubkeyAminoPrefix.copy(buffer, offset);
-;;       Buffer.from(pub.value, "base64").copy(
-;;         buffer,
-;;         offset + pubkeyAminoPrefix.length
-;;       );
-;;     }
-;;     PubKey.encode.bytes = length;
-;;     return buffer;
-;;   },
-;;   encodingLength(pub) {
-;;     if (pub == null) return 1;
-;;     return 37;
-;;   },
-;; };
+(int) pubkey::encode_length(slice pub) {
+    if (pub.slice_empty?() == -1) {
+        return 1;
+    }
+    return 37;
+}
+
+;; notice: only receive pubkey value
+slice pubkey::encode(slice pub) {
+    return begin_cell()
+            .store_uint(0x16, 8)
+            .store_uint(0x24, 8)
+            .store_uint(0xde, 8)
+            .store_uint(0x64, 8)
+            .store_uint(0x20, 8)
+            .store_slice(pub)
+            .end_cell()
+            .begin_parse();
+}

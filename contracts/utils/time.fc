@@ -5,11 +5,17 @@ int time::encode_length(slice ds){
     var length = 0;
 
     if(ds.slice_empty?() != -1){
-        length += 1 + varint::encode_length(0, ds~load_uint(32));
+        int seconds = ds~load_uint(32);
+        if (seconds != 0) {
+            length += 1 + varint::encode_length(0, seconds);
+        }
     }
 
     if(ds.slice_empty?() != -1){
-        length += 1 + varint::encode_length(0, ds~load_uint(32));
+        int nanoseconds = ds~load_uint(32);
+        if (nanoseconds != 0) {
+            length += 1 + varint::encode_length(0, nanoseconds);
+        }
     }
 
     return length;

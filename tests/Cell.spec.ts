@@ -4,7 +4,7 @@ import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 
-describe('Version', () => {
+describe('Cell', () => {
     let code: Cell;
 
     beforeAll(async () => {
