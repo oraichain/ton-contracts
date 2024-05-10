@@ -5,4 +5,6 @@ a[1] = b.length;
 b.copy(a, 2);
 // console.log(a);
 
-console.log(Buffer.from('1624DE6420', 'hex'));
+// console.log(Buffer.from('1624DE6420', 'hex'));
+
+console.log(Buffer.from('Oraichain'));
