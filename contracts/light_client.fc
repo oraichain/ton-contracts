@@ -7,6 +7,7 @@
 #include "utils/cell_utils.fc";
 #include "utils/time.fc";
 #include "utils/blockid.fc";
+#include "utils/merkleize.fc";
 #include "utils/Int64LE.fc";
 #include "utils/canonical_vote.fc";
 #include "utils/pubkey.fc";
@@ -168,7 +169,7 @@ int get_block_hash(slice header, slice first_hashes, slice second_hashes) method
         .tpush(proto::encode_buffer(proposer_address));
     
     
-    return hash_from_tree_slice(chunks, chunks.tlen());              
+    return hash_from_tree_slice(chunks);              
     
 }
 
