@@ -97,36 +97,15 @@ export const getBlockSlice = (blockId: BlockId): Cell => {
     return beginCell().storeRef(hash.endCell()).storeRef(parts.endCell()).endCell();
 };
 
-export const getCanonicalVoteTupleInput = (vote: CanonicalVote): Tuple => {
-    return {
-        type: 'tuple',
-        items: [
-            {
-                type: 'int',
-                value: BigInt(vote.type),
-            },
-            {
-                type: 'int',
-                value: BigInt(vote.height),
-            },
-            {
-                type: 'int',
-                value: BigInt(vote.round),
-            },
-            {
-                type: 'slice',
-                cell: getBlockSlice(vote.block_id),
-            },
-            {
-                type: 'slice',
-                cell: getTimeSlice(vote.timestamp),
-            },
-            {
-                type: 'slice',
-                cell: beginCell().storeBuffer(Buffer.from(vote.chain_id)).endCell(),
-            },
-        ],
-    };
+export const getCanonicalVoteSlice = (vote: CanonicalVote): Cell => {
+    return beginCell()
+        .storeInt(vote.type, 32)
+        .storeInt(vote.height, 32)
+        .storeInt(vote.round, 32)
+        .storeRef(getBlockSlice(vote.block_id))
+        .storeRef(getTimeSlice(vote.timestamp))
+        .storeRef(beginCell().storeBuffer(Buffer.from(vote.chain_id)).endCell())
+        .endCell();
 };
 
 export class LightClient implements Contract {
@@ -396,8 +375,13 @@ export class LightClient implements Contract {
     }
 
     async get__CanonicalVote__encode(provider: ContractProvider, vote: CanonicalVote) {
-        let tuple = getCanonicalVoteTupleInput(vote);
-        const result = await provider.get('canonical_vote_encode', [tuple]);
+        const voteCell = getCanonicalVoteSlice(vote);
+        const result = await provider.get('canonical_vote_encode', [
+            {
+                type: 'slice',
+                cell: voteCell,
+            },
+        ]);
         return result.stack.readBuffer();
     }
 

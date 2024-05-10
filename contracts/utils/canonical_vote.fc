@@ -5,7 +5,7 @@
 #include "varbuffer.fc";
 
 slice canonical_vote::encode(
-    int typeVote, 
+    int vote_type, 
     int height, 
     int round, 
     slice block_id,
@@ -15,9 +15,9 @@ slice canonical_vote::encode(
 
     builder inner_cell = begin_cell();
     
-    if(typeVote != 0){
+    if(vote_type != 0){
         inner_cell = inner_cell.store_uint(prefix::number, 8);
-        inner_cell = inner_cell.store_uint(typeVote, 8);
+        inner_cell = inner_cell.store_uint(vote_type, 8);
     }
 
     if(height != 0){
