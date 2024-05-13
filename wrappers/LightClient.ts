@@ -5,6 +5,7 @@ import {
     ContractProvider,
     SendMode,
     Sender,
+    TupleItem,
     TupleItemInt,
     TupleItemSlice,
     beginCell,
@@ -55,7 +56,9 @@ export const getTimeSlice = (timestampz: string): Cell => {
     const { seconds, nanoseconds } = getTimeComponent(timestampz);
 
     let cell = beginCell();
-    cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
+    if(seconds > 0 && nanoseconds > 0){
+        cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
+    }
 
     return cell.endCell();
 };
@@ -94,6 +97,40 @@ export const getCanonicalVoteSlice = (vote: CanonicalVote): Cell => {
         .storeRef(getTimeSlice(vote.timestamp))
         .storeRef(beginCell().storeBuffer(Buffer.from(vote.chain_id)).endCell())
         .endCell();
+};
+
+export type PubKey = {
+    type?: string,
+    value?: string
+}
+
+export type Validators = {
+    address: string;
+    pub_key: PubKey;
+    voting_power: string;
+    proposer_priority: string;
+};
+
+export type Header = {
+    version: Version;
+    chain_id: string;
+    height: string;
+    time: string;
+    last_block_id: BlockId;
+};
+
+export type Commit = {
+    height: string;
+    round: number;
+    block_id: BlockId;
+    signatures: Signature[];
+};
+
+export type Signature = {
+    block_id_flag: number;
+    validator_address: string;
+    timestamp: string;
+    signature: string;
 };
 
 export class LightClient implements Contract {
@@ -371,6 +408,7 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
+<<<<<<< HEAD
     async getVerifyVote(provider: ContractProvider, vote: CanonicalVote, signature: Buffer, publicKey: Buffer) {
         const data = getCanonicalVoteSlice(vote);
         const result = await provider.get('verify_vote', [
@@ -389,5 +427,76 @@ export class LightClient implements Contract {
         ]);
 
         return result.stack.readNumber() !== 0;
+=======
+    async getVerifyCommitSigs(provider: ContractProvider, header: Header, commit: Commit, validators: Validators[]) {
+        const sliceHeader = beginCell()
+            .storeRef(getVersionSlice(header.version))
+            .storeRef(beginCell().storeBuffer(Buffer.from(header.chain_id)).endCell())
+            .storeUint(parseInt(header.height), 32)
+            .storeRef(getTimeSlice(header.time))
+            .storeRef(getBlockSlice(header.last_block_id))
+            .endCell();
+
+        const tupleSignatures = commit.signatures.map((signature) => {
+            return {
+                type: 'slice',
+                cell: beginCell()
+                    .storeUint(signature.block_id_flag, 8)
+                    .storeBuffer(Buffer.from(signature.validator_address, 'hex'))
+                    .storeRef(getTimeSlice(signature.timestamp))
+                    .storeBuffer(signature.signature ? Buffer.from(signature.signature, 'base64'):Buffer.from(''))
+                    .endCell(),
+            } as TupleItemSlice;
+        });
+
+        const tupleCommit: TupleItem[] = [
+            {
+                type: 'int',
+                value: BigInt(commit.height),
+            },
+            {
+                type: 'int',
+                value: BigInt(commit.round),
+            },
+            {
+                type: 'slice',
+                cell: getBlockSlice(commit.block_id),
+            },
+            {
+                type: 'tuple',
+                items: tupleSignatures,
+            },
+        ];
+
+        const tupleValidators = validators.map((validators)=>{
+            let builder = beginCell().storeBuffer(Buffer.from(validators.address, 'hex'));
+            if(validators?.pub_key?.value){
+                builder = builder.storeRef(beginCell().storeBuffer(Buffer.from(validators.pub_key.value, 'base64')).endCell());
+            } else{
+                builder = builder.storeRef(beginCell().storeBuffer(Buffer.from(Array.from({length: 32}).map(() => 0).join(''), 'hex')).endCell());
+            }
+            builder = builder.storeUint(parseInt(validators.voting_power), 32);
+            return {
+                type: 'slice',
+                cell: builder.endCell(),
+            } as TupleItemSlice;
+        })
+
+        const result = await provider.get('verify_commit_sigs', [
+            {
+                type: 'slice',
+                cell: sliceHeader,
+            },
+            {
+                type: 'tuple',
+                items: tupleCommit,
+            },
+            {
+                type: 'tuple',
+                items: tupleValidators
+            }
+        ]);
+        return result.stack.readNumber();
+>>>>>>> aaa0d06853dda63251030bc9ea7bf5ac5e30bf61
     }
 }
