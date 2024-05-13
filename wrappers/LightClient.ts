@@ -395,6 +395,18 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
+    // Validator Hash Input
+    async get__ValidatorHashInput__encode(provider: ContractProvider, pubkey: string, votingPower: number) {
+        let pubkeyBuffer = Buffer.from(pubkey, 'base64');
+        const result = await provider.get('validator_hash_input_encode', [
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(pubkeyBuffer).storeUint(votingPower, 32).endCell(),
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
+
     async getVoteSignBytes(provider: ContractProvider, vote: CanonicalVote) {
         const voteCell = getCanonicalVoteSlice(vote);
         const result = await provider.get('get_vote_sign_bytes', [

@@ -11,6 +11,7 @@
 #include "utils/canonical_vote.fc";
 #include "utils/pubkey.fc";
 #include "utils/verify.fc";
+#include "utils/validator_hash_input.fc";
 
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
@@ -216,4 +217,9 @@ slice pubkey_encode(slice pub) method_id {
 
 int verify_commit_sigs(slice header, tuple commit, tuple validators) method_id {
     return verify::verify_commit_sigs(header, commit, validators);
+}
+
+;; Validator Hash Input
+slice validator_hash_input_encode(slice ds) method_id {
+    return validator_hash_input::encode(ds);
 }
