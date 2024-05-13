@@ -85,7 +85,6 @@ int verify::verify_commit_sigs(slice header, tuple commit, tuple validators){
                         .begin_parse();
                         
                 slice sign_bytes = verify::get_vote_sign_bytes(vote);
-                sign_bytes~dump();
                 slice pubkey = validator~load_ref().begin_parse();
 
                 int verify_pubkey = pubkey~load_uint(256);
