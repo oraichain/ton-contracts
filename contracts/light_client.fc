@@ -214,11 +214,6 @@ slice pubkey_encode(slice pub) method_id {
     return pubkey::encode(pub);
 }
 
-slice get_vote_sign_bytes(slice vote) method_id {    
-    slice encoded =  canonical_vote_encode(vote);
-    return varbuffer::encode(encoded);
-}
-
 int verify_commit_sigs(slice header, tuple commit, tuple validators) method_id {
     return verify::verify_commit_sigs(header, commit, validators);
 }

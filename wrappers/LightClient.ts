@@ -56,7 +56,7 @@ export const getTimeSlice = (timestampz: string): Cell => {
     const { seconds, nanoseconds } = getTimeComponent(timestampz);
 
     let cell = beginCell();
-    if(seconds > 0 && nanoseconds > 0){
+    if (seconds > 0 && nanoseconds > 0) {
         cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
     }
 
@@ -100,9 +100,9 @@ export const getCanonicalVoteSlice = (vote: CanonicalVote): Cell => {
 };
 
 export type PubKey = {
-    type?: string,
-    value?: string
-}
+    type?: string;
+    value?: string;
+};
 
 export type Validators = {
     address: string;
@@ -408,7 +408,6 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
-<<<<<<< HEAD
     async getVerifyVote(provider: ContractProvider, vote: CanonicalVote, signature: Buffer, publicKey: Buffer) {
         const data = getCanonicalVoteSlice(vote);
         const result = await provider.get('verify_vote', [
@@ -427,7 +426,8 @@ export class LightClient implements Contract {
         ]);
 
         return result.stack.readNumber() !== 0;
-=======
+    }
+
     async getVerifyCommitSigs(provider: ContractProvider, header: Header, commit: Commit, validators: Validators[]) {
         const sliceHeader = beginCell()
             .storeRef(getVersionSlice(header.version))
@@ -444,7 +444,7 @@ export class LightClient implements Contract {
                     .storeUint(signature.block_id_flag, 8)
                     .storeBuffer(Buffer.from(signature.validator_address, 'hex'))
                     .storeRef(getTimeSlice(signature.timestamp))
-                    .storeBuffer(signature.signature ? Buffer.from(signature.signature, 'base64'):Buffer.from(''))
+                    .storeBuffer(signature.signature ? Buffer.from(signature.signature, 'base64') : Buffer.from(''))
                     .endCell(),
             } as TupleItemSlice;
         });
@@ -468,19 +468,32 @@ export class LightClient implements Contract {
             },
         ];
 
-        const tupleValidators = validators.map((validators)=>{
+        const tupleValidators = validators.map((validators) => {
             let builder = beginCell().storeBuffer(Buffer.from(validators.address, 'hex'));
-            if(validators?.pub_key?.value){
-                builder = builder.storeRef(beginCell().storeBuffer(Buffer.from(validators.pub_key.value, 'base64')).endCell());
-            } else{
-                builder = builder.storeRef(beginCell().storeBuffer(Buffer.from(Array.from({length: 32}).map(() => 0).join(''), 'hex')).endCell());
+            if (validators?.pub_key?.value) {
+                builder = builder.storeRef(
+                    beginCell().storeBuffer(Buffer.from(validators.pub_key.value, 'base64')).endCell(),
+                );
+            } else {
+                builder = builder.storeRef(
+                    beginCell()
+                        .storeBuffer(
+                            Buffer.from(
+                                Array.from({ length: 32 })
+                                    .map(() => 0)
+                                    .join(''),
+                                'hex',
+                            ),
+                        )
+                        .endCell(),
+                );
             }
             builder = builder.storeUint(parseInt(validators.voting_power), 32);
             return {
                 type: 'slice',
                 cell: builder.endCell(),
             } as TupleItemSlice;
-        })
+        });
 
         const result = await provider.get('verify_commit_sigs', [
             {
@@ -493,10 +506,9 @@ export class LightClient implements Contract {
             },
             {
                 type: 'tuple',
-                items: tupleValidators
-            }
+                items: tupleValidators,
+            },
         ]);
         return result.stack.readNumber();
->>>>>>> aaa0d06853dda63251030bc9ea7bf5ac5e30bf61
     }
 }
