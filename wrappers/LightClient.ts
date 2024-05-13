@@ -208,11 +208,11 @@ export class LightClient implements Contract {
         return result.stack.readNumber() !== 0;
     }
 
-    async getHashTreeRoot(provider: ContractProvider, txs: Buffer[]) {
+    async getHashTreeRoot(provider: ContractProvider, txs: string[]) {
         let builder = beginCell();
 
         for (const tx of txs) {
-            builder = builder.storeBuffer(crypto.createHash('sha256').update(tx).digest());
+            builder = builder.storeBuffer(crypto.createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
         }
 
         const result = await provider.get('get_tree_root', [
