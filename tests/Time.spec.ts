@@ -57,7 +57,6 @@ describe('Time', () => {
             if (timeFixture?.value !== undefined && timeFixture.encoding !== undefined) {
                 console.log('Time:', timeFixture.value);
                 const rawTimeEncode = await time.getTimeEncode(timeFixture.value);
-                console.log(getTimeComponent(timeFixture.value));
                 expect(rawTimeEncode.toString('hex')).toBe(timeFixture.encoding);
             }
         }

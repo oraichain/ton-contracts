@@ -56,9 +56,7 @@ export const getTimeSlice = (timestampz: string): Cell => {
     const { seconds, nanoseconds } = getTimeComponent(timestampz);
 
     let cell = beginCell();
-    if (seconds > 0 && nanoseconds > 0) {
-        cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
-    }
+    cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
 
     return cell.endCell();
 };
