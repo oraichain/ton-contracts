@@ -173,13 +173,7 @@ describe('LightClient', () => {
             };
 
             // get sign bytes
-            const signBytes = await lightClient.getVoteSignBytes(vote);
-
-            const verified = await lightClient.getCheckSignature(
-                signBytes,
-                Buffer.from(sig.signature, 'base64'),
-                pubkey,
-            );
+            const verified = await lightClient.getVerifyVote(vote, Buffer.from(sig.signature, 'base64'), pubkey);
 
             if (verified) {
                 verifiedPower += Number(validator.voting_power);

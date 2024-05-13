@@ -370,4 +370,24 @@ export class LightClient implements Contract {
         ]);
         return result.stack.readBuffer();
     }
+
+    async getVerifyVote(provider: ContractProvider, vote: CanonicalVote, signature: Buffer, publicKey: Buffer) {
+        const data = getCanonicalVoteSlice(vote);
+        const result = await provider.get('verify_vote', [
+            {
+                type: 'slice',
+                cell: data,
+            } as TupleItemSlice,
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(signature).endCell(),
+            } as TupleItemSlice,
+            {
+                type: 'int',
+                value: BigInt(`0x${publicKey.subarray(0, 32).toString('hex')}`),
+            } as TupleItemInt,
+        ]);
+
+        return result.stack.readNumber() !== 0;
+    }
 }

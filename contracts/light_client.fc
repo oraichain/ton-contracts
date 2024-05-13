@@ -193,6 +193,16 @@ slice canonical_vote_encode(slice vote) method_id {
     return canonical_vote::encode(vote_type, height, round, block_id, timestamp, chain_id);
 }
 
+slice get_vote_sign_bytes(slice vote) method_id {    
+    slice encoded =  canonical_vote_encode(vote);
+    return varbuffer::encode(encoded);
+}
+
+int verify_vote(slice vote, slice signature, int public_key) method_id {
+    slice data = get_vote_sign_bytes(vote);
+    return check_data_signature(data, signature, public_key);
+}
+
 ;; Pubkey
 int pubkey_encode_length(slice pub) method_id {
     return pubkey::encode_length(pub);
@@ -200,9 +210,4 @@ int pubkey_encode_length(slice pub) method_id {
 
 slice pubkey_encode(slice pub) method_id {
     return pubkey::encode(pub);
-}
-
-slice get_vote_sign_bytes(slice vote) method_id {    
-    slice encoded =  canonical_vote_encode(vote);
-    return varbuffer::encode(encoded);
 }
