@@ -139,6 +139,8 @@ int slice_hash(slice s) asm "HASHSU";
 ;;; throws a cell underflow exception. The hash value is returned as a 256-bit unsigned integer `x`.
 int string_hash(slice s) asm "SHA256U";
 
+int digest_hash(tuple t) asm " DUP TLEN EXPLODEVAR HASHEXT_SHA256";
+
 {-
   # Signature checks
 -}

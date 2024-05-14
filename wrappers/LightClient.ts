@@ -5,6 +5,7 @@ import {
     ContractProvider,
     SendMode,
     Sender,
+    Tuple,
     TupleItem,
     TupleItemInt,
     TupleItemSlice,
@@ -255,6 +256,28 @@ export class LightClient implements Contract {
                 type: 'slice',
                 cell: builder.endCell(),
             } as TupleItemSlice,
+        ]);
+
+        return result.stack.readBigNumber();
+    }
+
+    async getDigestHash(provider: ContractProvider, longBuf: Buffer) {
+        const items: TupleItem[] = [];
+
+        for (let i = 0; i < longBuf.length; i += 127) {
+            items.push({
+                type: 'slice',
+                cell: beginCell()
+                    .storeBuffer(longBuf.subarray(i, Math.min(longBuf.length, i + 127)))
+                    .endCell(),
+            });
+        }
+
+        const result = await provider.get('digest', [
+            {
+                type: 'tuple',
+                items,
+            } as Tuple,
         ]);
 
         return result.stack.readBigNumber();

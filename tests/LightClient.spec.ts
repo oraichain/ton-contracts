@@ -5,6 +5,7 @@ import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { result as blockData } from './fixtures/block.json';
 import { result as validators } from './fixtures/validators.json';
+import { createHash } from 'crypto';
 
 const validatorMap = Object.fromEntries(validators.validators.map((v) => [v.address, v]));
 
@@ -190,5 +191,11 @@ describe('LightClient', () => {
         // verify tx proof
         const rootTxsHash = await lightClient.getHashTreeRoot(data.txs);
         expect(rootTxsHash).toEqual(BigInt('0x' + header.data_hash));
+    });
+
+    it('digest_hash', async () => {
+        const tx = Buffer.from(blockData.block.data.txs[0], 'base64');
+        const ret = await lightClient.getDigestHash(tx);
+        console.log(createHash('sha256').update(tx).digest('hex'), ret.toString(16));
     });
 });
