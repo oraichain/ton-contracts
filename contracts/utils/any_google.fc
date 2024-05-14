@@ -1,0 +1,39 @@
+#include "varint.fc";
+
+;; return the slice encode and tuple of value
+tuple any::encode(slice type_url, tuple value){
+    builder inner_cell = begin_cell();
+    tuple result = empty_tuple();
+  
+    if(type_url.slice_empty?() != -1){
+        slice prefix_varint = uvarint::encode(10);
+        inner_cell = inner_cell.store_slice(prefix_varint);
+        int type_url_len = slice_bits(type_url) >> 3;
+        slice type_url_len_varint = uvarint::encode(type_url_len);
+        inner_cell = inner_cell.store_slice(type_url_len_varint);
+        inner_cell = inner_cell.store_slice(type_url);
+    }
+
+    int value_len = value.tlen();
+
+    if(value_len > 0){
+        inner_cell = inner_cell.store_slice(uvarint::encode(18));
+        int i = 0;
+        int value_byte_size = 0;
+
+        while (i < value_len){
+            slice ele = value.at(i);
+            int ele_size = slice_bits(ele) >> 3;
+            ele_size~dump();
+            value_byte_size += ele_size;
+            i += 1;
+        }
+        value_byte_size~dump();
+        ;; inner_cell = inner_cell.store_slice(uvarint::encode(value_byte_size));
+    }
+
+    result~tpush(inner_cell.end_cell().begin_parse());
+    ;; result~tpush(value);
+
+    return result;
+}

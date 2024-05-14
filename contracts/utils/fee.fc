@@ -1,18 +1,3 @@
-;; encode(message: Fee, writer: BinaryWriter = BinaryWriter.create()): BinaryWriter {
-;;     for (const v of message.amount) {
-;;       Coin.encode(v!, writer.uint32(10).fork()).ldelim();
-;;     }
-;;     if (message.gasLimit !== BigInt(0)) {
-;;       writer.uint32(16).uint64(message.gasLimit);
-;;     }
-;;     if (message.payer !== "") {
-;;       writer.uint32(26).string(message.payer);
-;;     }
-;;     if (message.granter !== "") {
-;;       writer.uint32(34).string(message.granter);
-;;     }
-;;     return writer;
-;;   },
 #include "./coin.fc";
 
 ;; if we need more than 1023 bit => should convert return type from slice to builder
@@ -47,4 +32,9 @@ slice fee::encode(tuple ds) {
     }
 
     return inner_cell.end_cell().begin_parse();
+}
+
+int fee::encode_length(tuple ds) {
+    slice result = fee::encode(ds);
+    return result.slice_bits() >> 3;
 }

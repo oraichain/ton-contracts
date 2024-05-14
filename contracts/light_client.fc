@@ -14,7 +14,7 @@
 #include "utils/validator_hash_input.fc";
 #include "utils/coin.fc";
 #include "utils/fee.fc";
-
+#include "utils/any_google.fc";
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
 
@@ -238,4 +238,13 @@ slice coin_encode(slice ds) method_id {
 ;; Fee
 slice fee_encode(tuple ds) method_id {
     return fee::encode(ds);
+}
+
+int fee_encode_length(tuple ds) method_id {
+    return fee::encode_length(ds);
+}
+
+;; any-protobuf
+tuple any_encode(slice type_url, tuple value) method_id {
+    return any::encode(type_url, value);
 }
