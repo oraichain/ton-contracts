@@ -1,0 +1,18 @@
+;; signers.map(
+;;     ({ pubkey, sequence }): SignerInfo => ({
+;;       publicKey: pubkey,
+;;       modeInfo: {
+;;         single: { mode: signMode },
+;;       },
+;;       sequence: BigInt(sequence),
+;;     }),
+
+;; const authInfo = AuthInfo.fromPartial({
+;;     signerInfos: makeSignerInfos(signers, signMode),
+;;     fee: {
+;;       amount: [...feeAmount],
+;;       gasLimit: BigInt(gasLimit),
+;;       granter: feeGranter,
+;;       payer: feePayer,
+;;     },
+;;   });

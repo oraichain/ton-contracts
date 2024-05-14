@@ -24,6 +24,7 @@
     },
     "dependencies": {
         "@types/varstruct": "^6.1.3",
+        "cosmjs-types": "^0.9.0",
         "varstruct": "^6.1.3"
     }
 }
