@@ -39,14 +39,14 @@ export const getTimeComponent = (timestampz: string) => {
 };
 
 export type Version = {
-    block: number;
-    app?: number;
+    block: string | number;
+    app?: string | number;
 };
 export const getVersionSlice = (version: Version): Cell => {
     let cell = beginCell();
-    cell = cell.storeUint(version.block, 32);
+    cell = cell.storeUint(Number(version.block), 32);
     if (version.app) {
-        cell = cell.storeUint(version.app, 32);
+        cell = cell.storeUint(Number(version.app), 32);
     }
 
     return cell.endCell();
@@ -128,7 +128,7 @@ export type Signature = {
     block_id_flag: number;
     validator_address: string;
     timestamp: string;
-    signature: string;
+    signature: string | null;
 };
 
 export class LightClient implements Contract {
@@ -447,17 +447,19 @@ export class LightClient implements Contract {
             .storeRef(getBlockSlice(header.last_block_id))
             .endCell();
 
-        const tupleSignatures = commit.signatures.map((signature) => {
-            return {
-                type: 'slice',
-                cell: beginCell()
-                    .storeUint(signature.block_id_flag, 8)
-                    .storeBuffer(Buffer.from(signature.validator_address, 'hex'))
-                    .storeRef(getTimeSlice(signature.timestamp))
-                    .storeBuffer(signature.signature ? Buffer.from(signature.signature, 'base64') : Buffer.from(''))
-                    .endCell(),
-            } as TupleItemSlice;
-        });
+        const tupleSignatures = commit.signatures
+            .filter((sig) => sig.signature)
+            .map((signature) => {
+                return {
+                    type: 'slice',
+                    cell: beginCell()
+                        .storeUint(signature.block_id_flag, 8)
+                        .storeBuffer(Buffer.from(signature.validator_address, 'hex'))
+                        .storeRef(getTimeSlice(signature.timestamp))
+                        .storeBuffer(signature.signature ? Buffer.from(signature.signature, 'base64') : Buffer.from(''))
+                        .endCell(),
+                } as TupleItemSlice;
+            });
 
         const tupleCommit: TupleItem[] = [
             {

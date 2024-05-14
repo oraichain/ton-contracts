@@ -3,7 +3,7 @@ import { Cell, toNano } from '@ton/core';
 import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import * as data from './data.json';
+import * as data from './fixtures/data.json';
 
 describe('VerifyCommitSigs', () => {
     let code: Cell;
@@ -41,10 +41,12 @@ describe('VerifyCommitSigs', () => {
     });
 
     it('test verify', async () => {
-        expect( await VerifyCommitSigs.getVerifyCommitSigs(
-            data?.header as any,
-            data?.commit as any,
-            data?.validators as any,
-        )).toBe(-1);
+        expect(
+            await VerifyCommitSigs.getVerifyCommitSigs(
+                data?.header as any,
+                data?.commit as any,
+                data?.validators as any,
+            ),
+        ).toBe(-1);
     });
 });

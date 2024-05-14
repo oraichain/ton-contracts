@@ -11,7 +11,7 @@ int hash_from_byte_slice(slice items, int length)  {
    
     int k = get_split_point(length);
     int left = hash_from_byte_slice(items, k);
-    int right = hash_from_byte_slice(items.skip_bits(k * 256), length - k);
+    int right = hash_from_byte_slice(items.skip_bits(k << 8), length - k);
     return inner_hash(left, right);     
 }
 

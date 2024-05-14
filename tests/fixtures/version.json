@@ -1,15 +1,15 @@
 [
     {
         "value": {
-            "block": 1234,
-            "app": 5678
+            "block": "1234",
+            "app": "5678"
         },
         "encoding": "08d20910ae2c"
     },
     {
         "value": {
-            "block": 1,
-            "app": 0
+            "block": "1",
+            "app": "0"
         },
         "encoding": "0801"
     },
