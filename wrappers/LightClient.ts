@@ -570,6 +570,7 @@ export class LightClient implements Contract {
         const { lo, hi } = int64FromString(fee.gasLimit.toString());
         let buff = [] as number[];
         writeVarint64({ lo, hi }, buff, 0);
+        console.log(lo === 0, hi === 0);
         const amounts = fee.amount.map((item) => {
             return {
                 type: 'slice',
@@ -586,10 +587,7 @@ export class LightClient implements Contract {
                     { type: 'tuple', items: amounts },
                     {
                         type: 'slice',
-                        cell:
-                            lo === 0 && hi === 0
-                                ? beginCell().endCell()
-                                : beginCell().storeBuffer(Buffer.from(buff)).endCell(),
+                        cell: beginCell().storeBuffer(Buffer.from(buff)).endCell(),
                     },
                     {
                         type: 'slice',
@@ -603,5 +601,41 @@ export class LightClient implements Contract {
             },
         ]);
         return result.stack.readBuffer();
+    }
+
+    async get__Fee__encodeLength(provider: ContractProvider, fee: Fee) {
+        const { lo, hi } = int64FromString(fee.gasLimit.toString());
+        let buff = [] as number[];
+        writeVarint64({ lo, hi }, buff, 0);
+        const amounts = fee.amount.map((item) => {
+            return {
+                type: 'slice',
+                cell: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+                    .endCell(),
+            } as TupleItemSlice;
+        });
+        const result = await provider.get('fee_encode_length', [
+            {
+                type: 'tuple',
+                items: [
+                    { type: 'tuple', items: amounts },
+                    {
+                        type: 'slice',
+                        cell: beginCell().storeBuffer(Buffer.from(buff)).endCell(),
+                    },
+                    {
+                        type: 'slice',
+                        cell: beginCell().storeBuffer(Buffer.from(fee.payer)).endCell(),
+                    } as TupleItemSlice,
+                    {
+                        type: 'slice',
+                        cell: beginCell().storeBuffer(Buffer.from(fee.granter)).endCell(),
+                    } as TupleItemSlice,
+                ],
+            },
+        ]);
+        return result.stack.readNumber();
     }
 }

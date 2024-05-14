@@ -239,3 +239,7 @@ slice coin_encode(slice ds) method_id {
 slice fee_encode(tuple ds) method_id {
     return fee::encode(ds);
 }
+
+int fee_encode_length(tuple ds) method_id {
+    return fee::encode_length(ds);
+}
