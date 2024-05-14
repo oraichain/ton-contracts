@@ -41,12 +41,6 @@ describe('VerifyCommitSigs', () => {
     });
 
     it('test verify', async () => {
-        expect(
-            await VerifyCommitSigs.getVerifyCommitSigs(
-                data?.header as any,
-                data?.commit as any,
-                data?.validators as any,
-            ),
-        ).toBe(-1);
+        expect(await VerifyCommitSigs.getVerifyCommitSigs(data?.header, data?.commit, data?.validators)).toBe(-1);
     });
 });
