@@ -12,3 +12,19 @@ slice coin::encode(slice ds) {
     }
     return inner_cell.end_cell().begin_parse();
 }
+
+int coin::encode_length(slice ds) {
+    builder inner_cell = begin_cell();
+    slice denom = ds~load_ref().begin_parse();
+    int length = 0;
+    if (denom.slice_empty?() != -1) {
+        int denom_length = denom.slice_bits() >> 3;
+        length += denom_length + 2;
+    }
+    slice amount = ds~load_ref().begin_parse();
+    if (amount.slice_empty?() != -1) {
+        int amount_length = amount.slice_bits() >> 3;
+        length += amount_length + 2;
+    }
+    return length;
+}

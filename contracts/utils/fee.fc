@@ -1,0 +1,50 @@
+;; encode(message: Fee, writer: BinaryWriter = BinaryWriter.create()): BinaryWriter {
+;;     for (const v of message.amount) {
+;;       Coin.encode(v!, writer.uint32(10).fork()).ldelim();
+;;     }
+;;     if (message.gasLimit !== BigInt(0)) {
+;;       writer.uint32(16).uint64(message.gasLimit);
+;;     }
+;;     if (message.payer !== "") {
+;;       writer.uint32(26).string(message.payer);
+;;     }
+;;     if (message.granter !== "") {
+;;       writer.uint32(34).string(message.granter);
+;;     }
+;;     return writer;
+;;   },
+#include "./coin.fc";
+
+;; if we need more than 1023 bit => should convert return type from slice to builder
+slice fee::encode(tuple ds) {
+    tuple amounts = ds.at(0);
+    slice gas_limit = ds.at(1);
+    slice payer = ds.at(2);
+    slice granter = ds.at(3);
+
+    builder inner_cell = begin_cell().store_uint(10, 8);
+
+    int amount_len = amounts.tlen();
+    int i = 0;
+    while (i < amount_len) {
+        slice coin_data = amounts.at(i);
+        inner_cell = inner_cell.store_uint(coin::encode_length(coin_data), 8).store_slice(coin::encode(coin_data));
+        i = i + 1;
+    }
+
+    if (gas_limit.slice_empty?() != -1) {
+        inner_cell = inner_cell.store_uint(16, 8).store_slice(gas_limit);
+    }
+
+    if (payer.slice_empty?() != -1) {
+        int payer_length = payer.slice_bits() >> 3;
+        inner_cell = inner_cell.store_uint(26, 8).store_uint(payer_length, 8).store_slice(payer);
+    }
+
+    if (granter.slice_empty?() != -1) {
+        int granter_length = granter.slice_bits() >> 3;
+        inner_cell = inner_cell.store_uint(34, 8).store_uint(granter_length, 8).store_slice(granter);
+    }
+
+    return inner_cell.end_cell().begin_parse();
+}

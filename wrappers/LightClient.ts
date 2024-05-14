@@ -13,7 +13,8 @@ import {
 } from '@ton/core';
 import crypto from 'crypto';
 import { crc32 } from '../crc32';
-import { CoinType } from '@oraichain/oraidex-common';
+import { Fee } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import { int64FromString, writeVarint64 } from 'cosmjs-types/varint';
 
 export type LightClientConfig = {
     id: number;
@@ -536,6 +537,46 @@ export class LightClient implements Contract {
                     .storeRef(beginCell().storeBuffer(denomBuffer).endCell())
                     .storeRef(beginCell().storeBuffer(amountBuffer).endCell())
                     .endCell(),
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
+
+    // fee
+    async get__Fee__encode(provider: ContractProvider, fee: Fee) {
+        const { lo, hi } = int64FromString(fee.gasLimit.toString());
+        let buff = [] as number[];
+        writeVarint64({ lo, hi }, buff, 0);
+        const amounts = fee.amount.map((item) => {
+            return {
+                type: 'slice',
+                cell: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+                    .endCell(),
+            } as TupleItemSlice;
+        });
+        const result = await provider.get('fee_encode', [
+            {
+                type: 'tuple',
+                items: [
+                    { type: 'tuple', items: amounts },
+                    {
+                        type: 'slice',
+                        cell:
+                            lo === 0 && hi === 0
+                                ? beginCell().endCell()
+                                : beginCell().storeBuffer(Buffer.from(buff)).endCell(),
+                    },
+                    {
+                        type: 'slice',
+                        cell: beginCell().storeBuffer(Buffer.from(fee.payer)).endCell(),
+                    } as TupleItemSlice,
+                    {
+                        type: 'slice',
+                        cell: beginCell().storeBuffer(Buffer.from(fee.granter)).endCell(),
+                    } as TupleItemSlice,
+                ],
             },
         ]);
         return result.stack.readBuffer();

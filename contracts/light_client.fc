@@ -13,6 +13,7 @@
 #include "utils/verify.fc";
 #include "utils/validator_hash_input.fc";
 #include "utils/coin.fc";
+#include "utils/fee.fc";
 
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
@@ -228,4 +229,9 @@ slice validator_hash_input_encode(slice ds) method_id {
 ;; Coin
 slice coin_encode(slice ds) method_id {
     return coin::encode(ds);
+}
+
+;; Fee
+slice fee_encode(tuple ds) method_id {
+    return fee::encode(ds);
 }
