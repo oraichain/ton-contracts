@@ -13,6 +13,7 @@ import {
 } from '@ton/core';
 import crypto from 'crypto';
 import { crc32 } from '../crc32';
+import { CoinType } from '@oraichain/oraidex-common';
 
 export type LightClientConfig = {
     id: number;
@@ -522,5 +523,21 @@ export class LightClient implements Contract {
             },
         ]);
         return result.stack.readNumber();
+    }
+
+    // get coin encode
+    async get__Coin__encode(provider: ContractProvider, denom: string, amount: string) {
+        let denomBuffer = Buffer.from(denom);
+        let amountBuffer = Buffer.from(amount);
+        const result = await provider.get('coin_encode', [
+            {
+                type: 'slice',
+                cell: beginCell()
+                    .storeRef(beginCell().storeBuffer(denomBuffer).endCell())
+                    .storeRef(beginCell().storeBuffer(amountBuffer).endCell())
+                    .endCell(),
+            },
+        ]);
+        return result.stack.readBuffer();
     }
 }
