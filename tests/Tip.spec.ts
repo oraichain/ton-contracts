@@ -3,10 +3,10 @@ import { Cell, toNano } from '@ton/core';
 import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import { Coin } from 'cosmjs-types/cosmos/base/v1beta1/coin';
-import * as coinFixtures from './fixtures/coin.json';
+import { Tip } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import fixtures from './fixtures/tip.json';
 
-describe('Coin', () => {
+describe('Tip', () => {
     let code: Cell;
 
     beforeAll(async () => {
@@ -15,12 +15,12 @@ describe('Coin', () => {
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let coin: SandboxContract<LightClient>;
+    let tip: SandboxContract<LightClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
-        coin = blockchain.openContract(
+        tip = blockchain.openContract(
             LightClient.createFromConfig(
                 {
                     id: 0,
@@ -32,26 +32,29 @@ describe('Coin', () => {
 
         deployer = await blockchain.treasury('deployer');
 
-        const deployResult = await coin.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployResult = await tip.sendDeploy(deployer.getSender(), toNano('0.05'));
 
         expect(deployResult.transactions).toHaveTransaction({
             from: deployer.address,
-            to: coin.address,
+            to: tip.address,
             deploy: true,
             success: true,
         });
     });
 
+    it('test encode length', async () => {
+        for (const fixture of fixtures) {
+            if (fixture?.amount !== undefined) {
+                expect(await tip.getTipEncodeLength(fixture as any)).toBe(Tip.encode(fixture as any).len);
+            }
+        }
+    });
+
     it('test encode', async () => {
-        for (const data of Object.values(coinFixtures)) {
-            if (data?.denom !== undefined && data?.amount !== undefined) {
-                expect((await coin.getCoinEncode(data.denom, data.amount)).toString('hex')).toBe(
-                    Buffer.from(
-                        Coin.encode({
-                            denom: data.denom,
-                            amount: data.amount,
-                        }).finish(),
-                    ).toString('hex'),
+        for (const fixture of fixtures) {
+            if (fixture?.amount !== undefined) {
+                expect((await tip.getTipEncode(fixture as any)).toString('hex')).toBe(
+                    Buffer.from(Tip.encode(fixture as any).finish()).toString('hex'),
                 );
             }
         }

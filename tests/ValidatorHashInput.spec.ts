@@ -47,7 +47,7 @@ describe('Validator Hash Input', () => {
                 console.log(btoa(String.fromCharCode.apply(null, fixture.value.pub_key)));
                 expect(
                     (
-                        await vhi.get__ValidatorHashInput__encode(
+                        await vhi.getValidatorHashInputEncode(
                             'NNJledu0Vmk+VAZyz5IvUt3g1lMuNb8GvgE6fFMvIOA=',
                             fixture.value.voting_power,
                         )

@@ -1,5 +1,6 @@
 #include "../imports/stdlib.fc";
 #include "common.fc";
+#include "uint64_le.fc";
 
 
 int varint::encode_length(int signed,int n) {            
@@ -25,14 +26,12 @@ slice varint::encode(int signed, int n) {
         n *= 2;
     }
     
-    
     while (n >= 0x80) {
         inner_cell = inner_cell.store_uint(n & 0xff | 0x80, 8);
-        n >>= 7;              
+        n >>= 7;
     }
-    
-    inner_cell = inner_cell.store_uint(n & 0xff, 8);    
-    return inner_cell.end_cell().begin_parse();    
+    inner_cell = inner_cell.store_uint(n & 0xff,8);   
+    return inner_cell.end_cell().begin_parse();
 }
 
 
@@ -42,4 +41,19 @@ int uvarint::encode_length(int n) inline {
 
 slice uvarint::encode(int n) inline {
     return varint::encode(0, n);
+}
+
+slice uvarint_64::encode(int n) inline {
+    (int lo, int hi) = n.uint_high_low();
+    builder inner_cell = begin_cell();
+    while(hi > 0){
+        inner_cell = inner_cell.store_uint(lo & 0xff | 0x80, 8);
+        lo = (lo >> 7 | hi << 25) >> 0;
+        hi >>= 7;
+    }
+    while(lo > 0xff){
+        inner_cell = inner_cell.store_uint(lo & 0xff | 0x80, 8);
+        lo >>= 7;
+    }
+    return inner_cell.end_cell().begin_parse();
 }

@@ -14,7 +14,12 @@
 #include "utils/validator_hash_input.fc";
 #include "utils/coin.fc";
 #include "utils/fee.fc";
+#include "utils/any_google.fc";
+#include "utils/tx_body.fc";
 
+#include "utils/tip.fc";
+#include "utils/compact_bit_array.fc";
+#include "utils/mode_info.fc";
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
 
@@ -235,7 +240,59 @@ slice coin_encode(slice ds) method_id {
     return coin::encode(ds);
 }
 
-;; Fee
+;; Fee 
+;; only test for < 1023 bit case
 slice fee_encode(tuple ds) method_id {
     return fee::encode(ds);
+}
+
+int fee_encode_length(tuple ds) method_id {
+    return fee::encode_length(ds);
+}
+
+;; any-protobuf
+tuple any_encode(slice type_url, tuple value) method_id {
+    tuple return_tuple = empty_tuple();
+    (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
+    return_tuple~tpush(encode_any_len);
+    return_tuple~tpush(encode_type_url);
+    return_tuple~tpush(value_encoded);
+    return return_tuple;
+}
+
+tuple tx_body_encode(
+    tuple messages,
+    slice memo_and_timeout_height, 
+    tuple ext_opts, 
+    tuple non_critical_ext_opts
+) method_id {
+    return tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
+}
+
+;; Tip 
+;; only test for < 1023 bit case
+slice tip_encode(tuple ds) method_id {
+    return tip::encode(ds);
+}
+
+int tip_encode_length(tuple ds) method_id {
+    return tip::encode_length(ds);
+}
+
+;; CompactBitArray
+tuple compact_bit_array_encode(tuple ds) method_id {
+    return compact_bit_array::encode(ds);
+}
+
+int compact_bit_array_encode_length(tuple ds) method_id {
+    return compact_bit_array::encode_length(ds);
+}
+
+;; ModeInfo
+slice mode_info_encode(slice ds) method_id {
+    return mode_info::encode(ds);
+}
+
+int mode_info_encode_length(slice ds) method_id {
+    return mode_info::encode_length(ds);
 }

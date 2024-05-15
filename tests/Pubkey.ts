@@ -44,7 +44,7 @@ describe('Pubkey', () => {
     it('test encode', async () => {
         for (const fixture of Object.values(pubKeyFixtures)) {
             if (fixture.value !== undefined && fixture.encoding !== undefined) {
-                const rawEncode = await pk.get__Pubkey__encode(fixture.value.value);
+                const rawEncode = await pk.getPubkeyEncode(fixture.value.value);
                 expect(rawEncode.toString('hex')).toBe(fixture.encoding);
             }
         }

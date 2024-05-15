@@ -55,7 +55,7 @@ describe('Int64LE', () => {
 
     it('test encode', async () => {
         for (const ele of Int64LEFixtures) {
-            expect(Int64LE.get__UInt64LE__encode(ele)).resolves.toEqual(libInt64LE.encode(ele));
+            expect(Int64LE.getUint64LEEncode(ele)).resolves.toEqual(libInt64LE.encode(ele));
         }
     });
 });

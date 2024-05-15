@@ -4,7 +4,7 @@ import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { Fee } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
-import { int64FromString, int64ToString } from 'cosmjs-types/varint';
+import fixtures from './fixtures/fee.json';
 
 describe('Fee', () => {
     let code: Cell;
@@ -42,95 +42,21 @@ describe('Fee', () => {
         });
     });
 
+    it('test encode length', async () => {
+        for (const fixture of fixtures) {
+            if (fixture?.amount !== undefined) {
+                expect(await fee.getFeeEncodeLength(fixture as any)).toBe(Fee.encode(fixture as any).len);
+            }
+        }
+    });
+
     it('test encode', async () => {
-        expect(
-            (
-                await fee.get__Fee__encode({
-                    amount: [
-                        {
-                            amount: '290340233334',
-                            denom: 'orai',
-                        },
-                    ],
-                    gasLimit: 9238498234n,
-                    granter: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
-                    payer: 'orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx',
-                })
-            ).toString('hex'),
-        ).toBe(
-            Buffer.from(
-                Fee.encode({
-                    amount: [
-                        {
-                            amount: '290340233334',
-                            denom: 'orai',
-                        },
-                    ],
-                    gasLimit: 9238498234n,
-                    granter: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
-                    payer: 'orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx',
-                }).finish(),
-            ).toString('hex'),
-        );
-
-        expect(
-            (
-                await fee.get__Fee__encode({
-                    amount: [
-                        {
-                            amount: '290340233334',
-                            denom: 'orai',
-                        },
-                    ],
-                    gasLimit: 100000n,
-                    granter: '',
-                    payer: '',
-                })
-            ).toString('hex'),
-        ).toBe(
-            Buffer.from(
-                Fee.encode({
-                    amount: [
-                        {
-                            amount: '290340233334',
-                            denom: 'orai',
-                        },
-                    ],
-                    gasLimit: 100000n,
-                    granter: '',
-                    payer: '',
-                }).finish(),
-            ).toString('hex'),
-        );
-
-        expect(
-            (
-                await fee.get__Fee__encode({
-                    amount: [
-                        {
-                            amount: '9834985',
-                            denom: 'orai',
-                        },
-                    ],
-                    gasLimit: 0n,
-                    granter: '',
-                    payer: '',
-                })
-            ).toString('hex'),
-        ).toBe(
-            Buffer.from(
-                Fee.encode({
-                    amount: [
-                        {
-                            amount: '9834985',
-                            denom: 'orai',
-                        },
-                    ],
-                    gasLimit: 0n,
-                    granter: '',
-                    payer: '',
-                }).finish(),
-            ).toString('hex'),
-        );
+        for (const fixture of fixtures) {
+            if (fixture?.amount !== undefined) {
+                expect((await fee.getFeeEncode(fixture as any)).toString('hex')).toBe(
+                    Buffer.from(Fee.encode(fixture as any).finish()).toString('hex'),
+                );
+            }
+        }
     });
 });

@@ -1,0 +1,12 @@
+;;   encode(message: SignerInfo, writer: BinaryWriter = BinaryWriter.create()): BinaryWriter {
+;;     if (message.publicKey !== undefined) {
+;;       Any.encode(message.publicKey, writer.uint32(10).fork()).ldelim();
+;;     }
+;;     if (message.modeInfo !== undefined) {
+;;       ModeInfo.encode(message.modeInfo, writer.uint32(18).fork()).ldelim();
+;;     }
+;;     if (message.sequence !== BigInt(0)) {
+;;       writer.uint32(24).uint64(message.sequence);
+;;     }
+;;     return writer;
+;;   },
