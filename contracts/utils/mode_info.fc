@@ -1,0 +1,28 @@
+#include "varint.fc";
+
+;; Notice: we are only support single mode current
+;; if you use multisig mode, you have to implement it
+slice mode_info::encode_single(slice ds) {
+    builder inner_cell = begin_cell();
+    if (ds.slice_empty?() != -1) {
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(8))
+                        .store_slice(ds);
+    }
+    ~dump(inner_cell.end_cell().begin_parse());
+    return inner_cell.end_cell().begin_parse();
+}
+
+slice mode_info::encode(slice ds) {
+    slice single_encode = mode_info::encode_single(ds);
+    return begin_cell()
+            .store_slice(uvarint::encode(10))
+            .store_slice(uvarint::encode(single_encode.slice_bits() >> 3))
+            .store_slice(single_encode)
+            .end_cell()
+            .begin_parse();
+}
+
+int mode_info::encode_length(slice ds) {
+    return mode_info::encode(ds).slice_bits() >> 3;
+}

@@ -15,7 +15,7 @@ import {
 import crypto from 'crypto';
 import { crc32 } from '../crc32';
 import { Any } from 'cosmjs-types/google/protobuf/any';
-import { Fee, Tip } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import { Fee, ModeInfo_Single, Tip } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 
 const MAX_BYTES_CELL = 1023 / 8 - 1;
 
@@ -817,6 +817,35 @@ export class LightClient implements Contract {
                         cell: beginCell().storeBuffer(Buffer.from(tip.tipper)).endCell(),
                     } as TupleItemSlice,
                 ],
+            },
+        ]);
+        return result.stack.readNumber();
+    }
+
+    // mode
+    async getModeInfoEncode(provider: ContractProvider, modeInfo: ModeInfo_Single) {
+        const { lo, hi } = int64FromString(modeInfo.mode.toString());
+        let buff = [] as number[];
+        writeVarint64({ lo, hi }, buff, 0);
+        const result = await provider.get('mode_info_encode', [
+            {
+                type: 'slice',
+                cell:
+                    modeInfo.mode === 0 ? beginCell().endCell() : beginCell().storeBuffer(Buffer.from(buff)).endCell(),
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
+
+    async getModeInfoEncodeLength(provider: ContractProvider, modeInfo: ModeInfo_Single) {
+        const { lo, hi } = int64FromString(modeInfo.mode.toString());
+        let buff = [] as number[];
+        writeVarint64({ lo, hi }, buff, 0);
+        const result = await provider.get('mode_info_encode_length', [
+            {
+                type: 'slice',
+                cell:
+                    modeInfo.mode === 0 ? beginCell().endCell() : beginCell().storeBuffer(Buffer.from(buff)).endCell(),
             },
         ]);
         return result.stack.readNumber();
