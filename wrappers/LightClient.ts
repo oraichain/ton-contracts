@@ -20,6 +20,7 @@ import { Fee, Tip } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 const MAX_BYTES_CELL = 1023 / 8 - 1;
 
 import { int64FromString, writeVarint64 } from 'cosmjs-types/varint';
+import { CompactBitArray } from 'cosmjs-types/cosmos/crypto/multisig/v1beta1/multisig';
 
 export type LightClientConfig = {
     id: number;
@@ -113,6 +114,20 @@ export const buildCellTuple = (value: string) => {
             type: 'slice',
             cell: beginCell()
                 .storeBuffer(Buffer.from(longBuf.subarray(i, Math.min(longBuf.length, i + 127))))
+                .endCell(),
+        });
+    }
+    return tupleCell;
+};
+
+export const buildSliceTupleFromUint8Array = (value: Uint8Array) => {
+    const tupleCell: TupleItem[] = [];
+
+    for (let i = 0; i < value.length; i += 127) {
+        tupleCell.push({
+            type: 'slice',
+            cell: beginCell()
+                .storeBuffer(Buffer.from(value.subarray(i, Math.min(value.length, i + 127))))
                 .endCell(),
         });
     }
@@ -584,6 +599,38 @@ export class LightClient implements Contract {
         ]);
 
         return result.stack.readTuple();
+    }
+
+    async getCompactBitArrayEncode(provider: ContractProvider, data: CompactBitArray) {
+        const value = buildSliceTupleFromUint8Array(data.elems);
+
+        const result = await provider.get('compact_bit_array_encode', [
+            {
+                type: 'tuple',
+                items: [
+                    { type: 'int', value: BigInt(data.extraBitsStored) },
+                    { type: 'tuple', items: value },
+                ],
+            },
+        ]);
+
+        return result.stack.readTuple();
+    }
+
+    async getCompactBitArrayEncodeLength(provider: ContractProvider, data: CompactBitArray) {
+        const value = buildSliceTupleFromUint8Array(data.elems);
+
+        const result = await provider.get('compact_bit_array_encode_length', [
+            {
+                type: 'tuple',
+                items: [
+                    { type: 'int', value: BigInt(data.extraBitsStored) },
+                    { type: 'tuple', items: value },
+                ],
+            },
+        ]);
+
+        return result.stack.readNumber();
     }
 
     // get coin encode
