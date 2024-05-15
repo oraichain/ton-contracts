@@ -5,7 +5,7 @@
 ;;         single: { mode: signMode },
 ;;       },
 ;;       sequence: BigInt(sequence),
-;;     }),
+;; }),
 
 ;; const authInfo = AuthInfo.fromPartial({
 ;;     signerInfos: makeSignerInfos(signers, signMode),

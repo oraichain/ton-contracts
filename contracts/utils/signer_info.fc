@@ -33,7 +33,9 @@ tuple signer_info::encode(tuple ds) {
     if (type_url.slice_empty?() != -1) {
         builder inner_cell = begin_cell();
         (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url,value);
-        inner_cell = inner_cell.store_slice()
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(10))
+                        
 
     }
     return ();
