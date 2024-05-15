@@ -90,6 +90,7 @@ describe('LightClient', () => {
         console.log('length', len);
         const buf = await lightClient.getEncode(100_000n);
         console.log('buf', buf);
+        console.log(BigInt('0x' + buf.toString('hex')));
     });
 
     it('get_buffer_encode', async () => {
@@ -124,7 +125,7 @@ describe('LightClient', () => {
                 hash: 'E07E8511743101AA131DE4E24C9C8D412ABD69F6AEE583C8E80DBF23689B6019',
             },
         };
-        const buf = await lightClient.get__blockid__encode(blockId);
+        const buf = await lightClient.getBlockIdEncode(blockId);
         console.log('buf', buf.toString('hex'));
     });
 

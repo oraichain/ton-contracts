@@ -1,30 +1,27 @@
+#include "varint.fc";
+
 slice coin::encode(slice ds) {
     builder inner_cell = begin_cell();
     slice denom = ds~load_ref().begin_parse();
     if (denom.slice_empty?() != -1) {
         int denom_length = denom.slice_bits() >> 3;
-        inner_cell = inner_cell.store_uint(10, 8).store_uint(denom_length, 8).store_slice(denom);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(10))
+                        .store_slice(uvarint::encode(denom_length))
+                        .store_slice(denom);
     }
     slice amount = ds~load_ref().begin_parse();
     if (amount.slice_empty?() != -1) {
         int amount_length = amount.slice_bits() >> 3;
-        inner_cell = inner_cell.store_uint(18, 8).store_uint(amount_length, 8).store_slice(amount);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(18))
+                        .store_slice(uvarint::encode(amount_length))
+                        .store_slice(amount);
     }
     return inner_cell.end_cell().begin_parse();
 }
 
 int coin::encode_length(slice ds) {
-    builder inner_cell = begin_cell();
-    slice denom = ds~load_ref().begin_parse();
-    int length = 0;
-    if (denom.slice_empty?() != -1) {
-        int denom_length = denom.slice_bits() >> 3;
-        length += denom_length + 2;
-    }
-    slice amount = ds~load_ref().begin_parse();
-    if (amount.slice_empty?() != -1) {
-        int amount_length = amount.slice_bits() >> 3;
-        length += amount_length + 2;
-    }
-    return length;
+    slice coin_encoded = coin::encode(ds);
+    return coin_encoded.slice_bits() >> 3;
 }

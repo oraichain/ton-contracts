@@ -1,0 +1,45 @@
+#include "varint.fc";
+
+tuple compact_bit_array::encode(tuple ds) {
+    builder inner_cell = begin_cell();
+    tuple result = empty_tuple();
+    int extra_bits_stored = ds.at(0);
+    tuple elems = ds.at(1);
+
+    if (extra_bits_stored != 0) {
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(8))
+                        .store_slice(uvarint::encode(extra_bits_stored));
+    }
+    int elems_len = elems.tlen();
+
+    if (elems_len > 0) {
+        inner_cell = inner_cell.store_slice(uvarint::encode(18));
+        int i = 0;
+        int value_byte_size = 0;
+        while (i < elems_len){
+            slice ele = elems.at(i);
+            int ele_size = slice_bits(ele) >> 3;
+            value_byte_size += ele_size;
+            i += 1;
+        }
+        inner_cell = inner_cell.store_slice(uvarint::encode(value_byte_size));
+    }
+
+    result~tpush(inner_cell.end_cell().begin_parse());
+    result~tpush(elems);
+    return result;
+} 
+
+int compact_bit_array::encode_length(tuple ds) {
+    tuple result = compact_bit_array::encode(ds);
+    slice first_slice = result.at(0);
+    tuple second_tuple = result.at(1);
+    int length = first_slice.slice_bits() >> 3;
+    int i = 0;
+    while (i < second_tuple.tlen()) {
+        length += second_tuple.at(i).slice_bits() >> 3;
+        i = i + 1;
+    };
+    return length;
+} 

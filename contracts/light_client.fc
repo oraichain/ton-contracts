@@ -17,6 +17,8 @@
 #include "utils/any_google.fc";
 #include "utils/tx_body.fc";
 
+#include "utils/tip.fc";
+#include "utils/compact_bit_array.fc";
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
 
@@ -237,7 +239,8 @@ slice coin_encode(slice ds) method_id {
     return coin::encode(ds);
 }
 
-;; Fee
+;; Fee 
+;; only test for < 1023 bit case
 slice fee_encode(tuple ds) method_id {
     return fee::encode(ds);
 }
@@ -265,4 +268,23 @@ tuple tx_body_encode(
     messages~dump();
     return empty_tuple();
     ;; return tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
+}
+
+;; Tip 
+;; only test for < 1023 bit case
+slice tip_encode(tuple ds) method_id {
+    return tip::encode(ds);
+}
+
+int tip_encode_length(tuple ds) method_id {
+    return tip::encode_length(ds);
+}
+
+;; CompactBitArray
+tuple compact_bit_array_encode(tuple ds) method_id {
+    return compact_bit_array::encode(ds);
+}
+
+int compact_bit_array_encode_length(tuple ds) method_id {
+    return compact_bit_array::encode_length(ds);
 }

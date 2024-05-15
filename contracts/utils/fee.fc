@@ -1,40 +1,57 @@
 #include "./coin.fc";
+#include "varint.fc";
 
 ;; if we need more than 1023 bit => should convert return type from slice to builder
-slice fee::encode(tuple ds) {
+builder fee::encode_core(tuple ds) {
     tuple amounts = ds.at(0);
     slice gas_limit = ds.at(1);
     slice payer = ds.at(2);
     slice granter = ds.at(3);
 
-    builder inner_cell = begin_cell().store_uint(10, 8);
+    builder inner_cell = begin_cell();
 
     int amount_len = amounts.tlen();
     int i = 0;
     while (i < amount_len) {
         slice coin_data = amounts.at(i);
-        inner_cell = inner_cell.store_uint(coin::encode_length(coin_data), 8).store_slice(coin::encode(coin_data));
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(10))
+                        .store_slice(uvarint::encode(coin::encode_length(coin_data)))
+                        .store_slice(coin::encode(coin_data));
         i = i + 1;
     }
 
     if (gas_limit.slice_empty?() != -1) {
-        inner_cell = inner_cell.store_uint(16, 8).store_slice(gas_limit);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(16))
+                        .store_slice(gas_limit);
     }
 
     if (payer.slice_empty?() != -1) {
         int payer_length = payer.slice_bits() >> 3;
-        inner_cell = inner_cell.store_uint(26, 8).store_uint(payer_length, 8).store_slice(payer);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(26))
+                        .store_slice(uvarint::encode(payer_length))
+                        .store_slice(payer);
     }
 
     if (granter.slice_empty?() != -1) {
         int granter_length = granter.slice_bits() >> 3;
-        inner_cell = inner_cell.store_uint(34, 8).store_uint(granter_length, 8).store_slice(granter);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(34))
+                        .store_slice(uvarint::encode(granter_length))
+                        .store_slice(granter);
     }
 
-    return inner_cell.end_cell().begin_parse();
+    return inner_cell;
+}
+
+;; only use this when the size < 1023 bits
+slice fee::encode(tuple ds) {
+    return fee::encode_core(ds).end_cell().begin_parse();
 }
 
 int fee::encode_length(tuple ds) {
-    slice result = fee::encode(ds);
+    slice result = fee::encode_core(ds).end_cell().begin_parse();
     return result.slice_bits() >> 3;
 }

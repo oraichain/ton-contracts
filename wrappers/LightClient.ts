@@ -15,11 +15,13 @@ import {
 import crypto from 'crypto';
 import { crc32 } from '../crc32';
 import { Any } from 'cosmjs-types/google/protobuf/any';
+import { Fee, Tip } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 
 const MAX_BYTES_CELL = 1023 / 8 - 1;
 
 import { Fee, TxBody } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { int64FromString, writeVarint64 } from 'cosmjs-types/varint';
+import { CompactBitArray } from 'cosmjs-types/cosmos/crypto/multisig/v1beta1/multisig';
 
 export type LightClientConfig = {
     id: number;
@@ -119,8 +121,22 @@ export const buildCellTuple = (value: string | Uint8Array) => {
                 .endCell(),
         });
     }
-    return tupleCell
-}
+    return tupleCell;
+};
+
+export const buildSliceTupleFromUint8Array = (value: Uint8Array) => {
+    const tupleCell: TupleItem[] = [];
+
+    for (let i = 0; i < value.length; i += 127) {
+        tupleCell.push({
+            type: 'slice',
+            cell: beginCell()
+                .storeBuffer(Buffer.from(value.subarray(i, Math.min(value.length, i + 127))))
+                .endCell(),
+        });
+    }
+    return tupleCell;
+};
 
 export const anyToTuple = (value: Any)=>{
     const tupleAny: TupleItem[] = [];
@@ -341,7 +357,7 @@ export class LightClient implements Contract {
     }
 
     // Version testing
-    async get__version__encodingLength(provider: ContractProvider, version: Version) {
+    async getVersionEncodingLength(provider: ContractProvider, version: Version) {
         const result = await provider.get('version_encode_length', [
             {
                 type: 'slice',
@@ -351,7 +367,7 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
-    async get__version__encode(provider: ContractProvider, version: Version) {
+    async getVersionEncode(provider: ContractProvider, version: Version) {
         const result = await provider.get('version_encode', [
             {
                 type: 'slice',
@@ -373,7 +389,7 @@ export class LightClient implements Contract {
     }
 
     // LightClient testing
-    async get__blockid__encodingLength(provider: ContractProvider, lastBlockId: BlockId) {
+    async getBlockIdEncodingLength(provider: ContractProvider, lastBlockId: BlockId) {
         const result = await provider.get('blockid_encoding_length', [
             {
                 type: 'slice',
@@ -383,7 +399,7 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
-    async get__blockid__encode(provider: ContractProvider, lastBlockId: BlockId) {
+    async getBlockIdEncode(provider: ContractProvider, lastBlockId: BlockId) {
         const result = await provider.get('blockid_encode', [
             {
                 type: 'slice',
@@ -442,7 +458,7 @@ export class LightClient implements Contract {
         return result.stack.readBigNumber();
     }
 
-    async get__UInt64LE__encode(provider: ContractProvider, value: bigint | number) {
+    async getUint64LEEncode(provider: ContractProvider, value: bigint | number) {
         const result = await provider.get('uint64le_encode', [
             {
                 type: 'int',
@@ -452,7 +468,7 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    async get__CanonicalVote__encode(provider: ContractProvider, vote: CanonicalVote) {
+    async getCanonicalVoteEncode(provider: ContractProvider, vote: CanonicalVote) {
         const voteCell = getCanonicalVoteSlice(vote);
         const result = await provider.get('canonical_vote_encode', [
             {
@@ -464,7 +480,7 @@ export class LightClient implements Contract {
     }
 
     // Pubkey
-    async get__Pubkey__encode(provider: ContractProvider, pubkey: string) {
+    async getPubkeyEncode(provider: ContractProvider, pubkey: string) {
         let pubkeyBuffer = Buffer.from(pubkey, 'base64');
         const result = await provider.get('pubkey_encode', [
             {
@@ -476,7 +492,7 @@ export class LightClient implements Contract {
     }
 
     // Validator Hash Input
-    async get__ValidatorHashInput__encode(provider: ContractProvider, pubkey: string, votingPower: number) {
+    async getValidatorHashInputEncode(provider: ContractProvider, pubkey: string, votingPower: number) {
         let pubkeyBuffer = Buffer.from(pubkey, 'base64');
         const result = await provider.get('validator_hash_input_encode', [
             {
@@ -604,12 +620,10 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
-    async getAnyEncode(provider: ContractProvider, message:any){
-        const typeUrl = beginCell()
-                        .storeBuffer(Buffer.from(message.typeUrl))
-                        .endCell(); 
+    async getAnyEncode(provider: ContractProvider, message: any) {
+        const typeUrl = beginCell().storeBuffer(Buffer.from(message.typeUrl)).endCell();
         const value = buildCellTuple(message.value);
-        
+
         const result = await provider.get('any_encode', [
             {
                 type: 'slice',
@@ -617,15 +631,47 @@ export class LightClient implements Contract {
             } as TupleItemSlice,
             {
                 type: 'tuple',
-                items: value
-            }
+                items: value,
+            },
         ]);
-        
+
         return result.stack.readTuple();
     }
 
+    async getCompactBitArrayEncode(provider: ContractProvider, data: CompactBitArray) {
+        const value = buildSliceTupleFromUint8Array(data.elems);
+
+        const result = await provider.get('compact_bit_array_encode', [
+            {
+                type: 'tuple',
+                items: [
+                    { type: 'int', value: BigInt(data.extraBitsStored) },
+                    { type: 'tuple', items: value },
+                ],
+            },
+        ]);
+
+        return result.stack.readTuple();
+    }
+
+    async getCompactBitArrayEncodeLength(provider: ContractProvider, data: CompactBitArray) {
+        const value = buildSliceTupleFromUint8Array(data.elems);
+
+        const result = await provider.get('compact_bit_array_encode_length', [
+            {
+                type: 'tuple',
+                items: [
+                    { type: 'int', value: BigInt(data.extraBitsStored) },
+                    { type: 'tuple', items: value },
+                ],
+            },
+        ]);
+
+        return result.stack.readNumber();
+    }
+
     // get coin encode
-    async get__Coin__encode(provider: ContractProvider, denom: string, amount: string) {
+    async getCoinEncode(provider: ContractProvider, denom: string, amount: string) {
         let denomBuffer = Buffer.from(denom);
         let amountBuffer = Buffer.from(amount);
         const result = await provider.get('coin_encode', [
@@ -641,7 +687,7 @@ export class LightClient implements Contract {
     }
 
     // fee
-    async get__Fee__encode(provider: ContractProvider, fee: Fee) {
+    async getFeeEncode(provider: ContractProvider, fee: Fee) {
         const { lo, hi } = int64FromString(fee.gasLimit.toString());
         let buff = [] as number[];
         writeVarint64({ lo, hi }, buff, 0);
@@ -678,7 +724,7 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    async get__Fee__encodeLength(provider: ContractProvider, fee: Fee) {
+    async getFeeEncodeLength(provider: ContractProvider, fee: Fee) {
         const { lo, hi } = int64FromString(fee.gasLimit.toString());
         let buff = [] as number[];
         writeVarint64({ lo, hi }, buff, 0);
@@ -723,5 +769,56 @@ export class LightClient implements Contract {
         const result = await provider.get('tx_body_encode', input);
 
         // return result.stack.readTuple();
+    }
+
+    // tip
+    async getTipEncode(provider: ContractProvider, tip: Tip) {
+        const amounts = tip.amount.map((item) => {
+            return {
+                type: 'slice',
+                cell: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+                    .endCell(),
+            } as TupleItemSlice;
+        });
+        const result = await provider.get('tip_encode', [
+            {
+                type: 'tuple',
+                items: [
+                    { type: 'tuple', items: amounts },
+                    {
+                        type: 'slice',
+                        cell: beginCell().storeBuffer(Buffer.from(tip.tipper)).endCell(),
+                    } as TupleItemSlice,
+                ],
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
+
+    async getTipEncodeLength(provider: ContractProvider, tip: Tip) {
+        const amounts = tip.amount.map((item) => {
+            return {
+                type: 'slice',
+                cell: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+                    .endCell(),
+            } as TupleItemSlice;
+        });
+        const result = await provider.get('tip_encode_length', [
+            {
+                type: 'tuple',
+                items: [
+                    { type: 'tuple', items: amounts },
+                    {
+                        type: 'slice',
+                        cell: beginCell().storeBuffer(Buffer.from(tip.tipper)).endCell(),
+                    } as TupleItemSlice,
+                ],
+            },
+        ]);
+        return result.stack.readNumber();
     }
 }
