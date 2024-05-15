@@ -45,7 +45,7 @@ describe('CanonicalVote', () => {
             if (fixture.value !== undefined && fixture.encoding !== undefined) {
                 expect(
                     (
-                        await CanonicalVote.get__CanonicalVote__encode({
+                        await CanonicalVote.getCanonicalVoteEncode({
                             ...fixture.value,
                             chain_id: 'Oraichain',
                         })

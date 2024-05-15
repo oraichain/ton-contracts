@@ -124,7 +124,7 @@ describe('LightClient', () => {
                 hash: 'E07E8511743101AA131DE4E24C9C8D412ABD69F6AEE583C8E80DBF23689B6019',
             },
         };
-        const buf = await lightClient.get__blockid__encode(blockId);
+        const buf = await lightClient.getBlockIdEncode(blockId);
         console.log('buf', buf.toString('hex'));
     });
 

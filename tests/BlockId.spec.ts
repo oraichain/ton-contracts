@@ -43,7 +43,7 @@ describe('Block Id', () => {
 
     it('test encode length', async () => {
         expect(
-            await version.get__blockid__encodingLength({
+            await version.getBlockIdEncodingLength({
                 hash: '3031323334353637383930313233343536373839303132333435363738393031',
                 parts: {
                     total: 1,
@@ -56,7 +56,7 @@ describe('Block Id', () => {
     it('test encode', async () => {
         for (const fixture of Object.values(blockIdFixtures)) {
             if (fixture?.encoding !== undefined && fixture?.value !== undefined) {
-                expect((await version.get__blockid__encode(fixture.value)).toString('hex')).toBe(fixture.encoding);
+                expect((await version.getBlockIdEncode(fixture.value)).toString('hex')).toBe(fixture.encoding);
             }
         }
     });
@@ -64,7 +64,7 @@ describe('Block Id', () => {
     it('test canonical encode', async () => {
         for (const fixture of Object.values(blockIdFixtures)) {
             if (fixture?.encoding !== undefined && fixture?.value !== undefined) {
-                console.log((await version.get__blockid__encode(fixture.value)).toString('hex'));
+                console.log((await version.getBlockIdEncode(fixture.value)).toString('hex'));
             }
         }
     });

@@ -45,7 +45,7 @@ describe('Tip', () => {
     it('test encode length', async () => {
         for (const fixture of fixtures) {
             if (fixture?.amount !== undefined) {
-                expect(await tip.get__Tip__encodeLength(fixture as any)).toBe(Tip.encode(fixture as any).len);
+                expect(await tip.getTipEncodeLength(fixture as any)).toBe(Tip.encode(fixture as any).len);
             }
         }
     });
@@ -53,7 +53,7 @@ describe('Tip', () => {
     it('test encode', async () => {
         for (const fixture of fixtures) {
             if (fixture?.amount !== undefined) {
-                expect((await tip.get__Tip__encode(fixture as any)).toString('hex')).toBe(
+                expect((await tip.getTipEncode(fixture as any)).toString('hex')).toBe(
                     Buffer.from(Tip.encode(fixture as any).finish()).toString('hex'),
                 );
             }

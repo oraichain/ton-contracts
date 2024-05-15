@@ -305,7 +305,7 @@ export class LightClient implements Contract {
     }
 
     // Version testing
-    async get__version__encodingLength(provider: ContractProvider, version: Version) {
+    async getVersionEncodingLength(provider: ContractProvider, version: Version) {
         const result = await provider.get('version_encode_length', [
             {
                 type: 'slice',
@@ -315,7 +315,7 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
-    async get__version__encode(provider: ContractProvider, version: Version) {
+    async getVersionEncode(provider: ContractProvider, version: Version) {
         const result = await provider.get('version_encode', [
             {
                 type: 'slice',
@@ -337,7 +337,7 @@ export class LightClient implements Contract {
     }
 
     // LightClient testing
-    async get__blockid__encodingLength(provider: ContractProvider, lastBlockId: BlockId) {
+    async getBlockIdEncodingLength(provider: ContractProvider, lastBlockId: BlockId) {
         const result = await provider.get('blockid_encoding_length', [
             {
                 type: 'slice',
@@ -347,7 +347,7 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
-    async get__blockid__encode(provider: ContractProvider, lastBlockId: BlockId) {
+    async getBlockIdEncode(provider: ContractProvider, lastBlockId: BlockId) {
         const result = await provider.get('blockid_encode', [
             {
                 type: 'slice',
@@ -406,7 +406,7 @@ export class LightClient implements Contract {
         return result.stack.readBigNumber();
     }
 
-    async get__UInt64LE__encode(provider: ContractProvider, value: bigint | number) {
+    async getUint64LEEncode(provider: ContractProvider, value: bigint | number) {
         const result = await provider.get('uint64le_encode', [
             {
                 type: 'int',
@@ -416,7 +416,7 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    async get__CanonicalVote__encode(provider: ContractProvider, vote: CanonicalVote) {
+    async getCanonicalVoteEncode(provider: ContractProvider, vote: CanonicalVote) {
         const voteCell = getCanonicalVoteSlice(vote);
         const result = await provider.get('canonical_vote_encode', [
             {
@@ -428,7 +428,7 @@ export class LightClient implements Contract {
     }
 
     // Pubkey
-    async get__Pubkey__encode(provider: ContractProvider, pubkey: string) {
+    async getPubkeyEncode(provider: ContractProvider, pubkey: string) {
         let pubkeyBuffer = Buffer.from(pubkey, 'base64');
         const result = await provider.get('pubkey_encode', [
             {
@@ -440,7 +440,7 @@ export class LightClient implements Contract {
     }
 
     // Validator Hash Input
-    async get__ValidatorHashInput__encode(provider: ContractProvider, pubkey: string, votingPower: number) {
+    async getValidatorHashInputEncode(provider: ContractProvider, pubkey: string, votingPower: number) {
         let pubkeyBuffer = Buffer.from(pubkey, 'base64');
         const result = await provider.get('validator_hash_input_encode', [
             {
@@ -587,7 +587,7 @@ export class LightClient implements Contract {
     }
 
     // get coin encode
-    async get__Coin__encode(provider: ContractProvider, denom: string, amount: string) {
+    async getCoinEncode(provider: ContractProvider, denom: string, amount: string) {
         let denomBuffer = Buffer.from(denom);
         let amountBuffer = Buffer.from(amount);
         const result = await provider.get('coin_encode', [
@@ -603,7 +603,7 @@ export class LightClient implements Contract {
     }
 
     // fee
-    async get__Fee__encode(provider: ContractProvider, fee: Fee) {
+    async getFeeEncode(provider: ContractProvider, fee: Fee) {
         const { lo, hi } = int64FromString(fee.gasLimit.toString());
         let buff = [] as number[];
         writeVarint64({ lo, hi }, buff, 0);
@@ -640,7 +640,7 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    async get__Fee__encodeLength(provider: ContractProvider, fee: Fee) {
+    async getFeeEncodeLength(provider: ContractProvider, fee: Fee) {
         const { lo, hi } = int64FromString(fee.gasLimit.toString());
         let buff = [] as number[];
         writeVarint64({ lo, hi }, buff, 0);
@@ -677,7 +677,7 @@ export class LightClient implements Contract {
     }
 
     // tip
-    async get__Tip__encode(provider: ContractProvider, tip: Tip) {
+    async getTipEncode(provider: ContractProvider, tip: Tip) {
         const amounts = tip.amount.map((item) => {
             return {
                 type: 'slice',
@@ -702,7 +702,7 @@ export class LightClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    async get__Tip__encodeLength(provider: ContractProvider, tip: Tip) {
+    async getTipEncodeLength(provider: ContractProvider, tip: Tip) {
         const amounts = tip.amount.map((item) => {
             return {
                 type: 'slice',

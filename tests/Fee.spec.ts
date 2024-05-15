@@ -45,7 +45,7 @@ describe('Fee', () => {
     it('test encode length', async () => {
         for (const fixture of fixtures) {
             if (fixture?.amount !== undefined) {
-                expect(await fee.get__Fee__encodeLength(fixture as any)).toBe(Fee.encode(fixture as any).len);
+                expect(await fee.getFeeEncodeLength(fixture as any)).toBe(Fee.encode(fixture as any).len);
             }
         }
     });
@@ -53,7 +53,7 @@ describe('Fee', () => {
     it('test encode', async () => {
         for (const fixture of fixtures) {
             if (fixture?.amount !== undefined) {
-                expect((await fee.get__Fee__encode(fixture as any)).toString('hex')).toBe(
+                expect((await fee.getFeeEncode(fixture as any)).toString('hex')).toBe(
                     Buffer.from(Fee.encode(fixture as any).finish()).toString('hex'),
                 );
             }
