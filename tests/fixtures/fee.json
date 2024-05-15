@@ -13,6 +13,21 @@
     {
         "amount": [
             {
+                "amount": "123123",
+                "denom": "orai"
+            },
+            {
+                "amount": "123123",
+                "denom": "kago"
+            }
+        ],
+        "gasLimit": "1",
+        "granter": "",
+        "payer": ""
+    },
+    {
+        "amount": [
+            {
                 "amount": "290340233334",
                 "denom": "orai"
             }
