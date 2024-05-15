@@ -57,3 +57,11 @@ tuple reverse_list(tuple list) {
     return new_list;
 }
 
+tuple slice_list(tuple list, int start, int end) {
+    tuple sub_list = empty_tuple();
+    while (start < end) {        
+        sub_list~tpush(list.at(start));      
+        start += 1;                 
+    }
+    return sub_list;
+}
