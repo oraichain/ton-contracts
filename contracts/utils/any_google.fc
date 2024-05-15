@@ -24,16 +24,16 @@ tuple any::encode(slice type_url, tuple value){
         while (i < value_len){
             slice ele = value.at(i);
             int ele_size = slice_bits(ele) >> 3;
-            ele_size~dump();
             value_byte_size += ele_size;
             i += 1;
         }
-        value_byte_size~dump();
-        ;; inner_cell = inner_cell.store_slice(uvarint::encode(value_byte_size));
+        ;; ~dump(uvarint::encode(value_byte_size).slice_hash());
+
+        inner_cell = inner_cell.store_slice(uvarint::encode(value_byte_size));
     }
 
     result~tpush(inner_cell.end_cell().begin_parse());
-    ;; result~tpush(value);
+    result~tpush(value);
 
     return result;
 }

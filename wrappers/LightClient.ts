@@ -104,15 +104,17 @@ export const getCanonicalVoteSlice = (vote: CanonicalVote): Cell => {
         .endCell();
 };
 
-export const buildCellTuple = (value: Uint8Array) => {
-    const bitLength = value.length;
+export const buildCellTuple = (value: string) => {
     const tupleCell: TupleItem[] = [];
+    const longBuf = Buffer.from(value, 'base64');
 
-    for (let i = 0; i < bitLength; i += MAX_BYTES_CELL) {
-       tupleCell.push({
-        type:'slice',
-        cell: beginCell().storeBuffer(Buffer.from(value.slice(i, i + MAX_BYTES_CELL))).endCell()
-       })
+    for (let i = 0; i < longBuf.length; i += 127) {
+        tupleCell.push({
+            type: 'slice',
+            cell: beginCell()
+                .storeBuffer(Buffer.from(longBuf.subarray(i, Math.min(longBuf.length, i + 127))))
+                .endCell(),
+        });
     }
     return tupleCell
 }

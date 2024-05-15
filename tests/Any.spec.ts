@@ -56,29 +56,20 @@ describe('AnyProtobuf', () => {
             typeUrl: decodedTx.body.messages[0].typeUrl,
             value: decodedTx.body.messages[0].value
         }).finish();
-        console.log(Buffer.from(encodingResult).toString('hex'));
         const result = Any.decode(encodingResult)
-        // console.log(result.typeUrl)
-        // console.log(result.value)
-        // console.log(Any.toJSON(result))
 
         const contractResult = await AnyProtobufEncode.getAnyEncode(Any.toJSON(result));
- 
+      
         const cell = contractResult.readCell();
         let buffer = Buffer.from(cell.bits.toString(), "hex")
-        // const tuple = contractResult.readTuple();
-        // while(tuple.remaining > 0){
-        //     const item = tuple.pop();
-        //     if(item.type === 'slice'){
-        //         buffer = Buffer.concat([buffer, Buffer.from(item.cell.bits.toString(), "hex")])
-        //     }
-        // }
-    
-        console.log("buffer", buffer.toString('hex'));
-        // console.log(contractResult.readTuple().pop());
-        // console.log(items[0]);
-        // console.log(items[1]);
-
-
+        const tuple = contractResult.readTuple();
+        while(tuple.remaining > 0){
+            const item = tuple.pop();
+            if(item.type === 'slice'){
+                buffer = Buffer.concat([buffer, Buffer.from(item.cell.bits.toString(), "hex")])
+            }
+        }
+        console.log(Buffer.from(encodingResult).toString('hex'));
+        expect(buffer.toString('hex')).toEqual(Buffer.from(encodingResult).toString('hex'));
     });
 });
