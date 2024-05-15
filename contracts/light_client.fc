@@ -261,14 +261,12 @@ tuple any_encode(slice type_url, tuple value) method_id {
 }
 
 tuple tx_body_encode(
-    tuple messages 
-    ;; slice memo_and_timeout_height, 
-    ;; tuple ext_opts, 
-    ;; tuple non_critical_ext_opts
+    tuple messages,
+    slice memo_and_timeout_height, 
+    tuple ext_opts, 
+    tuple non_critical_ext_opts
 ) method_id {
-    messages~dump();
-    return empty_tuple();
-    ;; return tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
+    return tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
 }
 
 ;; Tip 

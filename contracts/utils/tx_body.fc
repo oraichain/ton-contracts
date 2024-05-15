@@ -6,6 +6,7 @@ tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_o
     tuple return_tuple = empty_tuple();
    
     int messages_len = messages.tlen();
+    
     int i = 0;
     while(i < messages_len){
         builder message_builder = begin_cell();
@@ -25,12 +26,13 @@ tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_o
         }
         i += 1;
     }
-
+    
     builder memo_and_timeout_height_builder = begin_cell();
 
     if(memo_and_timeout_height.slice_empty?() != -1){
         slice memo = memo_and_timeout_height~load_ref().begin_parse();
         int timeout_height = memo_and_timeout_height~load_uint(8 * 64); ;;64 bytes
+       
         if(memo.slice_empty?() != -1){
             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(18)).store_slice(memo);
         }
@@ -39,11 +41,17 @@ tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_o
             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(24));
             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint_64::encode(timeout_height));
         }
+
     }
-    return_tuple~tpush(memo_and_timeout_height_builder.end_cell().begin_parse());
+
+    if(memo_and_timeout_height_builder.end_cell().begin_parse().slice_empty?() != -1){
+        return_tuple~tpush(memo_and_timeout_height_builder.end_cell().begin_parse());
+    }
     
     int ext_opts_len = ext_opts.tlen();
+
     int i = 0;
+
     while(i < ext_opts_len){
         builder ext_opt_builder = begin_cell();
         tuple ext_opt = ext_opts.at(i);
@@ -62,6 +70,7 @@ tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_o
         }
         i += 1;
     }
+
 
     int non_critical_ext_opts_len = non_critical_ext_opts.tlen();
     int i = 0;
@@ -83,6 +92,8 @@ tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_o
         }
         i += 1;
     }
+
+
 
     return return_tuple;
 }

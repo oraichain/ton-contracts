@@ -15,11 +15,11 @@ import {
 import crypto from 'crypto';
 import { crc32 } from '../crc32';
 import { Any } from 'cosmjs-types/google/protobuf/any';
-import { Fee, ModeInfo_Single, Tip } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+
+import { Fee, Tip, TxBody, ModeInfo_Single } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 
 const MAX_BYTES_CELL = 1023 / 8 - 1;
 
-import { Fee, TxBody } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { int64FromString, writeVarint64 } from 'cosmjs-types/varint';
 import { CompactBitArray } from 'cosmjs-types/cosmos/crypto/multisig/v1beta1/multisig';
 
@@ -138,7 +138,7 @@ export const buildSliceTupleFromUint8Array = (value: Uint8Array) => {
     return tupleCell;
 };
 
-export const anyToTuple = (value: Any)=>{
+export const anyToTuple = (value: Any):Tuple=>{
     const tupleAny: TupleItem[] = [];
 
     const typeUrlSlice: TupleItemSlice = {
@@ -149,24 +149,32 @@ export const anyToTuple = (value: Any)=>{
     tupleAny.push(typeUrlSlice);
     tupleAny.push({type:'tuple', items: buildCellTuple(value.value)});
 
-    return tupleAny
+    return {
+        type: 'tuple',
+        items: tupleAny
+    }
 }
 
 export const txBodyToTuple = (txBody: TxBody)=>{
     const txBodyTuple: TupleItem[] = [];
     const messagesTuple = txBody.messages.map(anyToTuple);
-    console.log(messagesTuple)
-    const memo_timeout_height_slice = beginCell()
-                                .storeRef(beginCell().storeBuffer(Buffer.from(txBody.memo)).endCell())
-                                .storeUint(txBody.timeoutHeight, 64)
-                                .endCell();
+    let memo_timeout_height_builder = beginCell();
+
+    if(txBody.memo){
+        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBody.memo)).endCell())
+    }
+
+    if(txBody.timeoutHeight > 0n){
+        memo_timeout_height_builder.storeUint(txBody.timeoutHeight, 64);
+    }
+
     const ext_opts_tuple = txBody.extensionOptions.map(anyToTuple) as any;
     const non_critical_ext_opts_tuple = txBody.nonCriticalExtensionOptions.map(anyToTuple) as any;
 
     txBodyTuple.push({type:'tuple', items: messagesTuple});
-    // txBodyTuple.push({type:'slice', cell: memo_timeout_height_slice});
-    // txBodyTuple.push({type:'tuple', items: ext_opts_tuple});
-    // txBodyTuple.push({type:'tuple', items: non_critical_ext_opts_tuple});
+    txBodyTuple.push({type:'slice', cell: memo_timeout_height_builder.endCell()});
+    txBodyTuple.push({type:'tuple', items: ext_opts_tuple});
+    txBodyTuple.push({type:'tuple', items: non_critical_ext_opts_tuple});
     
     return txBodyTuple;
 }
@@ -764,11 +772,9 @@ export class LightClient implements Contract {
     async getTxBody(provider: ContractProvider, txBody: TxBody){
         const input = txBodyToTuple(txBody);
 
-        console.log(input);
-
         const result = await provider.get('tx_body_encode', input);
 
-        // return result.stack.readTuple();
+        return result.stack.readTuple();
     }
 
     // tip
