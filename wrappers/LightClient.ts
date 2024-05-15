@@ -15,10 +15,10 @@ import {
 import crypto from 'crypto';
 import { crc32 } from '../crc32';
 import { Any } from 'cosmjs-types/google/protobuf/any';
+import { Fee, Tip } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 
 const MAX_BYTES_CELL = 1023 / 8 - 1;
 
-import { Fee } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { int64FromString, writeVarint64 } from 'cosmjs-types/varint';
 
 export type LightClientConfig = {
@@ -116,8 +116,8 @@ export const buildCellTuple = (value: string) => {
                 .endCell(),
         });
     }
-    return tupleCell
-}
+    return tupleCell;
+};
 
 export type PubKey = {
     type?: string;
@@ -568,12 +568,10 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
-    async getAnyEncode(provider: ContractProvider, message:any){
-        const typeUrl = beginCell()
-                        .storeBuffer(Buffer.from(message.typeUrl))
-                        .endCell(); 
+    async getAnyEncode(provider: ContractProvider, message: any) {
+        const typeUrl = beginCell().storeBuffer(Buffer.from(message.typeUrl)).endCell();
         const value = buildCellTuple(message.value);
-        
+
         const result = await provider.get('any_encode', [
             {
                 type: 'slice',
@@ -581,10 +579,10 @@ export class LightClient implements Contract {
             } as TupleItemSlice,
             {
                 type: 'tuple',
-                items: value
-            }
+                items: value,
+            },
         ]);
-        
+
         return result.stack.readTuple();
     }
 
@@ -671,6 +669,57 @@ export class LightClient implements Contract {
                     {
                         type: 'slice',
                         cell: beginCell().storeBuffer(Buffer.from(fee.granter)).endCell(),
+                    } as TupleItemSlice,
+                ],
+            },
+        ]);
+        return result.stack.readNumber();
+    }
+
+    // tip
+    async get__Tip__encode(provider: ContractProvider, tip: Tip) {
+        const amounts = tip.amount.map((item) => {
+            return {
+                type: 'slice',
+                cell: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+                    .endCell(),
+            } as TupleItemSlice;
+        });
+        const result = await provider.get('tip_encode', [
+            {
+                type: 'tuple',
+                items: [
+                    { type: 'tuple', items: amounts },
+                    {
+                        type: 'slice',
+                        cell: beginCell().storeBuffer(Buffer.from(tip.tipper)).endCell(),
+                    } as TupleItemSlice,
+                ],
+            },
+        ]);
+        return result.stack.readBuffer();
+    }
+
+    async get__Tip__encodeLength(provider: ContractProvider, tip: Tip) {
+        const amounts = tip.amount.map((item) => {
+            return {
+                type: 'slice',
+                cell: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+                    .endCell(),
+            } as TupleItemSlice;
+        });
+        const result = await provider.get('tip_encode_length', [
+            {
+                type: 'tuple',
+                items: [
+                    { type: 'tuple', items: amounts },
+                    {
+                        type: 'slice',
+                        cell: beginCell().storeBuffer(Buffer.from(tip.tipper)).endCell(),
                     } as TupleItemSlice,
                 ],
             },

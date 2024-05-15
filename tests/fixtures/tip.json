@@ -1,0 +1,29 @@
+[
+    {
+        "amount": [
+            {
+                "amount": "290340233334",
+                "denom": "orai"
+            }
+        ],
+        "tipper": "orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx"
+    },
+    {
+        "amount": [
+            {
+                "amount": "290340233334",
+                "denom": "orai"
+            }
+        ],
+        "tipper": ""
+    },
+    {
+        "amount": [
+            {
+                "amount": "290340233334",
+                "denom": "orai"
+            }
+        ],
+        "tipper": ""
+    }
+]

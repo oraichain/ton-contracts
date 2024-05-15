@@ -3,10 +3,10 @@ import { Cell, toNano } from '@ton/core';
 import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import { Fee } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
-import fixtures from './fixtures/fee.json';
+import { Tip } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import fixtures from './fixtures/tip.json';
 
-describe('Fee', () => {
+describe('Tip', () => {
     let code: Cell;
 
     beforeAll(async () => {
@@ -15,12 +15,12 @@ describe('Fee', () => {
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let fee: SandboxContract<LightClient>;
+    let tip: SandboxContract<LightClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
-        fee = blockchain.openContract(
+        tip = blockchain.openContract(
             LightClient.createFromConfig(
                 {
                     id: 0,
@@ -32,11 +32,11 @@ describe('Fee', () => {
 
         deployer = await blockchain.treasury('deployer');
 
-        const deployResult = await fee.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployResult = await tip.sendDeploy(deployer.getSender(), toNano('0.05'));
 
         expect(deployResult.transactions).toHaveTransaction({
             from: deployer.address,
-            to: fee.address,
+            to: tip.address,
             deploy: true,
             success: true,
         });
@@ -45,7 +45,7 @@ describe('Fee', () => {
     it('test encode length', async () => {
         for (const fixture of fixtures) {
             if (fixture?.amount !== undefined) {
-                expect(await fee.get__Fee__encodeLength(fixture as any)).toBe(Fee.encode(fixture as any).len);
+                expect(await tip.get__Tip__encodeLength(fixture as any)).toBe(Tip.encode(fixture as any).len);
             }
         }
     });
@@ -53,8 +53,8 @@ describe('Fee', () => {
     it('test encode', async () => {
         for (const fixture of fixtures) {
             if (fixture?.amount !== undefined) {
-                expect((await fee.get__Fee__encode(fixture as any)).toString('hex')).toBe(
-                    Buffer.from(Fee.encode(fixture as any).finish()).toString('hex'),
+                expect((await tip.get__Tip__encode(fixture as any)).toString('hex')).toBe(
+                    Buffer.from(Tip.encode(fixture as any).finish()).toString('hex'),
                 );
             }
         }
