@@ -56,6 +56,45 @@ describe('Mode Info', () => {
                 }).finish(),
             ).toString('hex'),
         );
+
+        expect(
+            (
+                await modeInfo.getModeInfoEncode({
+                    mode: 0,
+                })
+            ).toString('hex'),
+        ).toBe(
+            Buffer.from(
+                ModeInfo.encode({
+                    single: { mode: 0 },
+                    multi: undefined,
+                }).finish(),
+            ).toString('hex'),
+        );
+    });
+
+    it('test encode length', async () => {
+        expect(
+            await modeInfo.getModeInfoEncodeLength({
+                mode: 1,
+            }),
+        ).toBe(
+            ModeInfo.encode({
+                single: { mode: 1 },
+                multi: undefined,
+            }).len,
+        );
+
+        expect(
+            await modeInfo.getModeInfoEncodeLength({
+                mode: 0,
+            }),
+        ).toBe(
+            ModeInfo.encode({
+                single: { mode: 0 },
+                multi: undefined,
+            }).len,
+        );
     });
 
     // it('test encode length', async () => {
