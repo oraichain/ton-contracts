@@ -1,4 +1,5 @@
 #include "./coin.fc";
+#include "varint.fc";
 
 ;; if we need more than 1023 bit => should convert return type from slice to builder
 builder fee::encode_core(tuple ds) {
@@ -13,22 +14,33 @@ builder fee::encode_core(tuple ds) {
     int i = 0;
     while (i < amount_len) {
         slice coin_data = amounts.at(i);
-        inner_cell = inner_cell.store_uint(10, 8).store_uint(coin::encode_length(coin_data), 8).store_slice(coin::encode(coin_data));
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(10))
+                        .store_slice(uvarint::encode(coin::encode_length(coin_data)))
+                        .store_slice(coin::encode(coin_data));
         i = i + 1;
     }
 
     if (gas_limit.slice_empty?() != -1) {
-        inner_cell = inner_cell.store_uint(16, 8).store_slice(gas_limit);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(16))
+                        .store_slice(gas_limit);
     }
 
     if (payer.slice_empty?() != -1) {
         int payer_length = payer.slice_bits() >> 3;
-        inner_cell = inner_cell.store_uint(26, 8).store_uint(payer_length, 8).store_slice(payer);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(26))
+                        .store_slice(uvarint::encode(payer_length))
+                        .store_slice(payer);
     }
 
     if (granter.slice_empty?() != -1) {
         int granter_length = granter.slice_bits() >> 3;
-        inner_cell = inner_cell.store_uint(34, 8).store_uint(granter_length, 8).store_slice(granter);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(34))
+                        .store_slice(uvarint::encode(granter_length))
+                        .store_slice(granter);
     }
 
     return inner_cell;

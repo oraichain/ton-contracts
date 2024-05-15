@@ -90,6 +90,7 @@ describe('LightClient', () => {
         console.log('length', len);
         const buf = await lightClient.getEncode(100_000n);
         console.log('buf', buf);
+        console.log(BigInt('0x' + buf.toString('hex')));
     });
 
     it('get_buffer_encode', async () => {

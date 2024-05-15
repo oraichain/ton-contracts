@@ -74,10 +74,9 @@ describe('AnyProtobuf', () => {
         const contractResult = await AnyProtobufEncode.getAnyEncode(Any.toJSON(result));
 
         const cell = contractResult.readCell();
-        console.log('contractResult.readCell()', cell);
         let buffer = Buffer.from(cell.bits.toString(), 'hex');
-        console.log("Buffer.from(cell.bits.toString(), 'hex')", buffer);
         const tuple = contractResult.readTuple();
+        console.log('Tuple remainning', tuple.remaining);
         while (tuple.remaining > 0) {
             const item = tuple.pop();
             if (item.type === 'slice') {
