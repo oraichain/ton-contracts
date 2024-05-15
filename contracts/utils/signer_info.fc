@@ -1,4 +1,4 @@
-;;   encode(message: SignerInfo, writer: BinaryWriter = BinaryWriter.create()): BinaryWriter {
+;; encode(message: SignerInfo, writer: BinaryWriter = BinaryWriter.create()): BinaryWriter {
 ;;     if (message.publicKey !== undefined) {
 ;;       Any.encode(message.publicKey, writer.uint32(10).fork()).ldelim();
 ;;     }
@@ -10,3 +10,107 @@
 ;;     }
 ;;     return writer;
 ;;   },
+
+;; {
+;;     publicKey: {
+;;         typeUrl: '/cosmos.crypto.secp256k1.PubKey',
+;;         value: <Buffer 0a 21 02 a5 b6 ed 42 f3 c5 8a 8d dc c6 f5 fa ee 44 94 71 26 78 6a 55 8a 88 53 a4 65 c2 e2 d0 ee b0 4a 67>
+;;     },
+;;     modeInfo: { single: [Object], multi: undefined },
+;;     sequence: Long { low: 274922, high: 0, unsigned: true }
+;; }
+
+#include "any_google.fc";
+#include "varint.fc";
+#include "mode_info.fc";
+
+tuple signer_info::encode(tuple ds) {
+    slice type_url = ds.at(0);
+    tuple value = ds.at(1);
+    slice mode_info = ds.at(2);
+    slice sequence = ds.at(3);
+
+    tuple return_tuple = empty_tuple();
+    if (type_url.slice_empty?() != -1) {
+        builder inner_cell = begin_cell();
+        (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url,value);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(10))
+                        .store_slice(uvarint::encode(encode_any_len))
+                        .store_slice(encode_type_url);
+        return_tuple~tpush(inner_cell.end_cell().begin_parse());
+        return_tuple~tpush(value_encoded);
+    }
+
+    if (mode_info.slice_empty?() != -1) {
+        slice mode_info_encode = mode_info::encode(mode_info);
+        slice mode_info_item = begin_cell()
+                                .store_slice(uvarint::encode(18))
+                                .store_slice(uvarint::encode(mode_info_encode.slice_bits() >> 3))
+                                .store_slice(mode_info_encode)
+                                .end_cell()
+                                .begin_parse();
+        return_tuple~tpush(mode_info_item);
+    }
+
+    if (sequence.slice_empty?() != -1) {
+        slice sequence_item = begin_cell()
+                                .store_slice(uvarint::encode(24))
+                                .store_slice(sequence)
+                                .end_cell()
+                                .begin_parse();
+        return_tuple~tpush(sequence_item);
+    }
+
+    return return_tuple;
+}
+
+int signer_info::encode_length(tuple ds) {
+    slice type_url = ds.at(0);
+    tuple value = ds.at(1);
+    slice mode_info = ds.at(2);
+    slice sequence = ds.at(3);
+    int length = 0;
+
+    if (type_url.slice_empty?() != -1) {
+        builder inner_cell = begin_cell();
+        (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url,value);
+        slice inner_slice = inner_cell
+                        .store_slice(uvarint::encode(10))
+                        .store_slice(uvarint::encode(encode_any_len))
+                        .store_slice(encode_type_url)
+                        .end_cell()
+                        .begin_parse();
+
+        length += (inner_slice.slice_bits() >> 3);
+
+        int j = 0;
+        int value_encoded_len = value_encoded.tlen();
+        while(j < value_encoded_len){
+            length += value_encoded.at(j).slice_bits() >> 3;
+            j += 1;
+        }
+    }
+
+    if (mode_info.slice_empty?() != -1) {
+        slice mode_info_encode = mode_info::encode(mode_info);
+        slice mode_info_item = begin_cell()
+                                .store_slice(uvarint::encode(18))
+                                .store_slice(uvarint::encode(mode_info_encode.slice_bits() >> 3))
+                                .store_slice(mode_info_encode)
+                                .end_cell()
+                                .begin_parse();
+        length += mode_info_item.slice_bits() >> 3;
+    }
+
+    if (sequence.slice_empty?() != -1) {
+        slice sequence_item = begin_cell()
+                                .store_slice(uvarint::encode(24))
+                                .store_slice(sequence)
+                                .end_cell()
+                                .begin_parse();
+        length += sequence_item.slice_bits() >> 3;
+    }
+
+    return length;
+}

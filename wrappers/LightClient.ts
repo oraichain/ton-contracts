@@ -16,7 +16,7 @@ import crypto from 'crypto';
 import { crc32 } from '../crc32';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 
-import { Fee, Tip, TxBody, ModeInfo_Single } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import { Fee, Tip, TxBody, ModeInfo_Single, SignerInfo } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 
 const MAX_BYTES_CELL = 1023 / 8 - 1;
 
@@ -70,6 +70,13 @@ export const getTimeSlice = (timestampz: string): Cell => {
     return cell.endCell();
 };
 
+export const getInt64Slice = (modeInfo: ModeInfo_Single) => {
+    const { lo, hi } = int64FromString(modeInfo.mode.toString());
+    let buff = [] as number[];
+    writeVarint64({ lo, hi }, buff, 0);
+    return beginCell().storeBuffer(Buffer.from(buff)).endCell();
+};
+
 export type BlockId = {
     hash: string;
     parts: {
@@ -109,8 +116,8 @@ export const getCanonicalVoteSlice = (vote: CanonicalVote): Cell => {
 export const buildCellTuple = (value: string | Uint8Array) => {
     const tupleCell: TupleItem[] = [];
     let longBuf = Buffer.from(value);
-    if(typeof value === 'string'){
-         longBuf = Buffer.from(value, 'base64');
+    if (typeof value === 'string') {
+        longBuf = Buffer.from(value, 'base64');
     }
 
     for (let i = 0; i < longBuf.length; i += 127) {
@@ -138,46 +145,46 @@ export const buildSliceTupleFromUint8Array = (value: Uint8Array) => {
     return tupleCell;
 };
 
-export const anyToTuple = (value: Any):Tuple=>{
+export const anyToTuple = (value: Any): Tuple => {
     const tupleAny: TupleItem[] = [];
 
     const typeUrlSlice: TupleItemSlice = {
         type: 'slice',
-        cell: beginCell().storeBuffer(Buffer.from(value.typeUrl)).endCell()
-    }
-    
+        cell: beginCell().storeBuffer(Buffer.from(value.typeUrl)).endCell(),
+    };
+
     tupleAny.push(typeUrlSlice);
-    tupleAny.push({type:'tuple', items: buildCellTuple(value.value)});
+    tupleAny.push({ type: 'tuple', items: buildCellTuple(value.value) });
 
     return {
         type: 'tuple',
-        items: tupleAny
-    }
-}
+        items: tupleAny,
+    };
+};
 
-export const txBodyToTuple = (txBody: TxBody)=>{
+export const txBodyToTuple = (txBody: TxBody) => {
     const txBodyTuple: TupleItem[] = [];
     const messagesTuple = txBody.messages.map(anyToTuple);
     let memo_timeout_height_builder = beginCell();
 
-    if(txBody.memo){
-        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBody.memo)).endCell())
+    if (txBody.memo) {
+        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBody.memo)).endCell());
     }
 
-    if(txBody.timeoutHeight > 0n){
+    if (txBody.timeoutHeight > 0n) {
         memo_timeout_height_builder.storeUint(txBody.timeoutHeight, 64);
     }
 
     const ext_opts_tuple = txBody.extensionOptions.map(anyToTuple) as any;
     const non_critical_ext_opts_tuple = txBody.nonCriticalExtensionOptions.map(anyToTuple) as any;
 
-    txBodyTuple.push({type:'tuple', items: messagesTuple});
-    txBodyTuple.push({type:'slice', cell: memo_timeout_height_builder.endCell()});
-    txBodyTuple.push({type:'tuple', items: ext_opts_tuple});
-    txBodyTuple.push({type:'tuple', items: non_critical_ext_opts_tuple});
-    
+    txBodyTuple.push({ type: 'tuple', items: messagesTuple });
+    txBodyTuple.push({ type: 'slice', cell: memo_timeout_height_builder.endCell() });
+    txBodyTuple.push({ type: 'tuple', items: ext_opts_tuple });
+    txBodyTuple.push({ type: 'tuple', items: non_critical_ext_opts_tuple });
+
     return txBodyTuple;
-}
+};
 
 export type PubKey = {
     type?: string;
@@ -769,7 +776,7 @@ export class LightClient implements Contract {
     }
 
     // TxBody
-    async getTxBody(provider: ContractProvider, txBody: TxBody){
+    async getTxBody(provider: ContractProvider, txBody: TxBody) {
         const input = txBodyToTuple(txBody);
 
         const result = await provider.get('tx_body_encode', input);
@@ -844,14 +851,84 @@ export class LightClient implements Contract {
     }
 
     async getModeInfoEncodeLength(provider: ContractProvider, modeInfo: ModeInfo_Single) {
-        const { lo, hi } = int64FromString(modeInfo.mode.toString());
-        let buff = [] as number[];
-        writeVarint64({ lo, hi }, buff, 0);
         const result = await provider.get('mode_info_encode_length', [
             {
                 type: 'slice',
-                cell:
-                    modeInfo.mode === 0 ? beginCell().endCell() : beginCell().storeBuffer(Buffer.from(buff)).endCell(),
+                cell: modeInfo.mode === 0 ? beginCell().endCell() : getInt64Slice(modeInfo),
+            },
+        ]);
+        return result.stack.readNumber();
+    }
+
+    async getSignerInfoEncode(provider: ContractProvider, mode: SignerInfo) {
+        const typeUrl =
+            mode.publicKey === undefined
+                ? beginCell().endCell()
+                : beginCell().storeBuffer(Buffer.from(mode.publicKey!.typeUrl)).endCell();
+        const value = buildCellTuple(mode.publicKey?.value || new Uint8Array([]));
+        const modeInfo = mode.modeInfo?.single ? getInt64Slice(mode.modeInfo?.single) : beginCell().endCell();
+        const { lo, hi } = int64FromString(mode.sequence.toString());
+        let buff = [] as number[];
+        writeVarint64({ lo, hi }, buff, 0);
+        const sequence = beginCell().storeBuffer(Buffer.from(buff)).endCell();
+        const result = await provider.get('signer_info_encode', [
+            {
+                type: 'tuple',
+                items: [
+                    {
+                        type: 'slice',
+                        cell: typeUrl,
+                    },
+                    {
+                        type: 'tuple',
+                        items: value,
+                    },
+                    {
+                        type: 'slice',
+                        cell: modeInfo,
+                    },
+                    {
+                        type: 'slice',
+                        cell: sequence,
+                    },
+                ],
+            },
+        ]);
+        return result.stack.readTuple();
+    }
+
+    async getSignerInfoEncodeLength(provider: ContractProvider, mode: SignerInfo) {
+        const typeUrl =
+            mode.publicKey === undefined
+                ? beginCell().endCell()
+                : beginCell().storeBuffer(Buffer.from(mode.publicKey!.typeUrl)).endCell();
+        const value = buildCellTuple(mode.publicKey?.value || new Uint8Array([]));
+        const modeInfo = mode.modeInfo?.single ? getInt64Slice(mode.modeInfo?.single) : beginCell().endCell();
+        const { lo, hi } = int64FromString(mode.sequence.toString());
+        let buff = [] as number[];
+        writeVarint64({ lo, hi }, buff, 0);
+        const sequence = beginCell().storeBuffer(Buffer.from(buff)).endCell();
+        const result = await provider.get('signer_info_encode_length', [
+            {
+                type: 'tuple',
+                items: [
+                    {
+                        type: 'slice',
+                        cell: typeUrl,
+                    },
+                    {
+                        type: 'tuple',
+                        items: value,
+                    },
+                    {
+                        type: 'slice',
+                        cell: modeInfo,
+                    },
+                    {
+                        type: 'slice',
+                        cell: sequence,
+                    },
+                ],
             },
         ]);
         return result.stack.readNumber();
