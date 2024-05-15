@@ -50,7 +50,7 @@ int leaf_hash(int leaf) inline {
 tuple reverse_list(tuple list) {    
     tuple new_list = empty_tuple();
 
-    while (list.tlen() > 0) {
+    repeat (list.tlen()) {
         new_list~tpush(list~tpop());
     }
 
