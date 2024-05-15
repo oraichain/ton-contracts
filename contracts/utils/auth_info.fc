@@ -1,18 +1,66 @@
-;; signers.map(
-;;     ({ pubkey, sequence }): SignerInfo => ({
-;;       publicKey: pubkey,
-;;       modeInfo: {
-;;         single: { mode: signMode },
-;;       },
-;;       sequence: BigInt(sequence),
-;; }),
 
-;; const authInfo = AuthInfo.fromPartial({
-;;     signerInfos: makeSignerInfos(signers, signMode),
-;;     fee: {
-;;       amount: [...feeAmount],
-;;       gasLimit: BigInt(gasLimit),
-;;       granter: feeGranter,
-;;       payer: feePayer,
-;;     },
-;;   });
+;; encode(message: AuthInfo, writer: BinaryWriter = BinaryWriter.create()): BinaryWriter {
+;;     for (const v of message.signerInfos) {
+;;       SignerInfo.encode(v!, writer.uint32(10).fork()).ldelim();
+;;     }
+;;     if (message.fee !== undefined) {
+;;       Fee.encode(message.fee, writer.uint32(18).fork()).ldelim();
+;;     }
+;;     if (message.tip !== undefined) {
+;;       Tip.encode(message.tip, writer.uint32(26).fork()).ldelim();
+;;     }
+;;     return writer;
+;;   }
+
+#include "signer_info.fc";
+#include "fee.fc";
+#include "tip.fc";
+#include "varint.fc";
+
+;; ds ->
+;;      signInfos: tuple => items: tuple (which is signInfo)
+;;      fee: tuple
+;;      tip: tuple
+tuple auth_info::encode(tuple sign_infos, tuple fee, tuple tip) {
+    tuple result = empty_tuple();
+    int sign_infos_len = sign_infos.tlen();
+    int i = 0;
+    while (i < sign_infos_len) {
+        builder inner_cell = begin_cell();
+        tuple sign_info = sign_infos.at(i);
+        int encode_length = signer_info::encode_length(sign_info);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(10))
+                        .store_slice(uvarint::encode(encode_length));
+
+        result~tpush(inner_cell.end_cell().begin_parse());
+        tuple encode_data = signer_info::encode(sign_info);
+        int j = 0;
+        while (j < encode_data.tlen()) {
+            result~tpush(encode_data.at(j));
+            j += 1;
+        }
+
+        i += 1;
+    }
+
+    if (fee.tlen() > 0) {
+        builder inner_cell = begin_cell();
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(18))
+                        .store_slice(uvarint::encode(fee::encode_length(fee)));
+        result~tpush(inner_cell.end_cell().begin_parse());
+        result~tpush(fee::encode(fee));
+    }
+
+    if (tip.tlen() > 0) {
+        builder inner_cell = begin_cell();
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(26))
+                        .store_slice(uvarint::encode(tip::encode_length(tip)));
+        result~tpush(inner_cell.end_cell().begin_parse());
+        result~tpush(tip::encode(tip));
+    }
+
+    return result;
+}

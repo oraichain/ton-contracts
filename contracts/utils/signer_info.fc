@@ -39,7 +39,12 @@ tuple signer_info::encode(tuple ds) {
                         .store_slice(uvarint::encode(encode_any_len))
                         .store_slice(encode_type_url);
         return_tuple~tpush(inner_cell.end_cell().begin_parse());
-        return_tuple~tpush(value_encoded);
+        int i = 0;
+        while (i < value_encoded.tlen()) {
+            slice data = value_encoded.at(i);
+            return_tuple~tpush(data);
+            i += 1;
+        }
     }
 
     if (mode_info.slice_empty?() != -1) {

@@ -52,7 +52,7 @@ describe('AnyProtobuf', () => {
                 'base64',
             ),
         );
-        console.log(decodedTx.authInfo.signerInfos);
+        console.log(JSON.stringify(decodedTx.authInfo));
         const registry = new Registry(defaultRegistryTypes);
         registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
         const encodingResult = Any.encode({

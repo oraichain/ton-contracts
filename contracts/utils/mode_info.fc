@@ -9,7 +9,6 @@ slice mode_info::encode_single(slice ds) {
                         .store_slice(uvarint::encode(8))
                         .store_slice(ds);
     }
-    ~dump(inner_cell.end_cell().begin_parse());
     return inner_cell.end_cell().begin_parse();
 }
 
