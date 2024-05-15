@@ -15,6 +15,8 @@
 #include "utils/coin.fc";
 #include "utils/fee.fc";
 #include "utils/any_google.fc";
+#include "utils/tx_body.fc";
+
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
 
@@ -246,5 +248,21 @@ int fee_encode_length(tuple ds) method_id {
 
 ;; any-protobuf
 tuple any_encode(slice type_url, tuple value) method_id {
-    return any::encode(type_url, value);
+    tuple return_tuple = empty_tuple();
+    (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
+    return_tuple~tpush(encode_any_len);
+    return_tuple~tpush(encode_type_url);
+    return_tuple~tpush(value_encoded);
+    return return_tuple;
+}
+
+tuple tx_body_encode(
+    tuple messages 
+    ;; slice memo_and_timeout_height, 
+    ;; tuple ext_opts, 
+    ;; tuple non_critical_ext_opts
+) method_id {
+    messages~dump();
+    return empty_tuple();
+    ;; return tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
 }

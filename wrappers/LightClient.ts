@@ -18,7 +18,7 @@ import { Any } from 'cosmjs-types/google/protobuf/any';
 
 const MAX_BYTES_CELL = 1023 / 8 - 1;
 
-import { Fee } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import { Fee, TxBody } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { int64FromString, writeVarint64 } from 'cosmjs-types/varint';
 
 export type LightClientConfig = {
@@ -104,9 +104,12 @@ export const getCanonicalVoteSlice = (vote: CanonicalVote): Cell => {
         .endCell();
 };
 
-export const buildCellTuple = (value: string) => {
+export const buildCellTuple = (value: string | Uint8Array) => {
     const tupleCell: TupleItem[] = [];
-    const longBuf = Buffer.from(value, 'base64');
+    let longBuf = Buffer.from(value);
+    if(typeof value === 'string'){
+         longBuf = Buffer.from(value, 'base64');
+    }
 
     for (let i = 0; i < longBuf.length; i += 127) {
         tupleCell.push({
@@ -117,6 +120,39 @@ export const buildCellTuple = (value: string) => {
         });
     }
     return tupleCell
+}
+
+export const anyToTuple = (value: Any)=>{
+    const tupleAny: TupleItem[] = [];
+
+    const typeUrlSlice: TupleItemSlice = {
+        type: 'slice',
+        cell: beginCell().storeBuffer(Buffer.from(value.typeUrl)).endCell()
+    }
+    
+    tupleAny.push(typeUrlSlice);
+    tupleAny.push({type:'tuple', items: buildCellTuple(value.value)});
+
+    return tupleAny
+}
+
+export const txBodyToTuple = (txBody: TxBody)=>{
+    const txBodyTuple: TupleItem[] = [];
+    const messagesTuple = txBody.messages.map(anyToTuple);
+    console.log(messagesTuple)
+    const memo_timeout_height_slice = beginCell()
+                                .storeRef(beginCell().storeBuffer(Buffer.from(txBody.memo)).endCell())
+                                .storeUint(txBody.timeoutHeight, 64)
+                                .endCell();
+    const ext_opts_tuple = txBody.extensionOptions.map(anyToTuple) as any;
+    const non_critical_ext_opts_tuple = txBody.nonCriticalExtensionOptions.map(anyToTuple) as any;
+
+    txBodyTuple.push({type:'tuple', items: messagesTuple});
+    // txBodyTuple.push({type:'slice', cell: memo_timeout_height_slice});
+    // txBodyTuple.push({type:'tuple', items: ext_opts_tuple});
+    // txBodyTuple.push({type:'tuple', items: non_critical_ext_opts_tuple});
+    
+    return txBodyTuple;
 }
 
 export type PubKey = {
@@ -676,5 +712,16 @@ export class LightClient implements Contract {
             },
         ]);
         return result.stack.readNumber();
+    }
+
+    // TxBody
+    async getTxBody(provider: ContractProvider, txBody: TxBody){
+        const input = txBodyToTuple(txBody);
+
+        console.log(input);
+
+        const result = await provider.get('tx_body_encode', input);
+
+        // return result.stack.readTuple();
     }
 }

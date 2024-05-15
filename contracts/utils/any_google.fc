@@ -1,9 +1,10 @@
 #include "varint.fc";
 
-;; return the slice encode and tuple of value
-tuple any::encode(slice type_url, tuple value){
+;; return the slice len_encode, encode and tuple of value
+(int, slice, tuple) any::encode(slice type_url, tuple value){
     builder inner_cell = begin_cell();
     tuple result = empty_tuple();
+    int len_encode = 0;
   
     if(type_url.slice_empty?() != -1){
         slice prefix_varint = uvarint::encode(10);
@@ -12,6 +13,7 @@ tuple any::encode(slice type_url, tuple value){
         slice type_url_len_varint = uvarint::encode(type_url_len);
         inner_cell = inner_cell.store_slice(type_url_len_varint);
         inner_cell = inner_cell.store_slice(type_url);
+        len_encode = len_encode + 2 + type_url_len; ;; 2 is the size of prefix and type_url_len_varint
     }
 
     int value_len = value.tlen();
@@ -27,13 +29,13 @@ tuple any::encode(slice type_url, tuple value){
             value_byte_size += ele_size;
             i += 1;
         }
-        ;; ~dump(uvarint::encode(value_byte_size).slice_hash());
-
         inner_cell = inner_cell.store_slice(uvarint::encode(value_byte_size));
+        len_encode = len_encode + 2 + value_byte_size; ;; 2 is the size of prefix and value_byte_size
     }
-
+    
+    result~tpush(len_encode);
     result~tpush(inner_cell.end_cell().begin_parse());
     result~tpush(value);
 
-    return result;
+    return (len_encode, inner_cell.end_cell().begin_parse(), value);
 }
