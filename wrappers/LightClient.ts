@@ -1036,7 +1036,7 @@ export class LightClient implements Contract {
 
         return result.stack.readTuple();
     }
-    async getTxHash(provider: ContractProvider, tx: DecodedTxRaw) {
+    async getTxHash(provider: ContractProvider, tx: TxWasm) {
         const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
         
         const txBody = txBodyWasmToTuple(tx.body);

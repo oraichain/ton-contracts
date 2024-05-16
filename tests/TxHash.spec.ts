@@ -7,6 +7,12 @@ import { decodeTxRaw, Registry, } from '@cosmjs/proto-signing';
 import { Tx } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { sha256} from '@cosmjs/crypto';
 import { toHex } from '@cosmjs/encoding';
+import { defaultRegistryTypes } from '@cosmjs/stargate';
+import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
+
+BigInt.prototype.toJSON = function () {
+    return this.toString();
+}
 
 describe('TxHash', () => {
     let code: Cell;
@@ -50,8 +56,8 @@ describe('TxHash', () => {
                 'base64',
             ),
         );
-        console.log('decodedTx', decodedTx);
-        console.log('decodedTx', decodedTx.body.messages);
+        const registry = new Registry(defaultRegistryTypes);
+        registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
 
 
         const hex = Buffer.from(
@@ -59,7 +65,29 @@ describe('TxHash', () => {
             'base64',
         ).toString('hex');
 
-        const hash = await TxHash.getTxHash(decodedTx);
+        const rawMsg = decodedTx.body.messages.map((msg)=>{
+            return {
+                typeUrl: msg.typeUrl,
+                value: registry.decode(msg)
+            }
+        });
+
+        const decodedTxWithRawMsg:any = {
+            ...decodedTx,
+            body:{
+                messages: rawMsg,
+                memo: decodedTx.body.memo,
+                timeoutHeight: decodedTx.body.timeoutHeight,
+                extensionOptions: decodedTx.body.extensionOptions,
+                nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions
+            }
+        };
+        console.log(decodedTxWithRawMsg.body)
+        console.log(decodedTxWithRawMsg.authInfo)
+        console.log(decodedTxWithRawMsg.signatures)
+
+       
+        const hash = await TxHash.getTxHash(decodedTxWithRawMsg);
 
         console.log(hash.toString(16));
         

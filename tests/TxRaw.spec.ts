@@ -78,7 +78,6 @@ describe('TxEncoded', () => {
             }
         };
 
-        writeFileSync(resolve(__dirname, './fixtures/decodedTxWithRawMsg.json'), JSON.stringify(decodedTxWithRawMsg, null, 4));
 
         console.log({decodedTxWithRawMsg});
         const tuple = await TxEncoded.getDecodedTxRaw(decodedTxWithRawMsg);
