@@ -21,6 +21,8 @@
 #include "utils/mode_info.fc";
 #include "utils/signer_info.fc";
 #include "utils/auth_info.fc";
+#include "utils/msg_execute_contract.fc";
+
 
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
@@ -312,4 +314,8 @@ int signer_info_encode_length(tuple ds) method_id {
 ;; AuthInfo
 tuple auth_info_encode(tuple sign_infos, tuple fee, tuple tip) method_id {
     return auth_info::encode(sign_infos, fee, tip);
+}
+
+tuple msg_execute_contract_encode(slice sender_contract, tuple msg, tuple funds) method_id {
+    return msg_execute_contract::encode(sender_contract, msg, funds);
 }

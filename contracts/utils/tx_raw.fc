@@ -1,0 +1,37 @@
+#include "auth_info.fc";
+#include "tx_body.fc";
+#include "varint.fc";
+
+tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
+    tuple return_tuple = empty_tuple();
+    ;; auth_info extract
+    tuple sign_infos = auth_info.at(0);
+    tuple fees = auth_info.at(1);
+    tuple tip = auth_info.at(2);
+
+    ;; tx_body extract
+    tuple msgs = tx_body.at(0);
+    slice memo_and_timeout_height = tx_body.at(1);
+    tuple ext_opts = tx_body.at(2);
+    tuple non_critical_ext_opts = tx_body.at(3);
+
+    ;; auth_info hanle
+    tuple auth_info_tuple = auth_info::encode(sign_infos, fees, tip);
+
+    slice auth_info_prefix_len = begin_cell()
+                                .store_slice(uvarint::encode(10))
+                                .store_slice(uvarint::encode(10))
+                                .end_cell();
+
+    int auth_info_len = auth_info_tuple.tlen();
+    int i = 0;
+    while(i < auth_info_len){
+        slice auth_chunk = auth_info_tuple.at(i);
+        return_tuple~tpush(auth_chunk);
+        i += 1;
+    }
+
+
+       
+
+}

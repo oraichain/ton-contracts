@@ -22,6 +22,7 @@ const MAX_BYTES_CELL = 1023 / 8 - 1;
 
 import { int64FromString, writeVarint64 } from 'cosmjs-types/varint';
 import { CompactBitArray } from 'cosmjs-types/cosmos/crypto/multisig/v1beta1/multisig';
+import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 
 export type LightClientConfig = {
     id: number;
@@ -275,6 +276,32 @@ export const txBodyToTuple = (txBody: TxBody) => {
 
     return txBodyTuple;
 };
+
+export const msgExecuteContractToTuple = (msg: MsgExecuteContract) => {
+    const msgExecuteContractTuple: TupleItem[] = [];
+
+    const sender_contract = beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from(msg.sender)).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from(msg.contract)).endCell())
+                    .endCell();
+
+    const msgToTuple = buildCellTuple(msg.msg);
+
+    const fundsToTuple: TupleItem[]= msg.funds.map((item) => {  
+        return {
+                type: 'slice',
+                cell: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+                    .endCell(),
+            };
+    });
+
+    msgExecuteContractTuple.push({ type: 'slice', cell: sender_contract });
+    msgExecuteContractTuple.push({ type: 'tuple', items: msgToTuple });
+    msgExecuteContractTuple.push({ type: 'tuple', items: fundsToTuple });
+    return msgExecuteContractTuple;
+}
 
 export type PubKey = {
     type?: string;
@@ -890,4 +917,11 @@ export class LightClient implements Contract {
         ]);
         return result.stack.readTuple();
     }
+
+    async getMsgExecuteContract(provider: ContractProvider, msg: MsgExecuteContract) {
+        const input = msgExecuteContractToTuple(msg);
+        const result = await provider.get('msg_execute_contract_encode', input);
+        return result.stack.readTuple();
+    }
+
 }

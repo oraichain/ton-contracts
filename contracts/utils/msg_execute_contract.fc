@@ -2,24 +2,41 @@
 #include "varint.fc";
 
 
-tuple msg_execute_contract(slice sender_contract, tuple msg, tuple funds) {
+tuple msg_execute_contract::encode(slice sender_contract, tuple msg, tuple funds) {
     tuple return_tuple = empty_tuple();
     builder sender_contract_prefix_msg = begin_cell();
     slice sender = sender_contract~load_ref().begin_parse();
     slice contract  = sender_contract~load_ref().begin_parse();
 
+    int sender_len = slice_bits(sender) >> 3;
+    int contract_len = slice_bits(contract) >> 3;
+
     sender_contract_prefix_msg = sender_contract_prefix_msg
                                 .store_slice(uvarint::encode(10))
+                                .store_slice(uvarint::encode(sender_len))
                                 .store_slice(sender)
                                 .store_slice(uvarint::encode(18))
+                                .store_slice(uvarint::encode(contract_len))
                                 .store_slice(contract)
                                 .store_slice(uvarint::encode(26));
 
-    return_tuple~tpush(sender_contract_prefix_msg.end_cell().begin_parse());
 
     int i = 0;
     int msg_chunk_len = msg.tlen();
+    int msg_size = 0;
+    ;; get msg len
+    while(i < msg_chunk_len) {
+        slice msg_chunk = msg.at(i);
+        ;; return_tuple~tpush(msg_chunk);
+        msg_size += slice_bits(msg_chunk) >> 3;
+        i += 1;
+    }
 
+    return_tuple~tpush(sender_contract_prefix_msg.store_slice(uvarint::encode(msg_size)).end_cell().begin_parse());
+
+
+    int i = 0;
+    ;; append value
     while(i < msg_chunk_len) {
         slice msg_chunk = msg.at(i);
         return_tuple~tpush(msg_chunk);
