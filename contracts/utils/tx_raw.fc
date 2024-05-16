@@ -14,33 +14,12 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
     tuple ext_opts = tx_body.at(2);
     tuple non_critical_ext_opts = tx_body.at(3);
 
-    ;; auth_info hanle
-    tuple auth_info_tuple = auth_info::encode(sign_infos, fees, tip);
-    int auth_info_len = auth_info::encode_length(sign_infos, fees, tip);
-    ~dump(auth_info_len);
-
-    slice auth_info_prefix_len = begin_cell()
-                                .store_slice(uvarint::encode(10))
-                                .store_slice(uvarint::encode(auth_info_len))
-                                .end_cell().begin_parse();
-
-    return_tuple~tpush(auth_info_prefix_len);
-    ~dump(auth_info_prefix_len);
-
-    int auth_info_len = auth_info_tuple.tlen();
-    int i = 0;
-    while(i < auth_info_len){
-        slice auth_chunk = auth_info_tuple.at(i);
-        return_tuple~tpush(auth_chunk);
-        i += 1;
-    }
-
     ;; tx_body handle
     ;; tody encode the raw_msg
     (int len, tuple tx_body_tuple) = tx_body::encode(msgs, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
     
     slice tx_body_prefix_len = begin_cell()
-                                .store_slice(uvarint::encode(18))
+                                .store_slice(uvarint::encode(10))
                                 .store_slice(uvarint::encode(len))
                                 .end_cell().begin_parse();
 
@@ -54,6 +33,27 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
         i += 1;
     }
 
+
+    ;; auth_info hanle
+    tuple auth_info_tuple = auth_info::encode(sign_infos, fees, tip);
+    int auth_info_len = auth_info::encode_length(sign_infos, fees, tip);
+
+    slice auth_info_prefix_len = begin_cell()
+                                .store_slice(uvarint::encode(18))
+                                .store_slice(uvarint::encode(auth_info_len))
+                                .end_cell().begin_parse();
+
+    return_tuple~tpush(auth_info_prefix_len);
+
+    int auth_info_len = auth_info_tuple.tlen();
+    int i = 0;
+    while(i < auth_info_len){
+        slice auth_chunk = auth_info_tuple.at(i);
+        return_tuple~tpush(auth_chunk);
+        i += 1;
+    }
+
+    
     ;; signatures handle
     int i = 0;
     int signatures_len = signatures.tlen();

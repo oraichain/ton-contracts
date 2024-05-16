@@ -80,7 +80,6 @@ describe('TxEncoded', () => {
         while (tuple.remaining > 0) {
             const item = tuple.pop();
             if (item.type === 'slice') {
-                console.log(item.cell.bits.toString());
                 buffer = Buffer.concat([buffer, Buffer.from(item.cell.bits.toString(), 'hex')]);
             }
         }

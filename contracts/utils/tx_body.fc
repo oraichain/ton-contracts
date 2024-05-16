@@ -15,7 +15,10 @@
         tuple value = message.at(1);
         message_builder = message_builder.store_slice(uvarint::encode(10));
         (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
-        slice pre_encoded = message_builder.store_slice(uvarint::encode(encode_any_len)).store_slice(encode_type_url).end_cell().begin_parse();
+        slice pre_encoded = message_builder
+                                .store_slice(uvarint::encode(encode_any_len))
+                                .store_slice(encode_type_url)
+                                .end_cell().begin_parse();
         return_tuple~tpush(pre_encoded);
         int j = 0;
         int value_encoded_len = value_encoded.tlen();
@@ -24,8 +27,8 @@
             return_tuple~tpush(value_encoded.at(j));
             j += 1;
         }
-       
-        tx_body_len +=  encode_any_len + 1;
+
+        tx_body_len +=  encode_any_len + 2 + 1; ;; FIXME: 2: is prefix and encode_len, 1 is missing len must to find
         i += 1;
     }
     
@@ -74,7 +77,7 @@
             return_tuple~tpush(value_encoded.at(j));
             j += 1;
         }
-        tx_body_len +=  encode_any_len + 1;
+        tx_body_len +=  encode_any_len + 2;
         i += 1;
     }
 
@@ -97,7 +100,7 @@
             return_tuple~tpush(value_encoded.at(j));
             j += 1;
         }
-        tx_body_len +=  encode_any_len + 1;
+        tx_body_len +=  encode_any_len + 2;
         i += 1;
     }
 

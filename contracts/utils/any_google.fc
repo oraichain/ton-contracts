@@ -28,6 +28,8 @@
         }
         inner_cell = inner_cell.store_slice(uvarint::encode(value_byte_size));
     }
+    int len = value_byte_size + (slice_bits(inner_cell.end_cell().begin_parse()) >> 3);
     
-    return (value_byte_size + (slice_bits(inner_cell.end_cell().begin_parse()) >> 3), inner_cell.end_cell().begin_parse(), value);
+    
+    return (len, inner_cell.end_cell().begin_parse(), value);
 }

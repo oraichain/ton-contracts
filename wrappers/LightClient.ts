@@ -941,6 +941,7 @@ export class LightClient implements Contract {
      
     async getDecodedTxRaw(provider: ContractProvider, tx: DecodedTxRaw) {
         const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
+        
         const txBody = txBodyToTuple(tx.body);
         const signatures: TupleItem[] = tx.signatures.map((item) => {
             return {

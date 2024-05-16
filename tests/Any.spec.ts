@@ -66,7 +66,7 @@ describe('AnyProtobuf', () => {
             value: decodedTx.body.messages[0].value,
         }).finish();
         const result = Any.decode(encodingResult);
-        console.log(result);
+        console.log(encodingResult.length);
 
         const contractResult = await AnyProtobufEncode.getAnyEncode(Any.toJSON(result));
         const len = contractResult.readBigNumber();
