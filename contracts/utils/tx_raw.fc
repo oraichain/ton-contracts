@@ -45,17 +45,26 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
 
     int i = 0;
     int tx_body_tuple_len = tx_body_tuple.tlen();
-
     while(i < tx_body_tuple_len){
         slice tx_chunk = tx_body_tuple.at(i);
         return_tuple~tpush(tx_chunk);
         i += 1;
     }
 
-
     ;; signatures handle
+    int i = 0;
+    int signatures_len = signatures.tlen();
+    builder signature_builder = begin_cell()
+                                .store_slice(uvarint::encode(26))
+                                .store_slice(uvarint::encode(64)); ;; signature length
+    ;; normaly we support single signature mode
+    while(i < signatures_len){
+        slice signature = signatures.at(i);
+        signature_builder = signature_builder.store_slice(signature);
+        i += 1;
+    }
     
+    return_tuple~tpush(signature_builder.end_cell().begin_parse());
 
-    
-
+    return return_tuple;
 }
