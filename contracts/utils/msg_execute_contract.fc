@@ -1,0 +1,41 @@
+#include "coin.fc";
+#include "varint.fc";
+
+
+tuple msg_execute_contract(slice sender_contract, tuple msg, tuple funds) {
+    tuple return_tuple = empty_tuple();
+    builder sender_contract_prefix_msg = begin_cell();
+    slice sender = sender_contract~load_ref().begin_parse();
+    slice contract  = sender_contract~load_ref().begin_parse();
+
+    sender_contract_prefix_msg = sender_contract_prefix_msg
+                                .store_slice(uvarint::encode(10))
+                                .store_slice(sender)
+                                .store_slice(uvarint::encode(18))
+                                .store_slice(contract)
+                                .store_slice(uvarint::encode(26));
+
+    return_tuple~tpush(sender_contract_prefix_msg.end_cell().begin_parse());
+
+    int i = 0;
+    int msg_chunk_len = msg.tlen();
+
+    while(i < msg_chunk_len) {
+        slice msg_chunk = msg.at(i);
+        return_tuple~tpush(msg_chunk);
+        i += 1;
+    }
+
+    int i = 0; 
+    int funds_len = funds.tlen();
+
+    while(i < funds_len) {
+        slice coin = funds.at(i);
+        builder coin_cell = begin_cell();
+        coin_cell = coin_cell.store_slice(uvarint::encode(42)).store_slice(uvarint::encode(coin::encode_length(coin))).store_slice(coin::encode(coin));
+        return_tuple~tpush(coin_cell.end_cell().begin_parse());
+        i += 1;
+    }
+
+    return return_tuple;
+}

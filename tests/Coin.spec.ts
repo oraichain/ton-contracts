@@ -45,7 +45,8 @@ describe('Coin', () => {
     it('test encode', async () => {
         for (const data of Object.values(coinFixtures)) {
             if (data?.denom !== undefined && data?.amount !== undefined) {
-                expect((await coin.getCoinEncode(data.denom, data.amount)).toString('hex')).toBe(
+                const encodeCoin = await coin.getCoinEncode(data.denom, data.amount);
+                expect(encodeCoin.toString('hex')).toBe(
                     Buffer.from(
                         Coin.encode({
                             denom: data.denom,

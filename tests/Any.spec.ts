@@ -55,11 +55,18 @@ describe('AnyProtobuf', () => {
         console.log(decodedTx.authInfo.signerInfos[0].modeInfo);
         const registry = new Registry(defaultRegistryTypes);
         registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
+        const executeContract = registry.decode({
+            typeUrl: decodedTx.body.messages[0].typeUrl,
+            value: decodedTx.body.messages[0].value,
+        }) as MsgExecuteContract;
+        console.log(executeContract);
+        console.log(decodedTx.body.messages[0].value);
         const encodingResult = Any.encode({
             typeUrl: decodedTx.body.messages[0].typeUrl,
             value: decodedTx.body.messages[0].value,
         }).finish();
         const result = Any.decode(encodingResult);
+        console.log(result);
 
         const contractResult = await AnyProtobufEncode.getAnyEncode(Any.toJSON(result));
         const len = contractResult.readBigNumber();

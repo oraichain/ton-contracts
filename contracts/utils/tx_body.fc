@@ -1,10 +1,10 @@
 #include "varint.fc";
 #include "any_google.fc";
 
-
-tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_opts, tuple non_critical_ext_opts){
+;; return encode_len and tuple
+(int, tuple) tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_opts, tuple non_critical_ext_opts){
     tuple return_tuple = empty_tuple();
-   
+    int tx_body_len = 0;
     int messages_len = messages.tlen();
     
     int i = 0;
@@ -19,11 +19,13 @@ tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_o
         return_tuple~tpush(pre_encoded);
         int j = 0;
         int value_encoded_len = value_encoded.tlen();
-        ;; append all value to return_tuple
+        ;; flat all value to return_tuple
         while(j < value_encoded_len){
             return_tuple~tpush(value_encoded.at(j));
             j += 1;
         }
+       
+        tx_body_len +=  encode_any_len + 1;
         i += 1;
     }
     
@@ -35,6 +37,7 @@ tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_o
        
         if(memo.slice_empty?() != -1){
             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(18)).store_slice(memo);
+           
         }
 
         if(memo.slice_empty?() != -1){
@@ -44,8 +47,11 @@ tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_o
 
     }
 
-    if(memo_and_timeout_height_builder.end_cell().begin_parse().slice_empty?() != -1){
-        return_tuple~tpush(memo_and_timeout_height_builder.end_cell().begin_parse());
+    slice memo_and_timeout_height_slice = memo_and_timeout_height_builder.end_cell().begin_parse();
+
+    if(memo_and_timeout_height_slice.slice_empty?() != -1){
+        return_tuple~tpush(memo_and_timeout_height_slice);
+        tx_body_len += slice_bits(memo_and_timeout_height_slice) >> 3;
     }
     
     int ext_opts_len = ext_opts.tlen();
@@ -68,6 +74,7 @@ tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_o
             return_tuple~tpush(value_encoded.at(j));
             j += 1;
         }
+        tx_body_len +=  encode_any_len + 1;
         i += 1;
     }
 
@@ -90,10 +97,9 @@ tuple tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_o
             return_tuple~tpush(value_encoded.at(j));
             j += 1;
         }
+        tx_body_len +=  encode_any_len + 1;
         i += 1;
     }
 
-
-
-    return return_tuple;
+    return (tx_body_len, return_tuple);
 }

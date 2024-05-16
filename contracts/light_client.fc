@@ -266,7 +266,8 @@ tuple tx_body_encode(
     tuple ext_opts, 
     tuple non_critical_ext_opts
 ) method_id {
-    return tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
+    (_, tuple return_tuple) = tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
+    return return_tuple;
 }
 
 ;; Tip 

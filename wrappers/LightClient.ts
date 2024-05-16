@@ -856,4 +856,5 @@ export class LightClient implements Contract {
         ]);
         return result.stack.readNumber();
     }
+
 }
