@@ -7,7 +7,7 @@ tuple msg_execute_contract::encode(slice sender_contract, tuple msg, tuple funds
     builder sender_contract_prefix_msg = begin_cell();
     slice sender = sender_contract~load_ref().begin_parse();
     slice contract  = sender_contract~load_ref().begin_parse();
-
+  
     int sender_len = slice_bits(sender) >> 3;
     int contract_len = slice_bits(contract) >> 3;
 

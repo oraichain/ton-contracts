@@ -6,7 +6,6 @@
     tuple return_tuple = empty_tuple();
     int tx_body_len = 0;
     int messages_len = messages.tlen();
-    
     int i = 0;
     while(i < messages_len){
         builder message_builder = begin_cell();

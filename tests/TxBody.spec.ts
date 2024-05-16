@@ -61,7 +61,6 @@ describe('TxBodyProtobuf', () => {
                 'base64',
             ),
         );
-        console.log(decodedTx.body);
         const result = await TxBodyProtobufEncode.getTxBody(decodedTx.body);
 
         let buffer = Buffer.alloc(0);

@@ -71,6 +71,7 @@ describe('MsgExecuteContractProtobuf', () => {
                 buffer = Buffer.concat([buffer, Buffer.from(item.cell.bits.toString(), 'hex')]);
             }
         }
+        console.log(buffer.length);
         console.log(buffer.toString('hex'));
         expect(buffer.toString('hex')).toEqual(Buffer.from(encodedMsgExecute).toString('hex'));
     });

@@ -1,6 +1,7 @@
 #include "auth_info.fc";
 #include "tx_body.fc";
 #include "varint.fc";
+#include "msg_execute_contract.fc";
 
 ;; if (message.body !== undefined) {
 ;;   TxBody.encode(message.body, writer.uint32(10).fork()).ldelim();
@@ -24,9 +25,28 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
     tuple ext_opts = tx_body.at(2);
     tuple non_critical_ext_opts = tx_body.at(3);
 
+    ;; encode msgs to execute_msg
+    tuple encoded_execute_msg = empty_tuple();
+    int i = 0;
+    int msgs_len = msgs.tlen();
+    while(i < msgs_len){
+        tuple encoded_msg = empty_tuple();
+        tuple msg = msgs.at(i);
+        slice msg_type_url = msg.at(0);
+        tuple msg_value = msg.at(1);
+        slice sender_contract = msg_value.at(0);
+        tuple msg_execute_contract = msg_value.at(1);
+        tuple funds = msg_value.at(2);
+        tuple chunk_value = msg_execute_contract::encode(sender_contract, msg_execute_contract, funds);
+        encoded_msg~tpush(msg_type_url);
+        encoded_msg~tpush(chunk_value);
+        encoded_execute_msg~tpush(encoded_msg);
+        i += 1;
+    }
+
     ;; tx_body handle
     ;; tody encode the raw_msg
-    (int len, tuple tx_body_tuple) = tx_body::encode(msgs, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
+    (int len, tuple tx_body_tuple) = tx_body::encode(encoded_execute_msg, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
     
     slice tx_body_prefix_len = begin_cell()
                                 .store_slice(uvarint::encode(10))

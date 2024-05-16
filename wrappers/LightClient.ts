@@ -33,6 +33,45 @@ export type LightClientConfig = {
 export function lightClientConfigToCell(config: LightClientConfig): Cell {
     return beginCell().storeUint(config.id, 32).storeUint(config.counter, 32).endCell();
 }
+export type Version = {
+    block: string | number;
+    app?: string | number;
+};
+
+export type BlockId = {
+    hash: string;
+    parts: {
+        hash: string;
+        total: number;
+    };
+};
+
+export type CanonicalVote = {
+    type: number;
+    height: number;
+    round: number;
+    block_id: BlockId;
+    timestamp: string;
+    chain_id: string;
+};
+
+export type TxBodyWasm = {
+    messages: {
+        typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+        value: MsgExecuteContract;
+    }[], 
+    memo: string;
+    timeoutHeight: number;
+    extensionOptions: Any[];
+    nonCriticalExtensionOptions: Any[];
+}
+
+export type TxWasm = {
+    body: TxBodyWasm;
+    authInfo: AuthInfo;
+    signatures: string[];
+}   
+
 
 export const Opcodes = {
     increase: crc32('op::increase'), //0x7e8764ef,
@@ -49,10 +88,7 @@ export const getTimeComponent = (timestampz: string) => {
     return { seconds, nanoseconds };
 };
 
-export type Version = {
-    block: string | number;
-    app?: string | number;
-};
+
 export const getVersionSlice = (version: Version): Cell => {
     let cell = beginCell();
     cell = cell.storeUint(Number(version.block), 32);
@@ -79,22 +115,7 @@ export const getInt64Slice = (modeInfo: ModeInfo_Single) => {
     return beginCell().storeBuffer(Buffer.from(buff)).endCell();
 };
 
-export type BlockId = {
-    hash: string;
-    parts: {
-        hash: string;
-        total: number;
-    };
-};
 
-export type CanonicalVote = {
-    type: number;
-    height: number;
-    round: number;
-    block_id: BlockId;
-    timestamp: string;
-    chain_id: string;
-};
 
 export const getBlockSlice = (blockId: BlockId): Cell => {
     return beginCell()
@@ -254,21 +275,36 @@ export const anyToTuple = (value: Any): Tuple => {
     };
 };
 
-export const txBodyToTuple = (txBody: TxBody) => {
+export const txBodyWasmToTuple = (txBodyWasm: TxBodyWasm) => {
     const txBodyTuple: TupleItem[] = [];
-    const messagesTuple = txBody.messages.map(anyToTuple);
+    const messagesTuple: TupleItem[] = txBodyWasm.messages.map((msg)=>{
+        return {
+            type: 'tuple',
+            items: [{
+                type: 'slice',
+                cell: beginCell()
+                    .storeBuffer(Buffer.from(msg.typeUrl))
+                    .endCell(),
+            },
+            {
+                type: 'tuple',
+                items: msgExecuteContractToTuple(msg.value)
+            }
+            ]
+        }
+    });
     let memo_timeout_height_builder = beginCell();
 
-    if (txBody.memo) {
-        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBody.memo)).endCell());
+    if (txBodyWasm.memo) {
+        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo)).endCell());
     }
 
-    if (txBody.timeoutHeight > 0n) {
-        memo_timeout_height_builder.storeUint(txBody.timeoutHeight, 64);
+    if (txBodyWasm.timeoutHeight > 0n) {
+        memo_timeout_height_builder.storeUint(txBodyWasm.timeoutHeight, 64);
     }
 
-    const ext_opts_tuple = txBody.extensionOptions.map(anyToTuple) as any;
-    const non_critical_ext_opts_tuple = txBody.nonCriticalExtensionOptions.map(anyToTuple) as any;
+    const ext_opts_tuple = txBodyWasm.extensionOptions.map(anyToTuple) as any;
+    const non_critical_ext_opts_tuple = txBodyWasm.nonCriticalExtensionOptions.map(anyToTuple) as any;
 
     txBodyTuple.push({ type: 'tuple', items: messagesTuple });
     txBodyTuple.push({ type: 'slice', cell: memo_timeout_height_builder.endCell() });
@@ -278,8 +314,34 @@ export const txBodyToTuple = (txBody: TxBody) => {
     return txBodyTuple;
 };
 
+export const txBodyToTuple = (txBodyWasm: TxBody) => {
+    const txBodyTuple: TupleItem[] = [];
+    const messagesTuple: TupleItem[] = txBodyWasm.messages.map(anyToTuple);
+    let memo_timeout_height_builder = beginCell();
+
+    if (txBodyWasm.memo) {
+        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo)).endCell());
+    }
+
+    if (txBodyWasm.timeoutHeight > 0n) {
+        memo_timeout_height_builder.storeUint(txBodyWasm.timeoutHeight, 64);
+    }
+
+    const ext_opts_tuple = txBodyWasm.extensionOptions.map(anyToTuple) as any;
+    const non_critical_ext_opts_tuple = txBodyWasm.nonCriticalExtensionOptions.map(anyToTuple) as any;
+
+    txBodyTuple.push({ type: 'tuple', items: messagesTuple });
+    txBodyTuple.push({ type: 'slice', cell: memo_timeout_height_builder.endCell() });
+    txBodyTuple.push({ type: 'tuple', items: ext_opts_tuple });
+    txBodyTuple.push({ type: 'tuple', items: non_critical_ext_opts_tuple });
+
+    return txBodyTuple;
+};
+
+
 export const msgExecuteContractToTuple = (msg: MsgExecuteContract) => {
     const msgExecuteContractTuple: TupleItem[] = [];
+   
 
     const sender_contract = beginCell()
                     .storeRef(beginCell().storeBuffer(Buffer.from(msg.sender)).endCell())
@@ -835,7 +897,7 @@ export class LightClient implements Contract {
     // TxBody
     async getTxBody(provider: ContractProvider, txBody: TxBody) {
         const input = txBodyToTuple(txBody);
-
+        console.log({input});
         const result = await provider.get('tx_body_encode', input);
 
         return result.stack.readTuple();
@@ -939,17 +1001,17 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
      
-    async getDecodedTxRaw(provider: ContractProvider, tx: DecodedTxRaw) {
+    async getDecodedTxRaw(provider: ContractProvider, tx: TxWasm) {
         const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
-        
-        const txBody = txBodyToTuple(tx.body);
+
+        const txBody = txBodyWasmToTuple(tx.body);
         const signatures: TupleItem[] = tx.signatures.map((item) => {
             return {
                 type: 'slice',
                 cell: beginCell().storeBuffer(Buffer.from(item)).endCell(),
             };
         });
-
+ 
         const result = await provider.get('tx_raw_encode', [
             {
                 type:'tuple',
@@ -973,6 +1035,41 @@ export class LightClient implements Contract {
         ]);
 
         return result.stack.readTuple();
+    }
+    async getTxHash(provider: ContractProvider, tx: DecodedTxRaw) {
+        const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
+        
+        const txBody = txBodyWasmToTuple(tx.body);
+        const signatures: TupleItem[] = tx.signatures.map((item) => {
+            return {
+                type: 'slice',
+                cell: beginCell().storeBuffer(Buffer.from(item)).endCell(),
+            };
+        });
+
+        const result = await provider.get('tx_hash', [
+            {
+                type:'tuple',
+                items: [
+                    {
+                        type: 'tuple',
+                        items: signInfos,
+                    },
+                    feeTuple,
+                    tipTuple,
+                ]
+            },
+            {
+                type: 'tuple',
+                items: txBody,
+            },
+            {
+                type: 'tuple',
+                items: signatures,
+            },
+        ]);
+
+        return result.stack.readBigNumber();
     }
 }
 
