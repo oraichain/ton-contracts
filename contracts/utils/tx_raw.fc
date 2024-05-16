@@ -8,7 +8,6 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
     tuple sign_infos = auth_info.at(0);
     tuple fees = auth_info.at(1);
     tuple tip = auth_info.at(2);
-
     ;; tx_body extract
     tuple msgs = tx_body.at(0);
     slice memo_and_timeout_height = tx_body.at(1);
@@ -18,13 +17,15 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
     ;; auth_info hanle
     tuple auth_info_tuple = auth_info::encode(sign_infos, fees, tip);
     int auth_info_len = auth_info::encode_length(sign_infos, fees, tip);
+    ~dump(auth_info_len);
 
     slice auth_info_prefix_len = begin_cell()
                                 .store_slice(uvarint::encode(10))
                                 .store_slice(uvarint::encode(auth_info_len))
-                                .end_cell();
+                                .end_cell().begin_parse();
 
     return_tuple~tpush(auth_info_prefix_len);
+    ~dump(auth_info_prefix_len);
 
     int auth_info_len = auth_info_tuple.tlen();
     int i = 0;
@@ -35,11 +36,13 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
     }
 
     ;; tx_body handle
+    ;; tody encode the raw_msg
     (int len, tuple tx_body_tuple) = tx_body::encode(msgs, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
+    
     slice tx_body_prefix_len = begin_cell()
                                 .store_slice(uvarint::encode(18))
                                 .store_slice(uvarint::encode(len))
-                                .end_cell();
+                                .end_cell().begin_parse();
 
     return_tuple~tpush(tx_body_prefix_len);
 
@@ -57,13 +60,14 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
     builder signature_builder = begin_cell()
                                 .store_slice(uvarint::encode(26))
                                 .store_slice(uvarint::encode(64)); ;; signature length
+
     ;; normaly we support single signature mode
     while(i < signatures_len){
         slice signature = signatures.at(i);
         signature_builder = signature_builder.store_slice(signature);
         i += 1;
     }
-    
+
     return_tuple~tpush(signature_builder.end_cell().begin_parse());
 
     return return_tuple;

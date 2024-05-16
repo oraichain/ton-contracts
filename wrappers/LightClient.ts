@@ -23,6 +23,7 @@ const MAX_BYTES_CELL = 1023 / 8 - 1;
 import { int64FromString, writeVarint64 } from 'cosmjs-types/varint';
 import { CompactBitArray } from 'cosmjs-types/cosmos/crypto/multisig/v1beta1/multisig';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
+import { DecodedTxRaw } from '@cosmjs/proto-signing';
 
 export type LightClientConfig = {
     id: number;
@@ -891,21 +892,7 @@ export class LightClient implements Contract {
     }
 
     async getAuthInfoEncode(provider: ContractProvider, data: AuthInfo) {
-        const signInfos = data.signerInfos.map((item) => getSignInfoTuple(item));
-        let feeTuple = {
-            type: 'tuple',
-            items: [],
-        } as Tuple;
-        if (data.fee) {
-            feeTuple = getFeeTuple(data.fee);
-        }
-        let tipTuple = {
-            type: 'tuple',
-            items: [],
-        } as Tuple;
-        if (data.tip) {
-            tipTuple = getTipTuple(data.tip);
-        }
+        var { signInfos, feeTuple, tipTuple } = getAuthInfoInput(data);
 
         const result = await provider.get('auth_info_encode', [
             {
@@ -951,4 +938,59 @@ export class LightClient implements Contract {
         ]);
         return result.stack.readNumber();
     }
+     
+    async getDecodedTxRaw(provider: ContractProvider, tx: DecodedTxRaw) {
+        const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
+        const txBody = txBodyToTuple(tx.body);
+        const signatures: TupleItem[] = tx.signatures.map((item) => {
+            return {
+                type: 'slice',
+                cell: beginCell().storeBuffer(Buffer.from(item)).endCell(),
+            };
+        });
+
+        const result = await provider.get('tx_raw_encode', [
+            {
+                type:'tuple',
+                items: [
+                    {
+                        type: 'tuple',
+                        items: signInfos,
+                    },
+                    feeTuple,
+                    tipTuple,
+                ]
+            },
+            {
+                type: 'tuple',
+                items: txBody,
+            },
+            {
+                type: 'tuple',
+                items: signatures,
+            },
+        ]);
+
+        return result.stack.readTuple();
+    }
 }
+
+function getAuthInfoInput(data: AuthInfo) {
+    const signInfos = data.signerInfos.map((item) => getSignInfoTuple(item));
+    let feeTuple = {
+        type: 'tuple',
+        items: [],
+    } as Tuple;
+    if (data.fee) {
+        feeTuple = getFeeTuple(data.fee);
+    }
+    let tipTuple = {
+        type: 'tuple',
+        items: [],
+    } as Tuple;
+    if (data.tip) {
+        tipTuple = getTipTuple(data.tip);
+    }
+    return { signInfos, feeTuple, tipTuple };
+}
+
