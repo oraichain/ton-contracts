@@ -64,3 +64,27 @@ tuple auth_info::encode(tuple sign_infos, tuple fee, tuple tip) {
 
     return result;
 }
+
+int auth_info::encode_length(tuple sign_infos, tuple fee, tuple tip) {
+    tuple result = empty_tuple();
+    int sign_infos_len = sign_infos.tlen();
+    int length = 0;
+
+    int i = 0;
+    while (i < sign_infos_len) {
+        builder inner_cell = begin_cell();
+        tuple sign_info = sign_infos.at(i);
+        length += uvarint::encode_length(10) + uvarint::encode_length(signer_info::encode_length(sign_info)) + signer_info::encode_length(sign_info);
+        i += 1;
+    }
+
+    if (fee.tlen() > 0) {
+        length += uvarint::encode_length(18) + uvarint::encode_length(fee::encode_length(fee)) + fee::encode_length(fee);
+    }
+
+    if (tip.tlen() > 0) {
+        length += uvarint::encode_length(26) + uvarint::encode_length(tip::encode_length(tip)) + tip::encode_length(tip);
+    }
+
+    return length;
+}

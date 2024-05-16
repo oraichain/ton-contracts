@@ -319,3 +319,7 @@ tuple auth_info_encode(tuple sign_infos, tuple fee, tuple tip) method_id {
 tuple msg_execute_contract_encode(slice sender_contract, tuple msg, tuple funds) method_id {
     return msg_execute_contract::encode(sender_contract, msg, funds);
 }
+
+int auth_info_encode_length(tuple sign_infos, tuple fee, tuple tip) method_id {
+    return auth_info::encode_length(sign_infos, fee, tip);
+}
