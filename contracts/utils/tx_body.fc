@@ -29,12 +29,7 @@
             tx_body_len += value_encoded.at(j).slice_bits() >> 3;
             j += 1;
         }
-<<<<<<< HEAD
-
-        tx_body_len +=  encode_any_len + 2 + 1; ;; FIXME: 2: is prefix and encode_len, 1 is missing len must to find
-=======
        
->>>>>>> ad3db0f (fix length of tx body)
         i += 1;
     }
     
