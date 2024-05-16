@@ -2,6 +2,16 @@
 #include "tx_body.fc";
 #include "varint.fc";
 
+;; if (message.body !== undefined) {
+;;   TxBody.encode(message.body, writer.uint32(10).fork()).ldelim();
+;; }
+;; if (message.authInfo !== undefined) {
+;;   AuthInfo.encode(message.authInfo, writer.uint32(18).fork()).ldelim();
+;; }
+;; for (const v of message.signatures) {
+;;   writer.uint32(26).bytes(v!);
+;; }
+;; return writer;
 tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
     tuple return_tuple = empty_tuple();
     ;; auth_info extract
@@ -33,7 +43,10 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
         i += 1;
     }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> ad3db0f (fix length of tx body)
     ;; auth_info hanle
     tuple auth_info_tuple = auth_info::encode(sign_infos, fees, tip);
     int auth_info_len = auth_info::encode_length(sign_infos, fees, tip);
@@ -44,6 +57,10 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
                                 .end_cell().begin_parse();
 
     return_tuple~tpush(auth_info_prefix_len);
+<<<<<<< HEAD
+=======
+    ~dump(auth_info_prefix_len);
+>>>>>>> ad3db0f (fix length of tx body)
 
     int auth_info_len = auth_info_tuple.tlen();
     int i = 0;
@@ -53,7 +70,6 @@ tuple tx_raw::encode(tuple auth_info, tuple tx_body, tuple signatures){
         i += 1;
     }
 
-    
     ;; signatures handle
     int i = 0;
     int signatures_len = signatures.tlen();

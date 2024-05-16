@@ -20,15 +20,21 @@
                                 .store_slice(encode_type_url)
                                 .end_cell().begin_parse();
         return_tuple~tpush(pre_encoded);
+        tx_body_len += pre_encoded.slice_bits() >> 3;
         int j = 0;
         int value_encoded_len = value_encoded.tlen();
         ;; flat all value to return_tuple
         while(j < value_encoded_len){
             return_tuple~tpush(value_encoded.at(j));
+            tx_body_len += value_encoded.at(j).slice_bits() >> 3;
             j += 1;
         }
+<<<<<<< HEAD
 
         tx_body_len +=  encode_any_len + 2 + 1; ;; FIXME: 2: is prefix and encode_len, 1 is missing len must to find
+=======
+       
+>>>>>>> ad3db0f (fix length of tx body)
         i += 1;
     }
     
@@ -70,14 +76,15 @@
         (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
         slice pre_encoded = ext_opt_builder.store_slice(uvarint::encode(encode_any_len)).store_slice(encode_type_url).end_cell().begin_parse();
         return_tuple~tpush(pre_encoded);
+        tx_body_len += pre_encoded.slice_bits() >> 3;
         int j = 0;
         int value_encoded_len = value_encoded.tlen();
         ;; append all value to return_tuple
         while(j < value_encoded_len){
             return_tuple~tpush(value_encoded.at(j));
+            tx_body_len += value_encoded.at(j).slice_bits() >> 3;
             j += 1;
         }
-        tx_body_len +=  encode_any_len + 2;
         i += 1;
     }
 
@@ -93,14 +100,15 @@
         (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
         slice pre_encoded = non_critical_ext_opts_builder.store_slice(uvarint::encode(encode_any_len)).store_slice(encode_type_url).end_cell().begin_parse();
         return_tuple~tpush(pre_encoded);
+        tx_body_len += pre_encoded.slice_bits() >> 3;
         int j = 0;
         int value_encoded_len = value_encoded.tlen();
         ;; append all value to return_tuple
         while(j < value_encoded_len){
             return_tuple~tpush(value_encoded.at(j));
+            tx_body_len += value_encoded.at(j).slice_bits() >> 3;
             j += 1;
         }
-        tx_body_len +=  encode_any_len + 2;
         i += 1;
     }
 
