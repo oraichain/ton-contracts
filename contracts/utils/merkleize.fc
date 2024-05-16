@@ -21,22 +21,17 @@ int hash_from_tree_slice(tuple chunks)  {
         ;; empty is 0 in bigint
         return 0; 
     }
-    if(length == 1) {
-        slice leaf = chunks.first();                     
-        return begin_cell().store_uint(prefix::leaf, 8).store_slice(leaf).end_cell().begin_parse().string_hash();            
+    if(length == 1) {          
+        return begin_cell().store_uint(prefix::leaf, 8)
+            .store_slice(chunks.first())
+            .end_cell()
+            .begin_parse()
+            .string_hash();            
     }
    
-    int k = get_split_point(length);    
-
-    tuple right_chunks = empty_tuple();
-    repeat (length - k) {        
-        right_chunks~tpush(chunks~tpop());                       
-    }
-    right_chunks = right_chunks.reverse_list();
-
-    int left = hash_from_tree_slice(chunks);     
-    int right = hash_from_tree_slice(right_chunks);        
-    
+    int k = get_split_point(length);      
+    int left = hash_from_tree_slice(chunks.slice_list(0, k));     
+    int right = hash_from_tree_slice(chunks.slice_list(k, length));            
     
     return inner_hash(left, right);            
 }

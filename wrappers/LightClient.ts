@@ -16,7 +16,7 @@ import crypto from 'crypto';
 import { crc32 } from '../crc32';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 
-import { Fee, Tip, TxBody, ModeInfo_Single } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import { Fee, Tip, TxBody, ModeInfo_Single, SignerInfo, AuthInfo } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 
 const MAX_BYTES_CELL = 1023 / 8 - 1;
 
@@ -70,6 +70,13 @@ export const getTimeSlice = (timestampz: string): Cell => {
     return cell.endCell();
 };
 
+export const getInt64Slice = (modeInfo: ModeInfo_Single) => {
+    const { lo, hi } = int64FromString(modeInfo.mode.toString());
+    let buff = [] as number[];
+    writeVarint64({ lo, hi }, buff, 0);
+    return beginCell().storeBuffer(Buffer.from(buff)).endCell();
+};
+
 export type BlockId = {
     hash: string;
     parts: {
@@ -106,11 +113,101 @@ export const getCanonicalVoteSlice = (vote: CanonicalVote): Cell => {
         .endCell();
 };
 
+export const getSignInfoTuple = (mode: SignerInfo): Tuple => {
+    const typeUrl =
+        mode.publicKey === undefined
+            ? beginCell().endCell()
+            : beginCell().storeBuffer(Buffer.from(mode.publicKey!.typeUrl)).endCell();
+    const value = buildCellTuple(mode.publicKey?.value || new Uint8Array([]));
+    const modeInfo = mode.modeInfo?.single ? getInt64Slice(mode.modeInfo?.single) : beginCell().endCell();
+    const { lo, hi } = int64FromString(mode.sequence.toString());
+    let buff = [] as number[];
+    writeVarint64({ lo, hi }, buff, 0);
+    const sequence = beginCell().storeBuffer(Buffer.from(buff)).endCell();
+
+    return {
+        type: 'tuple',
+        items: [
+            {
+                type: 'slice',
+                cell: typeUrl,
+            },
+            {
+                type: 'tuple',
+                items: value,
+            },
+            {
+                type: 'slice',
+                cell: modeInfo,
+            },
+            {
+                type: 'slice',
+                cell: sequence,
+            },
+        ],
+    };
+};
+
+export const getFeeTuple = (fee: Fee): Tuple => {
+    const { lo, hi } = int64FromString(fee.gasLimit.toString());
+    let buff = [] as number[];
+    writeVarint64({ lo, hi }, buff, 0);
+    const amounts = fee.amount.map((item) => {
+        return {
+            type: 'slice',
+            cell: beginCell()
+                .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+                .endCell(),
+        } as TupleItemSlice;
+    });
+    return {
+        type: 'tuple',
+        items: [
+            { type: 'tuple', items: amounts },
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(Buffer.from(buff)).endCell(),
+            },
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(Buffer.from(fee.payer)).endCell(),
+            } as TupleItemSlice,
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(Buffer.from(fee.granter)).endCell(),
+            } as TupleItemSlice,
+        ],
+    };
+};
+
+export const getTipTuple = (tip: Tip): Tuple => {
+    const amounts = tip.amount.map((item) => {
+        return {
+            type: 'slice',
+            cell: beginCell()
+                .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+                .endCell(),
+        } as TupleItemSlice;
+    });
+    return {
+        type: 'tuple',
+        items: [
+            { type: 'tuple', items: amounts },
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(Buffer.from(tip.tipper)).endCell(),
+            } as TupleItemSlice,
+        ],
+    };
+};
+
 export const buildCellTuple = (value: string | Uint8Array) => {
     const tupleCell: TupleItem[] = [];
     let longBuf = Buffer.from(value);
-    if(typeof value === 'string'){
-         longBuf = Buffer.from(value, 'base64');
+    if (typeof value === 'string') {
+        longBuf = Buffer.from(value, 'base64');
     }
 
     for (let i = 0; i < longBuf.length; i += 127) {
@@ -138,46 +235,46 @@ export const buildSliceTupleFromUint8Array = (value: Uint8Array) => {
     return tupleCell;
 };
 
-export const anyToTuple = (value: Any):Tuple=>{
+export const anyToTuple = (value: Any): Tuple => {
     const tupleAny: TupleItem[] = [];
 
     const typeUrlSlice: TupleItemSlice = {
         type: 'slice',
-        cell: beginCell().storeBuffer(Buffer.from(value.typeUrl)).endCell()
-    }
-    
+        cell: beginCell().storeBuffer(Buffer.from(value.typeUrl)).endCell(),
+    };
+
     tupleAny.push(typeUrlSlice);
-    tupleAny.push({type:'tuple', items: buildCellTuple(value.value)});
+    tupleAny.push({ type: 'tuple', items: buildCellTuple(value.value) });
 
     return {
         type: 'tuple',
-        items: tupleAny
-    }
-}
+        items: tupleAny,
+    };
+};
 
-export const txBodyToTuple = (txBody: TxBody)=>{
+export const txBodyToTuple = (txBody: TxBody) => {
     const txBodyTuple: TupleItem[] = [];
     const messagesTuple = txBody.messages.map(anyToTuple);
     let memo_timeout_height_builder = beginCell();
 
-    if(txBody.memo){
-        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBody.memo)).endCell())
+    if (txBody.memo) {
+        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBody.memo)).endCell());
     }
 
-    if(txBody.timeoutHeight > 0n){
+    if (txBody.timeoutHeight > 0n) {
         memo_timeout_height_builder.storeUint(txBody.timeoutHeight, 64);
     }
 
     const ext_opts_tuple = txBody.extensionOptions.map(anyToTuple) as any;
     const non_critical_ext_opts_tuple = txBody.nonCriticalExtensionOptions.map(anyToTuple) as any;
 
-    txBodyTuple.push({type:'tuple', items: messagesTuple});
-    txBodyTuple.push({type:'slice', cell: memo_timeout_height_builder.endCell()});
-    txBodyTuple.push({type:'tuple', items: ext_opts_tuple});
-    txBodyTuple.push({type:'tuple', items: non_critical_ext_opts_tuple});
-    
+    txBodyTuple.push({ type: 'tuple', items: messagesTuple });
+    txBodyTuple.push({ type: 'slice', cell: memo_timeout_height_builder.endCell() });
+    txBodyTuple.push({ type: 'tuple', items: ext_opts_tuple });
+    txBodyTuple.push({ type: 'tuple', items: non_critical_ext_opts_tuple });
+
     return txBodyTuple;
-}
+};
 
 export type PubKey = {
     type?: string;
@@ -696,80 +793,19 @@ export class LightClient implements Contract {
 
     // fee
     async getFeeEncode(provider: ContractProvider, fee: Fee) {
-        const { lo, hi } = int64FromString(fee.gasLimit.toString());
-        let buff = [] as number[];
-        writeVarint64({ lo, hi }, buff, 0);
-        console.log(lo === 0, hi === 0);
-        const amounts = fee.amount.map((item) => {
-            return {
-                type: 'slice',
-                cell: beginCell()
-                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
-                    .endCell(),
-            } as TupleItemSlice;
-        });
-        const result = await provider.get('fee_encode', [
-            {
-                type: 'tuple',
-                items: [
-                    { type: 'tuple', items: amounts },
-                    {
-                        type: 'slice',
-                        cell: beginCell().storeBuffer(Buffer.from(buff)).endCell(),
-                    },
-                    {
-                        type: 'slice',
-                        cell: beginCell().storeBuffer(Buffer.from(fee.payer)).endCell(),
-                    } as TupleItemSlice,
-                    {
-                        type: 'slice',
-                        cell: beginCell().storeBuffer(Buffer.from(fee.granter)).endCell(),
-                    } as TupleItemSlice,
-                ],
-            },
-        ]);
+        const tuple = getFeeTuple(fee);
+        const result = await provider.get('fee_encode', [tuple]);
         return result.stack.readBuffer();
     }
 
     async getFeeEncodeLength(provider: ContractProvider, fee: Fee) {
-        const { lo, hi } = int64FromString(fee.gasLimit.toString());
-        let buff = [] as number[];
-        writeVarint64({ lo, hi }, buff, 0);
-        const amounts = fee.amount.map((item) => {
-            return {
-                type: 'slice',
-                cell: beginCell()
-                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
-                    .endCell(),
-            } as TupleItemSlice;
-        });
-        const result = await provider.get('fee_encode_length', [
-            {
-                type: 'tuple',
-                items: [
-                    { type: 'tuple', items: amounts },
-                    {
-                        type: 'slice',
-                        cell: beginCell().storeBuffer(Buffer.from(buff)).endCell(),
-                    },
-                    {
-                        type: 'slice',
-                        cell: beginCell().storeBuffer(Buffer.from(fee.payer)).endCell(),
-                    } as TupleItemSlice,
-                    {
-                        type: 'slice',
-                        cell: beginCell().storeBuffer(Buffer.from(fee.granter)).endCell(),
-                    } as TupleItemSlice,
-                ],
-            },
-        ]);
+        const tuple = getFeeTuple(fee);
+        const result = await provider.get('fee_encode_length', [tuple]);
         return result.stack.readNumber();
     }
 
     // TxBody
-    async getTxBody(provider: ContractProvider, txBody: TxBody){
+    async getTxBody(provider: ContractProvider, txBody: TxBody) {
         const input = txBodyToTuple(txBody);
 
         const result = await provider.get('tx_body_encode', input);
@@ -779,52 +815,14 @@ export class LightClient implements Contract {
 
     // tip
     async getTipEncode(provider: ContractProvider, tip: Tip) {
-        const amounts = tip.amount.map((item) => {
-            return {
-                type: 'slice',
-                cell: beginCell()
-                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
-                    .endCell(),
-            } as TupleItemSlice;
-        });
-        const result = await provider.get('tip_encode', [
-            {
-                type: 'tuple',
-                items: [
-                    { type: 'tuple', items: amounts },
-                    {
-                        type: 'slice',
-                        cell: beginCell().storeBuffer(Buffer.from(tip.tipper)).endCell(),
-                    } as TupleItemSlice,
-                ],
-            },
-        ]);
+        const tuple = getTipTuple(tip);
+        const result = await provider.get('tip_encode', [tuple]);
         return result.stack.readBuffer();
     }
 
     async getTipEncodeLength(provider: ContractProvider, tip: Tip) {
-        const amounts = tip.amount.map((item) => {
-            return {
-                type: 'slice',
-                cell: beginCell()
-                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
-                    .endCell(),
-            } as TupleItemSlice;
-        });
-        const result = await provider.get('tip_encode_length', [
-            {
-                type: 'tuple',
-                items: [
-                    { type: 'tuple', items: amounts },
-                    {
-                        type: 'slice',
-                        cell: beginCell().storeBuffer(Buffer.from(tip.tipper)).endCell(),
-                    } as TupleItemSlice,
-                ],
-            },
-        ]);
+        const tuple = getTipTuple(tip);
+        const result = await provider.get('tip_encode_length', [tuple]);
         return result.stack.readNumber();
     }
 
@@ -844,17 +842,52 @@ export class LightClient implements Contract {
     }
 
     async getModeInfoEncodeLength(provider: ContractProvider, modeInfo: ModeInfo_Single) {
-        const { lo, hi } = int64FromString(modeInfo.mode.toString());
-        let buff = [] as number[];
-        writeVarint64({ lo, hi }, buff, 0);
         const result = await provider.get('mode_info_encode_length', [
             {
                 type: 'slice',
-                cell:
-                    modeInfo.mode === 0 ? beginCell().endCell() : beginCell().storeBuffer(Buffer.from(buff)).endCell(),
+                cell: modeInfo.mode === 0 ? beginCell().endCell() : getInt64Slice(modeInfo),
             },
         ]);
         return result.stack.readNumber();
     }
 
+    async getSignerInfoEncode(provider: ContractProvider, mode: SignerInfo) {
+        const tuple = getSignInfoTuple(mode);
+        const result = await provider.get('signer_info_encode', [tuple]);
+        return result.stack.readTuple();
+    }
+
+    async getSignerInfoEncodeLength(provider: ContractProvider, mode: SignerInfo) {
+        const tuple = getSignInfoTuple(mode);
+        const result = await provider.get('signer_info_encode_length', [tuple]);
+        return result.stack.readNumber();
+    }
+
+    async getAuthInfoEncode(provider: ContractProvider, data: AuthInfo) {
+        const signInfos = data.signerInfos.map((item) => getSignInfoTuple(item));
+        let feeTuple = {
+            type: 'tuple',
+            items: [],
+        } as Tuple;
+        if (data.fee) {
+            feeTuple = getFeeTuple(data.fee);
+        }
+        let tipTuple = {
+            type: 'tuple',
+            items: [],
+        } as Tuple;
+        if (data.tip) {
+            tipTuple = getTipTuple(data.tip);
+        }
+
+        const result = await provider.get('auth_info_encode', [
+            {
+                type: 'tuple',
+                items: signInfos,
+            },
+            feeTuple,
+            tipTuple,
+        ]);
+        return result.stack.readTuple();
+    }
 }

@@ -50,10 +50,18 @@ int leaf_hash(int leaf) inline {
 tuple reverse_list(tuple list) {    
     tuple new_list = empty_tuple();
 
-    while (list.tlen() > 0) {
+    repeat (list.tlen()) {
         new_list~tpush(list~tpop());
     }
 
     return new_list;
 }
 
+tuple slice_list(tuple list, int start, int end) {
+    tuple sub_list = empty_tuple();
+    while (start < end) {        
+        sub_list~tpush(list.at(start));      
+        start += 1;                 
+    }
+    return sub_list;
+}

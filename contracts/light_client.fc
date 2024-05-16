@@ -16,10 +16,12 @@
 #include "utils/fee.fc";
 #include "utils/any_google.fc";
 #include "utils/tx_body.fc";
-
 #include "utils/tip.fc";
 #include "utils/compact_bit_array.fc";
 #include "utils/mode_info.fc";
+#include "utils/signer_info.fc";
+#include "utils/auth_info.fc";
+
 
 const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
 
@@ -296,4 +298,18 @@ slice mode_info_encode(slice ds) method_id {
 
 int mode_info_encode_length(slice ds) method_id {
     return mode_info::encode_length(ds);
+}
+
+;; SignerInfo
+tuple signer_info_encode(tuple ds) method_id {
+    return signer_info::encode(ds);
+}
+
+int signer_info_encode_length(tuple ds) method_id {
+    return signer_info::encode_length(ds);
+}
+
+;; AuthInfo
+tuple auth_info_encode(tuple sign_infos, tuple fee, tuple tip) method_id {
+    return auth_info::encode(sign_infos, fee, tip);
 }
