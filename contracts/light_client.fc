@@ -312,3 +312,7 @@ int signer_info_encode_length(tuple ds) method_id {
 tuple auth_info_encode(tuple sign_infos, tuple fee, tuple tip) method_id {
     return auth_info::encode(sign_infos, fee, tip);
 }
+
+int auth_info_encode_length(tuple sign_infos, tuple fee, tuple tip) method_id {
+    return auth_info::encode_length(sign_infos, fee, tip);
+}

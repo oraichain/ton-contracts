@@ -890,4 +890,32 @@ export class LightClient implements Contract {
         ]);
         return result.stack.readTuple();
     }
+
+    async getAuthInfoEncodeLength(provider: ContractProvider, data: AuthInfo) {
+        const signInfos = data.signerInfos.map((item) => getSignInfoTuple(item));
+        let feeTuple = {
+            type: 'tuple',
+            items: [],
+        } as Tuple;
+        if (data.fee) {
+            feeTuple = getFeeTuple(data.fee);
+        }
+        let tipTuple = {
+            type: 'tuple',
+            items: [],
+        } as Tuple;
+        if (data.tip) {
+            tipTuple = getTipTuple(data.tip);
+        }
+
+        const result = await provider.get('auth_info_encode_length', [
+            {
+                type: 'tuple',
+                items: signInfos,
+            },
+            feeTuple,
+            tipTuple,
+        ]);
+        return result.stack.readNumber();
+    }
 }
