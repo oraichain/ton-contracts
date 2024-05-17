@@ -337,7 +337,8 @@ export const getMerkleProofs = (leaves: Buffer[], leafData: Buffer) => {
     const branch: TupleItem[] = [];
     while (node.parent) {
         const isRight = node.parent.right!.value!.equals(node.value!);
-        positions = positions.storeBit(isRight);
+        // left is 1, right is 0
+        positions = positions.storeBit(isRight ? 1 : 0);
         branch.push({
             type: 'slice',
             cell: beginCell()
