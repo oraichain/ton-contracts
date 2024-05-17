@@ -330,7 +330,7 @@ export const getMerkleTree = (items: Buffer[], lookUp: { [key: string]: MerkleTr
 };
 
 export const getMerkleProofs = (leaves: Buffer[], leafData: Buffer) => {
-    const { lookUp } = getMerkleTree(leaves);
+    const { root, lookUp } = getMerkleTree(leaves);
     const leaf = leafHash(leafData);
     let node = lookUp[Buffer.from(leaf).toString('hex')];
     let positions = beginCell();
@@ -341,13 +341,13 @@ export const getMerkleProofs = (leaves: Buffer[], leafData: Buffer) => {
         branch.push({
             type: 'slice',
             cell: beginCell()
-                .storeBuffer(isRight ? node.parent.right!.value! : node.value!)
+                .storeBuffer(isRight ? node.parent.left!.value! : node.parent.right!.value!)
                 .endCell(),
         });
         node = node.parent;
     }
 
-    return { branch, positions: positions.endCell() };
+    return { root, branch, positions: positions.endCell() };
 };
 
 export const txBodyWasmToTuple = (txBodyWasm: TxBodyWasm) => {
@@ -603,9 +603,6 @@ export class LightClient implements Contract {
     async getHashFromTreeProof(provider: ContractProvider, leaves: Buffer[], leafData: Buffer) {
         const { branch, positions } = getMerkleProofs(leaves, leafData);
         const leaf = BigInt('0x' + leafHash(leafData).toString('hex'));
-
-        console.log(branch, positions, leaf);
-
         const result = await provider.get('get_tree_root_from_proof', [
             {
                 type: 'int',

@@ -26,9 +26,7 @@ int hash_from_tree_proof(int leaf, tuple branch, slice positions) {
     int root_hash = leaf;        
     while(ind < branch.tlen()){        
         int position = positions~load_uint(1);        
-        (_,int item) = branch.at(ind).load_uint(256);        
-        ~dump(item);
-        ~dump(position);
+        (_,int item) = branch.at(ind).load_uint(256);                
         ;; 0: right, 1: left
         if(position == 0) { 
             root_hash = inner_hash(root_hash, item);
