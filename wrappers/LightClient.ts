@@ -57,21 +57,20 @@ export type CanonicalVote = {
 
 export type TxBodyWasm = {
     messages: {
-        typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+        typeUrl: '/cosmwasm.wasm.v1.MsgExecuteContract';
         value: MsgExecuteContract;
-    }[], 
+    }[];
     memo: string;
     timeoutHeight: number;
     extensionOptions: Any[];
     nonCriticalExtensionOptions: Any[];
-}
+};
 
 export type TxWasm = {
     body: TxBodyWasm;
     authInfo: AuthInfo;
     signatures: string[];
-}   
-
+};
 
 export const Opcodes = {
     increase: crc32('op::increase'), //0x7e8764ef,
@@ -87,7 +86,6 @@ export const getTimeComponent = (timestampz: string) => {
     let nanoseconds = Number(nanosStr.padEnd(9, '0'));
     return { seconds, nanoseconds };
 };
-
 
 export const getVersionSlice = (version: Version): Cell => {
     let cell = beginCell();
@@ -114,8 +112,6 @@ export const getInt64Slice = (modeInfo: ModeInfo_Single) => {
     writeVarint64({ lo, hi }, buff, 0);
     return beginCell().storeBuffer(Buffer.from(buff)).endCell();
 };
-
-
 
 export const getBlockSlice = (blockId: BlockId): Cell => {
     return beginCell()
@@ -277,21 +273,20 @@ export const anyToTuple = (value: Any): Tuple => {
 
 export const txBodyWasmToTuple = (txBodyWasm: TxBodyWasm) => {
     const txBodyTuple: TupleItem[] = [];
-    const messagesTuple: TupleItem[] = txBodyWasm.messages.map((msg)=>{
+    const messagesTuple: TupleItem[] = txBodyWasm.messages.map((msg) => {
         return {
             type: 'tuple',
-            items: [{
-                type: 'slice',
-                cell: beginCell()
-                    .storeBuffer(Buffer.from(msg.typeUrl))
-                    .endCell(),
-            },
-            {
-                type: 'tuple',
-                items: msgExecuteContractToTuple(msg.value)
-            }
-            ]
-        }
+            items: [
+                {
+                    type: 'slice',
+                    cell: beginCell().storeBuffer(Buffer.from(msg.typeUrl)).endCell(),
+                },
+                {
+                    type: 'tuple',
+                    items: msgExecuteContractToTuple(msg.value),
+                },
+            ],
+        };
     });
     let memo_timeout_height_builder = beginCell();
 
@@ -338,33 +333,31 @@ export const txBodyToTuple = (txBodyWasm: TxBody) => {
     return txBodyTuple;
 };
 
-
 export const msgExecuteContractToTuple = (msg: MsgExecuteContract) => {
     const msgExecuteContractTuple: TupleItem[] = [];
-   
 
     const sender_contract = beginCell()
-                    .storeRef(beginCell().storeBuffer(Buffer.from(msg.sender)).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from(msg.contract)).endCell())
-                    .endCell();
+        .storeRef(beginCell().storeBuffer(Buffer.from(msg.sender)).endCell())
+        .storeRef(beginCell().storeBuffer(Buffer.from(msg.contract)).endCell())
+        .endCell();
 
     const msgToTuple = buildCellTuple(msg.msg);
 
-    const fundsToTuple: TupleItem[]= msg.funds.map((item) => {  
+    const fundsToTuple: TupleItem[] = msg.funds.map((item) => {
         return {
-                type: 'slice',
-                cell: beginCell()
-                    .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
-                    .endCell(),
-            };
+            type: 'slice',
+            cell: beginCell()
+                .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+                .endCell(),
+        };
     });
 
     msgExecuteContractTuple.push({ type: 'slice', cell: sender_contract });
     msgExecuteContractTuple.push({ type: 'tuple', items: msgToTuple });
     msgExecuteContractTuple.push({ type: 'tuple', items: fundsToTuple });
     return msgExecuteContractTuple;
-}
+};
 
 export type PubKey = {
     type?: string;
@@ -513,17 +506,18 @@ export class LightClient implements Contract {
     }
 
     async getHashTreeRoot(provider: ContractProvider, txs: string[]) {
-        let builder = beginCell();
-
-        for (const tx of txs) {
-            builder = builder.storeBuffer(crypto.createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
-        }
+        const items: TupleItem[] = txs.map((tx) => ({
+            type: 'slice',
+            cell: beginCell()
+                .storeBuffer(crypto.createHash('sha256').update(Buffer.from(tx, 'base64')).digest())
+                .endCell(),
+        }));
 
         const result = await provider.get('get_tree_root', [
             {
-                type: 'slice',
-                cell: builder.endCell(),
-            } as TupleItemSlice,
+                type: 'tuple',
+                items,
+            },
         ]);
 
         return result.stack.readBigNumber();
@@ -545,7 +539,7 @@ export class LightClient implements Contract {
             {
                 type: 'tuple',
                 items,
-            } as Tuple,
+            },
         ]);
 
         return result.stack.readBigNumber();
@@ -897,7 +891,7 @@ export class LightClient implements Contract {
     // TxBody
     async getTxBody(provider: ContractProvider, txBody: TxBody) {
         const input = txBodyToTuple(txBody);
-        console.log({input});
+        console.log({ input });
         const result = await provider.get('tx_body_encode', input);
 
         return result.stack.readTuple();
@@ -1000,7 +994,7 @@ export class LightClient implements Contract {
         ]);
         return result.stack.readNumber();
     }
-     
+
     async getDecodedTxRaw(provider: ContractProvider, tx: TxWasm) {
         const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
 
@@ -1011,10 +1005,10 @@ export class LightClient implements Contract {
                 cell: beginCell().storeBuffer(Buffer.from(item)).endCell(),
             };
         });
- 
+
         const result = await provider.get('tx_raw_encode', [
             {
-                type:'tuple',
+                type: 'tuple',
                 items: [
                     {
                         type: 'tuple',
@@ -1022,7 +1016,7 @@ export class LightClient implements Contract {
                     },
                     feeTuple,
                     tipTuple,
-                ]
+                ],
             },
             {
                 type: 'tuple',
@@ -1038,7 +1032,7 @@ export class LightClient implements Contract {
     }
     async getTxHash(provider: ContractProvider, tx: TxWasm) {
         const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
-        
+
         const txBody = txBodyWasmToTuple(tx.body);
         const signatures: TupleItem[] = tx.signatures.map((item) => {
             return {
@@ -1049,7 +1043,7 @@ export class LightClient implements Contract {
 
         const result = await provider.get('tx_hash', [
             {
-                type:'tuple',
+                type: 'tuple',
                 items: [
                     {
                         type: 'tuple',
@@ -1057,7 +1051,7 @@ export class LightClient implements Contract {
                     },
                     feeTuple,
                     tipTuple,
-                ]
+                ],
             },
             {
                 type: 'tuple',
@@ -1091,4 +1085,3 @@ function getAuthInfoInput(data: AuthInfo) {
     }
     return { signInfos, feeTuple, tipTuple };
 }
-

@@ -1,25 +1,10 @@
 #include "common.fc";
 
-int hash_from_byte_slice(slice items, int length)  {
-    if (length == 0) {    
-        return null().string_hash();
-    }
-    if(length == 1) {
-        int leaf = items~load_uint(256);        
-        return leaf_hash(leaf);
-    }
-   
-    int k = get_split_point(length);
-    int left = hash_from_byte_slice(items, k);
-    int right = hash_from_byte_slice(items.skip_bits(k << 8), length - k);
-    return inner_hash(left, right);     
-}
-
-int hash_from_tree_slice(tuple chunks)  {        
+int hash_from_tree_slice(tuple chunks)  {    
     int length = chunks.tlen();
-    if (length == 0) {    
-        ;; empty is 0 in bigint
-        return 0; 
+    if (length == 0) { 
+        ;; empty is 0 in bigint           
+        return 0;
     }
     if(length == 1) {          
         return begin_cell().store_uint(prefix::leaf, 8)

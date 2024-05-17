@@ -128,10 +128,8 @@ int get_check_signature(slice data, slice signature, int public_key) method_id {
     return check_data_signature(data, signature, public_key);
 }
 
-int get_tree_root(slice leaves) method_id {    
-    ;; divided by 256 => length
-    int length = slice_bits(leaves) >> 8;
-    return hash_from_byte_slice(leaves, length);    
+int get_tree_root(tuple leaves) method_id {        
+    return hash_from_tree_slice(leaves);    
 }
 
 ;; Time 
