@@ -132,6 +132,10 @@ int get_tree_root(tuple leaves) method_id {
     return hash_from_tree_slice(leaves);    
 }
 
+int get_tree_root_from_proof(int leaf, tuple branch, slice positions) method_id {
+    return hash_from_tree_proof(leaf, branch, positions);
+}
+
 ;; Time 
 int time_encode_length(slice time) method_id {
     return time::encode_length(time);
