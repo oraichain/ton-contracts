@@ -603,6 +603,8 @@ export class LightClient implements Contract {
 
     async getHashFromTreeProof(provider: ContractProvider, leaves: Buffer[], leafData: Buffer) {
         const { branch, positions } = getMerkleProofs(leaves, leafData);
+        console.log(branch);
+        console.log(positions);
         const leaf = BigInt('0x' + leafHash(leafData).toString('hex'));
         const result = await provider.get('get_tree_root_from_proof', [
             {
@@ -1094,6 +1096,56 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
+    async getVerifyTx(provider: ContractProvider, tx: TxWasm, leaves: Buffer[], leafData: Buffer) {
+        const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
+        const txBody = txBodyWasmToTuple(tx.body);
+        const signatures: TupleItem[] = tx.signatures.map((item) => {
+            return {
+                type: 'slice',
+                cell: beginCell().storeBuffer(Buffer.from(item)).endCell(),
+            };
+        });
+        const { branch: proofs, positions } = getMerkleProofs(leaves, leafData);
+
+        const result = await provider.get('verify_tx', [
+            {
+                type: 'tuple',
+                items: proofs,
+            },
+            {
+                type: 'slice',
+                cell: positions,
+            },
+            {
+                type: 'slice',
+                cell: beginCell()
+                    .storeUint(BigInt('0x' + '9e70c46eda6841ed6ede4ae280d2cd2683dc103b9568f63f06f04e9d7e0617f0'), 256)
+                    .endCell(),
+            },
+            {
+                type: 'tuple',
+                items: [
+                    {
+                        type: 'tuple',
+                        items: signInfos,
+                    },
+                    feeTuple,
+                    tipTuple,
+                ],
+            },
+            {
+                type: 'tuple',
+                items: txBody,
+            },
+            {
+                type: 'tuple',
+                items: signatures,
+            },
+        ]);
+
+        return result.stack.readNumber();
+    }
+
     async getDecodedTxRaw(provider: ContractProvider, tx: TxWasm) {
         const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
 
@@ -1129,6 +1181,7 @@ export class LightClient implements Contract {
 
         return result.stack.readTuple();
     }
+
     async getTxHash(provider: ContractProvider, tx: TxWasm) {
         const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
 

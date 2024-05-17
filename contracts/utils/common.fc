@@ -1,5 +1,6 @@
 
 #include "../imports/stdlib.fc";
+#include "tx_raw.fc";
 
 const prefix::leaf = 0x00;
 const prefix::inner = 0x01;
@@ -64,4 +65,8 @@ tuple slice_list(tuple list, int start, int end) {
         start += 1;                 
     }
     return sub_list;
+}
+
+int calculate_tx_hash(tuple auth_info, tuple tx_body, tuple signatures) method_id {
+    return digest_hash(tx_raw::encode(auth_info, tx_body, signatures));
 }

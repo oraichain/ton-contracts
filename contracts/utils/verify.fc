@@ -1,5 +1,7 @@
 #include "canonical_vote.fc";
 #include "varbuffer.fc";
+#include "common.fc";
+#include "merkleize.fc";
 
 const VERIFY_ERROR_UNKNOWN_BLOCKID_FLAG = 3001;
 
@@ -107,4 +109,19 @@ int verify::verify_commit_sigs(slice header, tuple commit, tuple validators){
     } 
 
     return -1;
+}
+
+
+int verify::verify_tx(tuple proofs, slice positions, slice data_hash, tuple auth_info, tuple tx_body, tuple signatures) {
+    int tx_hash = begin_cell()
+                    .store_uint(prefix::leaf, 8)
+                    .store_uint(calculate_tx_hash(auth_info, tx_body, signatures), 256)
+                    .end_cell()
+                    .begin_parse()
+                    .string_hash();
+    int calculate_data_hash = hash_from_tree_proof(tx_hash, proofs, positions);
+    if (data_hash~load_uint(256) == calculate_data_hash) {
+        return -1;
+    }
+    return 0;
 }

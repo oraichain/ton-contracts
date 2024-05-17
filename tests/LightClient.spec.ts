@@ -205,7 +205,12 @@ describe('LightClient', () => {
         const rootTxsHash = await lightClient.getHashTreeRoot(leaves);
         expect(rootTxsHash.toString(16)).toEqual('9e70c46eda6841ed6ede4ae280d2cd2683dc103b9568f63f06f04e9d7e0617f0');
 
-        const leaf = leaves[1];
+        const leaf = leaves[2];
+        console.log(-403);
+        // Index 2: 109194490616835366111442816893022241772623000439979823112375513906219864259946
+        console.log(BigInt('0x' + leaf.toString('hex'))); // 2: 45212984902250126498486075479582884985369686401037514194056844679336645822082n
+        // Index 2:  53748123942928445796153625209665602923363100986949452406157600748643368908519
+        console.log(BigInt('0x' + leafHash(leaf).toString('hex'))); // 2: 67617629344630198485329716378486052286880133911024727032624263529111772997478n
         const root = await lightClient.getHashFromTreeProof(leaves, leaf);
         expect(root.toString(16)).toEqual('9e70c46eda6841ed6ede4ae280d2cd2683dc103b9568f63f06f04e9d7e0617f0');
     });
@@ -216,3 +221,5 @@ describe('LightClient', () => {
         console.log(createHash('sha256').update(tx).digest('hex'), ret.toString(16));
     });
 });
+
+// 67617629344630198485329716378486052286880133911024727032624263529111772997478n

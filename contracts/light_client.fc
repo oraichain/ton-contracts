@@ -335,3 +335,7 @@ tuple tx_raw_encode(tuple auth_info, tuple tx_body, tuple signatures) method_id 
 int tx_hash(tuple auth_info, tuple tx_body, tuple signatures) method_id {
     return digest_hash(tx_raw::encode(auth_info, tx_body, signatures));
 }
+
+int verify_tx(tuple proofs, slice positions, slice data_hash, tuple auth_info, tuple tx_body, tuple signatures) method_id {
+    return verify::verify_tx(proofs, positions, data_hash, auth_info, tx_body, signatures);
+}
