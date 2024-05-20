@@ -1,12 +1,19 @@
-import { Registry, decodeTxRaw } from '@cosmjs/proto-signing';
-import { defaultRegistryTypes } from '@cosmjs/stargate';
-import { compile } from '@ton/blueprint';
-import { Cell, toNano } from '@ton/core';
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import '@ton/test-utils';
-import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
-import { createHash } from 'crypto';
+import { Cell, toNano } from '@ton/core';
 import { LightClient } from '../wrappers/LightClient';
+import '@ton/test-utils';
+import { compile } from '@ton/blueprint';
+import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
+import { Tx } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import { defaultRegistryTypes } from '@cosmjs/stargate';
+import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
+import { writeFileSync } from 'fs';
+import { resolve } from 'path';
+import { createHash } from 'crypto';
+
+BigInt.prototype.toJSON = function () {
+    return this.toString();
+};
 
 describe('Verify Tx', () => {
     let code: Cell;
@@ -53,7 +60,7 @@ describe('Verify Tx', () => {
         ];
         const leaves = txs.map((tx) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
 
-        const choosenIndex = 2;
+        const choosenIndex = 1;
         const decodedTx = decodeTxRaw(Buffer.from(txs[choosenIndex], 'base64'));
         const registry = new Registry(defaultRegistryTypes);
         registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
