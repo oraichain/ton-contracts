@@ -1,145 +1,137 @@
-#include "varint.fc";
-#include "any_google.fc";
-#include "helper.fc";
+;; #include "varint.fc";
+;; #include "any_google.fc";
+;; #include "helper.fc";
 
-;; return encode_len and tuple
-(int, tuple) tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_opts, tuple non_critical_ext_opts){
-    tuple return_tuple = empty_tuple();
-    int tx_body_len = 0;
-    int messages_len = messages.tlen();
-    int i = 0;
-    while(i < messages_len){
-        builder message_builder = begin_cell();
-        tuple message = messages.at(i);
-        slice type_url = message.at(0);
-        tuple value = message.at(1);
-        message_builder = message_builder.store_slice(uvarint::encode(10));
-        (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
-        slice pre_encoded = message_builder
-                                .store_slice(uvarint::encode(any_len))
-                                .end_cell().begin_parse();
+;; ;; return encode_len and tuple
+;; (int, tuple) tx_body::encode(slice tx_body){
+;;     slice messages = tx_body~load_ref();
+;;     slice memo_and_timeout_height = tx_body~load_ref();
+;;     slice ext_opts = tx_body~load_ref();
+;;     slice non_critical_ext_opts = tx_body~load_ref();
 
-        tx_body_len += pre_encoded.slice_bits() >> 3;
+;;     tuple return_tuple = empty_tuple();
+;;     int tx_body_len = 0;
+;;     message = messages;
 
-        return_tuple~tpush(pre_encoded);
-        return_tuple~tpush(encode_type_url);
+;;     while(messages.slice_refs_empty?() == 0){
+;;         builder message_builder = begin_cell();
+;;         message_builder = message_builder.store_slice(uvarint::encode(10));
 
-        int j = 0;
-        int value_encoded_len = value_encoded.tlen();
-        ;; flat all value to return_tuple
-        while(j < value_encoded_len){
-            return_tuple~tpush(value_encoded.at(j));
-            ;; tx_body_len += value_encoded.at(j).slice_bits() >> 3;
-            j += 1;
-        }
+;;         (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
 
-        tx_body_len += any_len;
-        i += 1;
-    }
-    
-    builder memo_and_timeout_height_builder = begin_cell();
+;;         slice pre_encoded = message_builder
+;;                                 .store_slice(uvarint::encode(any_len))
+;;                                 .end_cell().begin_parse();
 
-    if(memo_and_timeout_height.slice_empty?() != -1){
-        slice memo = memo_and_timeout_height~load_ref().begin_parse();
-        int timeout_height = memo_and_timeout_height~load_uint(8 * 64); ;;64 bytes
-       
-        if(memo.slice_empty?() != -1){
-            memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(18)).store_slice(memo);
-           
-        }
+;;         tx_body_len += pre_encoded.slice_bits() >> 3;
 
-        if(memo.slice_empty?() != -1){
-            memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(24));
-            memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint_64::encode(timeout_height));
-        }
+;;         return_tuple~tpush(pre_encoded);
+;;         return_tuple~tpush(encode_type_url);
 
-    }
-
-    slice memo_and_timeout_height_slice = memo_and_timeout_height_builder.end_cell().begin_parse();
-
-    if(memo_and_timeout_height_slice.slice_empty?() != -1){
-        return_tuple~tpush(memo_and_timeout_height_slice);
-        tx_body_len += slice_bits(memo_and_timeout_height_slice) >> 3;
-    }
-    
-    int ext_opts_len = ext_opts.tlen();
-
-    int i = 0;
-
-    while(i < ext_opts_len){
-        builder ext_opt_builder = begin_cell();
-        tuple ext_opt = ext_opts.at(i);
-        slice type_url = ext_opt.at(0);
-        tuple value = ext_opt.at(1);
-        ext_opt_builder = ext_opt_builder.store_slice(uvarint::encode(8186));
-        (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
-        slice pre_encoded = ext_opt_builder
-                                .store_slice(uvarint::encode(any_len))
-                                .end_cell()
-                                .begin_parse();
-
-        tx_body_len += pre_encoded.slice_bits() >> 3;
+;;         int j = 0;
+;;         int value_encoded_len = value_encoded.tlen();
         
-        return_tuple~tpush(pre_encoded);
-        return_tuple~tpush(encode_type_url);
+;;         ;; flat all value to return_tuple
+;;         while(j < value_encoded_len){
+;;             return_tuple~tpush(value_encoded.at(j));
+;;             j += 1;
+;;         }
 
-        int j = 0;
-        int value_encoded_len = value_encoded.tlen();
-        ;; append all value to return_tuple
-        while(j < value_encoded_len){
-            return_tuple~tpush(value_encoded.at(j));
-            ;; tx_body_len += value_encoded.at(j).slice_bits() >> 3;
-            j += 1;
-        }
-        tx_body_len += any_len;
-        i += 1;
-    }
+;;         tx_body_len += any_len;
+
+;;         message = messages~load_ref();
+;;     }
+    
+;;     builder memo_and_timeout_height_builder = begin_cell();
+
+;;     if(memo_and_timeout_height.slice_empty?() != -1){
+;;         slice memo = memo_and_timeout_height~load_ref().begin_parse();
+;;         int timeout_height = memo_and_timeout_height~load_uint(8 * 64); ;;64 bytes
+       
+;;         if(memo.slice_empty?() != -1){
+;;             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(18)).store_slice(memo);
+           
+;;         }
+
+;;         if(memo.slice_empty?() != -1){
+;;             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(24));
+;;             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint_64::encode(timeout_height));
+;;         }
+
+;;     }
+
+;;     slice memo_and_timeout_height_slice = memo_and_timeout_height_builder.end_cell().begin_parse();
+
+;;     if(memo_and_timeout_height_slice.slice_empty?() != -1){
+;;         return_tuple~tpush(memo_and_timeout_height_slice);
+;;         tx_body_len += slice_bits(memo_and_timeout_height_slice) >> 3;
+;;     }
+    
+;;     int ext_opts_len = ext_opts.tlen();
+
+;;     int i = 0;
+
+;;     while(i < ext_opts_len){
+;;         builder ext_opt_builder = begin_cell();
+;;         tuple ext_opt = ext_opts.at(i);
+;;         slice type_url = ext_opt.at(0);
+;;         tuple value = ext_opt.at(1);
+;;         ext_opt_builder = ext_opt_builder.store_slice(uvarint::encode(8186));
+;;         (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
+;;         slice pre_encoded = ext_opt_builder
+;;                                 .store_slice(uvarint::encode(any_len))
+;;                                 .end_cell()
+;;                                 .begin_parse();
+
+;;         tx_body_len += pre_encoded.slice_bits() >> 3;
+        
+;;         return_tuple~tpush(pre_encoded);
+;;         return_tuple~tpush(encode_type_url);
+
+;;         int j = 0;
+;;         int value_encoded_len = value_encoded.tlen();
+;;         ;; append all value to return_tuple
+;;         while(j < value_encoded_len){
+;;             return_tuple~tpush(value_encoded.at(j));
+;;             ;; tx_body_len += value_encoded.at(j).slice_bits() >> 3;
+;;             j += 1;
+;;         }
+;;         tx_body_len += any_len;
+;;         i += 1;
+;;     }
 
 
-    int non_critical_ext_opts_len = non_critical_ext_opts.tlen();
-    int i = 0;
-    while(i < non_critical_ext_opts_len){
-        builder non_critical_ext_opts_builder = begin_cell();
-        tuple non_critical_ext_opt = non_critical_ext_opts.at(i);
-        slice type_url = non_critical_ext_opt.at(0);
-        tuple value = non_critical_ext_opt.at(1);
-        non_critical_ext_opts_builder = non_critical_ext_opts_builder.store_slice(uvarint::encode(16378));
-        (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
+;;     int non_critical_ext_opts_len = non_critical_ext_opts.tlen();
+;;     int i = 0;
+;;     while(i < non_critical_ext_opts_len){
+;;         builder non_critical_ext_opts_builder = begin_cell();
+;;         tuple non_critical_ext_opt = non_critical_ext_opts.at(i);
+;;         slice type_url = non_critical_ext_opt.at(0);
+;;         tuple value = non_critical_ext_opt.at(1);
+;;         non_critical_ext_opts_builder = non_critical_ext_opts_builder.store_slice(uvarint::encode(16378));
+;;         (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
 
-        slice pre_encoded = non_critical_ext_opts_builder
-                            .store_slice(uvarint::encode(any_len))
-                            .end_cell()
-                            .begin_parse();
+;;         slice pre_encoded = non_critical_ext_opts_builder
+;;                             .store_slice(uvarint::encode(any_len))
+;;                             .end_cell()
+;;                             .begin_parse();
 
-        tx_body_len += pre_encoded.slice_bits() >> 3;
+;;         tx_body_len += pre_encoded.slice_bits() >> 3;
 
-        return_tuple~tpush(pre_encoded);
-        return_tuple~tpush(encode_type_url);
+;;         return_tuple~tpush(pre_encoded);
+;;         return_tuple~tpush(encode_type_url);
 
-        int j = 0;
-        int value_encoded_len = value_encoded.tlen();
-        ;; append all value to return_tuple
-        while(j < value_encoded_len){
-            return_tuple~tpush(value_encoded.at(j));
-            j += 1;
-        }
+;;         int j = 0;
+;;         int value_encoded_len = value_encoded.tlen();
+;;         ;; append all value to return_tuple
+;;         while(j < value_encoded_len){
+;;             return_tuple~tpush(value_encoded.at(j));
+;;             j += 1;
+;;         }
 
-        tx_body_len += any_len;
-        i += 1;
-    }
+;;         tx_body_len += any_len;
+;;         i += 1;
+;;     }
 
-    return (tx_body_len, return_tuple);
-}
-
-(int, tuple) slice_to_tx_body::encode(slice tx_body){
-    slice messages = tx_body~load_ref();
-    slice memo_and_timeout_height = tx_body~load_ref();
-    slice ext_opts = tx_body~load_ref();
-    slice non_critical_ext_opts = tx_body~load_ref();
-
-    tuple messages = messages.refs_to_tuple();
-    tuple ext_opts = ext_opts.refs_to_tuple();
-    tuple non_critical_ext_opts = non_critical_ext_opts.refs_to_tuple();
-
-    return tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
-}
+;;     return (tx_body_len, return_tuple);
+;; }

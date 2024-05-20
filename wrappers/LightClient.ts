@@ -241,6 +241,30 @@ export const buildCellTuple = (value: string | Uint8Array) => {
     return tupleCell;
 };
 
+export const buildRecursiveSliceRef = (value: string | Uint8Array):Cell|undefined => {
+    let longBuf = Buffer.from(value);
+    let innerCell: Cell | undefined;
+
+    if (typeof value === 'string') {
+        longBuf = Buffer.from(value, 'base64');
+    }
+    
+    for (let i = longBuf.length; i > 0; i -= 127) {
+        if (!innerCell) {
+            innerCell = beginCell()
+                .storeBuffer(Buffer.from(longBuf.subarray(Math.max(0, i - 127), i)))
+                .endCell();
+        } else {
+            innerCell = beginCell()
+                .storeRef(innerCell)
+                .storeBuffer(Buffer.from(longBuf.subarray(Math.max(0, i - 127), i)))
+                .endCell();
+        }
+    }
+    
+    return innerCell;
+};
+
 export const buildSliceTupleFromUint8Array = (value: Uint8Array) => {
     const tupleCell: TupleItem[] = [];
 
@@ -920,16 +944,12 @@ export class LightClient implements Contract {
 
     async getAnyEncode(provider: ContractProvider, message: any) {
         const typeUrl = beginCell().storeBuffer(Buffer.from(message.typeUrl)).endCell();
-        const value = buildCellTuple(message.value);
+        const value = buildRecursiveSliceRef(message.value);
 
         const result = await provider.get('any_encode', [
             {
                 type: 'slice',
-                cell: typeUrl,
-            } as TupleItemSlice,
-            {
-                type: 'tuple',
-                items: value,
+                cell: beginCell().storeRef(typeUrl).storeRef(value || beginCell().endCell()).endCell(),
             },
         ]);
 

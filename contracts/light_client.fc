@@ -15,15 +15,15 @@
 #include "utils/coin.fc";
 #include "utils/fee.fc";
 #include "utils/any_google.fc";
-#include "utils/tx_body.fc";
-#include "utils/tip.fc";
-#include "utils/compact_bit_array.fc";
-#include "utils/mode_info.fc";
-#include "utils/signer_info.fc";
-#include "utils/auth_info.fc";
-#include "utils/msg_execute_contract.fc";
-#include "utils/tx_raw.fc";
-#include "static/op_codes.fc";
+;; #include "utils/tx_body.fc";
+;; #include "utils/tip.fc";
+;; #include "utils/compact_bit_array.fc";
+;; #include "utils/mode_info.fc";
+;; #include "utils/signer_info.fc";
+;; #include "utils/auth_info.fc";
+;; #include "utils/msg_execute_contract.fc";
+;; #include "utils/tx_raw.fc";
+;; #include "static/op_codes.fc";
 
 ;; storage variables
 
@@ -40,16 +40,16 @@ global cell validator_set;
 () load_data() impure {
     var ds = get_data().begin_parse();
 
-    int height = ds~load_uint(256);
+    ;; int height = ds~load_uint(256);
 
-    cell chain_id_cell = ds~load_ref();
-    chain_id = chain_id_cell.begin_parse();
+    ;; cell chain_id_cell = ds~load_ref();
+    ;; chain_id = chain_id_cell.begin_parse();
 
-    cell next_validator_hash_set_cell = ds~load_ref();
-    next_validator_hash_set = next_validator_hash_set_cell.begin_parse();
+    ;; cell next_validator_hash_set_cell = ds~load_ref();
+    ;; next_validator_hash_set = next_validator_hash_set_cell.begin_parse();
 
-    cell validator_set_cell = ds~load_ref();
-    validator_set = validator_set_cell.begin_parse();
+    ;; cell validator_set_cell = ds~load_ref();
+    ;; validator_set = validator_set_cell.begin_parse();
 
     ds.end_parse();
 }
@@ -68,46 +68,46 @@ global cell validator_set;
 
 ;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
-    if (in_msg_body.slice_empty?()) { ;; ignore all empty messages
-        return ();
-    }
+    ;; if (in_msg_body.slice_empty?()) { ;; ignore all empty messages
+    ;;     return ();
+    ;; }
 
-    slice cs = in_msg_full.begin_parse();
-    int flags = cs~load_uint(4);
-    if (flags & 1) { ;; ignore all bounced messages
-        return ();
-    }
+    ;; slice cs = in_msg_full.begin_parse();
+    ;; int flags = cs~load_uint(4);
+    ;; if (flags & 1) { ;; ignore all bounced messages
+    ;;     return ();
+    ;; }
 
-    load_data(); ;; here we populate the storage variables
+    ;; load_data(); ;; here we populate the storage variables
 
-    int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
-    int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
+    ;; int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
+    ;; int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
 
-    if (op == op::execute_transaction) {
-        int increase_by = in_msg_body~load_uint(32);
-        ctx_counter += increase_by;
-        save_data();
-        return ();
-    }
+    ;; if (op == op::execute_transaction) {
+    ;;     int increase_by = in_msg_body~load_uint(32);
+    ;;     ctx_counter += increase_by;
+    ;;     save_data();
+    ;;     return ();
+    ;; }
 
 
-
-    throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
+    return ();
+    ;; throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
 }
 
 ;; get methods are a means to conveniently read contract data using, for example, HTTP APIs
 ;; they are marked with method_id
 ;; note that unlike in many other smart contract VMs, get methods cannot be called by other contracts
 
-int get_counter() method_id {
-    load_data();
-    return ctx_counter;
-}
+;; int get_counter() method_id {
+;;     load_data();
+;;     return ctx_counter;
+;; }
 
-int get_id() method_id {
-    load_data();
-    return ctx_id;
-}
+;; int get_id() method_id {
+;;     load_data();
+;;     return ctx_id;
+;; }
 
 
 int get_encode_uint_length(int number) method_id {
@@ -231,9 +231,9 @@ int verify_vote(slice vote, slice signature, int public_key) method_id {
     return check_data_signature(data, signature, public_key);
 }
 
-int digest(tuple buf) method_id {
-    return buf.digest_hash();
-}
+;; int digest(tuple buf) method_id {
+;;     return buf.digest_hash();
+;; }
 
 ;; Pubkey
 int pubkey_encode_length(slice pub) method_id {
@@ -269,83 +269,84 @@ int fee_encode_length(tuple ds) method_id {
 }
 
 ;; any-protobuf
-tuple any_encode(slice type_url, tuple value) method_id {
+tuple any_encode(slice ds) method_id {
     tuple return_tuple = empty_tuple();
-    (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
+    (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(ds);
     return_tuple~tpush(encode_any_len);
     return_tuple~tpush(encode_type_url);
     return_tuple~tpush(value_encoded);
     return return_tuple;
 }
 
-tuple tx_body_encode(
-    tuple messages,
-    slice memo_and_timeout_height, 
-    tuple ext_opts, 
-    tuple non_critical_ext_opts
-) method_id {
-    (_, tuple return_tuple) = tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
-    return return_tuple;
-}
+;; tuple tx_body_encode(
+;;     tuple messages,
+;;     slice memo_and_timeout_height, 
+;;     tuple ext_opts, 
+;;     tuple non_critical_ext_opts
+;; ) method_id {
+;;     (_, tuple return_tuple) = tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
+;;     return return_tuple;
+;; }
 
-;; Tip 
-;; only test for < 1023 bit case
-slice tip_encode(tuple ds) method_id {
-    return tip::encode(ds);
-}
+;; ;; Tip 
+;; ;; only test for < 1023 bit case
+;; slice tip_encode(tuple ds) method_id {
+;;     return tip::encode(ds);
+;; }
 
-int tip_encode_length(tuple ds) method_id {
-    return tip::encode_length(ds);
-}
+;; int tip_encode_length(tuple ds) method_id {
+;;     return tip::encode_length(ds);
+;; }
 
-;; CompactBitArray
-tuple compact_bit_array_encode(tuple ds) method_id {
-    return compact_bit_array::encode(ds);
-}
+;; ;; CompactBitArray
+;; tuple compact_bit_array_encode(tuple ds) method_id {
+;;     return compact_bit_array::encode(ds);
+;; }
 
-int compact_bit_array_encode_length(tuple ds) method_id {
-    return compact_bit_array::encode_length(ds);
-}
+;; int compact_bit_array_encode_length(tuple ds) method_id {
+;;     return compact_bit_array::encode_length(ds);
+;; }
 
-;; ModeInfo
-slice mode_info_encode(slice ds) method_id {
-    return mode_info::encode(ds);
-}
+;; ;; ModeInfo
+;; slice mode_info_encode(slice ds) method_id {
+;;     return mode_info::encode(ds);
+;; }
 
-int mode_info_encode_length(slice ds) method_id {
-    return mode_info::encode_length(ds);
-}
+;; int mode_info_encode_length(slice ds) method_id {
+;;     return mode_info::encode_length(ds);
+;; }
 
-;; SignerInfo
-tuple signer_info_encode(tuple ds) method_id {
-    return signer_info::encode(ds);
-}
+;; ;; SignerInfo
+;; tuple signer_info_encode(tuple ds) method_id {
+;;     return signer_info::encode(ds);
+;; }
 
-int signer_info_encode_length(tuple ds) method_id {
-    return signer_info::encode_length(ds);
-}
+;; int signer_info_encode_length(tuple ds) method_id {
+;;     return signer_info::encode_length(ds);
+;; }
 
-;; AuthInfo
-tuple auth_info_encode(tuple sign_infos, tuple fee, tuple tip) method_id {
-    return auth_info::encode(sign_infos, fee, tip);
-}
+;; ;; 
 
-tuple msg_execute_contract_encode(slice sender_contract, tuple msg, tuple funds) method_id {
-    return msg_execute_contract::encode(sender_contract, msg, funds);
-}
+;; tuple auth_info_encode(tuple sign_infos, tuple fee, tuple tip) method_id {
+;;     return auth_info::encode(sign_infos, fee, tip);
+;; }
 
-int auth_info_encode_length(tuple sign_infos, tuple fee, tuple tip) method_id {
-    return auth_info::encode_length(sign_infos, fee, tip);
-}
-;; tx_raw
-tuple tx_raw_encode(tuple auth_info, tuple tx_body, tuple signatures) method_id {
-    return tx_raw::encode(auth_info, tx_body, signatures);
-}
+;; tuple msg_execute_contract_encode(slice sender_contract, tuple msg, tuple funds) method_id {
+;;     return msg_execute_contract::encode(sender_contract, msg, funds);
+;; }
 
-int tx_hash(tuple auth_info, tuple tx_body, tuple signatures) method_id {
-    return digest_hash(tx_raw::encode(auth_info, tx_body, signatures));
-}
+;; int auth_info_encode_length(tuple sign_infos, tuple fee, tuple tip) method_id {
+;;     return auth_info::encode_length(sign_infos, fee, tip);
+;; }
+;; ;; tx_raw
+;; tuple tx_raw_encode(tuple auth_info, tuple tx_body, tuple signatures) method_id {
+;;     return tx_raw::encode(auth_info, tx_body, signatures);
+;; }
 
-int verify_tx(tuple proofs, slice positions, slice data_hash, tuple auth_info, tuple tx_body, tuple signatures) method_id {
-    return verify::verify_tx(proofs, positions, data_hash, auth_info, tx_body, signatures);
-}
+;; int tx_hash(tuple auth_info, tuple tx_body, tuple signatures) method_id {
+;;     return digest_hash(tx_raw::encode(auth_info, tx_body, signatures));
+;; }
+
+;; int verify_tx(tuple proofs, slice positions, slice data_hash, tuple auth_info, tuple tx_body, tuple signatures) method_id {
+;;     return verify::verify_tx(proofs, positions, data_hash, auth_info, tx_body, signatures);
+;; }
