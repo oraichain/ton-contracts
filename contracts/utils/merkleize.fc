@@ -21,7 +21,7 @@ int hash_from_tree_slice(tuple chunks)  {
     return inner_hash(left, right);            
 }
 
-int hash_from_ref_slice(slice chunks, int length)  {            
+int root_hash_from_ref_slice(slice chunks, int length)  {            
     if (length == 0) { 
         ;; empty is 0 in bigint           
         return 0;
@@ -31,12 +31,12 @@ int hash_from_ref_slice(slice chunks, int length)  {
     }
    
     int k = get_split_point(length);      
-    int left = hash_from_ref_slice(chunks, k);     
+    int left = root_hash_from_ref_slice(chunks, k);     
     ;; next k items
     repeat(k) {
         chunks = chunks~load_ref().begin_parse();
     }
-    int right = hash_from_ref_slice(chunks, length - k);            
+    int right = root_hash_from_ref_slice(chunks, length - k);            
     
     return inner_hash(left, right);            
 }
