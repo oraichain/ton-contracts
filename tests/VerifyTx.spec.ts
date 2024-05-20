@@ -1,19 +1,12 @@
-import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import { Cell, toNano } from '@ton/core';
-import { LightClient } from '../wrappers/LightClient';
-import '@ton/test-utils';
-import { compile } from '@ton/blueprint';
-import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
-import { Tx } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import { Registry, decodeTxRaw } from '@cosmjs/proto-signing';
 import { defaultRegistryTypes } from '@cosmjs/stargate';
+import { compile } from '@ton/blueprint';
+import { Cell, toNano } from '@ton/core';
+import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
+import '@ton/test-utils';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
-import { writeFileSync } from 'fs';
-import { resolve } from 'path';
 import { createHash } from 'crypto';
-
-BigInt.prototype.toJSON = function () {
-    return this.toString();
-};
+import { LightClient } from '../wrappers/LightClient';
 
 describe('Verify Tx', () => {
     let code: Cell;
