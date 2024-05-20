@@ -201,26 +201,25 @@ export const getFeeTuple = (fee: Fee): Tuple => {
     };
 };
 
-export const getTipTuple = (tip: Tip): Tuple => {
-    const amounts = tip.amount.map((item) => {
-        return {
-            type: 'slice',
-            cell: beginCell()
-                .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
-                .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
-                .endCell(),
-        } as TupleItemSlice;
-    });
-    return {
-        type: 'tuple',
-        items: [
-            { type: 'tuple', items: amounts },
-            {
-                type: 'slice',
-                cell: beginCell().storeBuffer(Buffer.from(tip.tipper)).endCell(),
-            } as TupleItemSlice,
-        ],
-    };
+export const getTipTuple = (tip: Tip): Cell => {
+    let amountsCell;
+    for (let i = tip.amount.length - 1; i >= 0; i--) {
+        let innerCell = beginCell()
+            .storeRef(beginCell().storeBuffer(Buffer.from(tip.amount[i].denom)).endCell())
+            .storeRef(beginCell().storeBuffer(Buffer.from(tip.amount[i].amount)).endCell())
+            .endCell();
+        if (!amountsCell) {
+            amountsCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            amountsCell = beginCell().storeRef(amountsCell).storeRef(innerCell).endCell();
+        }
+    }
+
+    const inputCell = beginCell()
+        .storeRef(amountsCell!)
+        .storeRef(beginCell().storeBuffer(Buffer.from(tip.tipper)).endCell())
+        .endCell();
+    return inputCell;
 };
 
 export const buildCellTuple = (value: string | Uint8Array) => {
@@ -241,14 +240,14 @@ export const buildCellTuple = (value: string | Uint8Array) => {
     return tupleCell;
 };
 
-export const buildRecursiveSliceRef = (value: string | Uint8Array):Cell|undefined => {
+export const buildRecursiveSliceRef = (value: string | Uint8Array): Cell | undefined => {
     let longBuf = Buffer.from(value);
     let innerCell: Cell | undefined;
 
     if (typeof value === 'string') {
         longBuf = Buffer.from(value, 'base64');
     }
-    
+
     for (let i = longBuf.length; i > 0; i -= 127) {
         if (!innerCell) {
             innerCell = beginCell()
@@ -261,7 +260,7 @@ export const buildRecursiveSliceRef = (value: string | Uint8Array):Cell|undefine
                 .endCell();
         }
     }
-    
+
     return innerCell;
 };
 
@@ -949,7 +948,10 @@ export class LightClient implements Contract {
         const result = await provider.get('any_encode', [
             {
                 type: 'slice',
-                cell: beginCell().storeRef(typeUrl).storeRef(value || beginCell().endCell()).endCell(),
+                cell: beginCell()
+                    .storeRef(typeUrl)
+                    .storeRef(value || beginCell().endCell())
+                    .endCell(),
             },
         ]);
 
@@ -1028,14 +1030,24 @@ export class LightClient implements Contract {
 
     // tip
     async getTipEncode(provider: ContractProvider, tip: Tip) {
-        const tuple = getTipTuple(tip);
-        const result = await provider.get('tip_encode', [tuple]);
+        const cell = getTipTuple(tip);
+        const result = await provider.get('tip_encode', [
+            {
+                type: 'slice',
+                cell,
+            },
+        ]);
         return result.stack.readBuffer();
     }
 
     async getTipEncodeLength(provider: ContractProvider, tip: Tip) {
-        const tuple = getTipTuple(tip);
-        const result = await provider.get('tip_encode_length', [tuple]);
+        const cell = getTipTuple(tip);
+        const result = await provider.get('tip_encode_length', [
+            {
+                type: 'slice',
+                cell,
+            },
+        ]);
         return result.stack.readNumber();
     }
 
@@ -1110,7 +1122,7 @@ export class LightClient implements Contract {
             items: [],
         } as Tuple;
         if (data.tip) {
-            tipTuple = getTipTuple(data.tip);
+            tipTuple = getTipTuple(data.tip) as any;
         }
 
         const result = await provider.get('auth_info_encode_length', [
@@ -1261,7 +1273,7 @@ function getAuthInfoInput(data: AuthInfo) {
         items: [],
     } as Tuple;
     if (data.tip) {
-        tipTuple = getTipTuple(data.tip);
+        tipTuple = getTipTuple(data.tip) as any;
     }
     return { signInfos, feeTuple, tipTuple };
 }

@@ -16,7 +16,7 @@
 #include "utils/fee.fc";
 #include "utils/any_google.fc";
 ;; #include "utils/tx_body.fc";
-;; #include "utils/tip.fc";
+#include "utils/tip.fc";
 ;; #include "utils/compact_bit_array.fc";
 ;; #include "utils/mode_info.fc";
 ;; #include "utils/signer_info.fc";
@@ -290,11 +290,11 @@ tuple any_encode(slice ds) method_id {
 
 ;; ;; Tip 
 ;; ;; only test for < 1023 bit case
-;; slice tip_encode(tuple ds) method_id {
-;;     return tip::encode(ds);
-;; }
+slice tip_encode(slice ds) method_id {
+    return tip::encode(ds);
+}
 
-;; int tip_encode_length(tuple ds) method_id {
+;; int tip_encode_length(slice ds) method_id {
 ;;     return tip::encode_length(ds);
 ;; }
 

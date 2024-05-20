@@ -1,17 +1,18 @@
 #include "coin.fc";
 
-builder tip::encode_core(tuple ds) {
-    tuple amounts = ds.at(0);
-    slice tipper = ds.at(1);
-
+builder tip::encode_core(slice ds) {
+    slice amounts = ds~load_ref().begin_parse();
+    slice tipper = ds~load_ref().begin_parse();
     builder inner_cell = begin_cell();
-
-    int amount_len = amounts.tlen();
-    int i = 0;
-    while (i < amount_len) {
-        slice coin_data = amounts.at(i);
-        inner_cell = inner_cell.store_uint(10, 8).store_uint(coin::encode_length(coin_data), 8).store_slice(coin::encode(coin_data));
-        i = i + 1;
+    while (amounts.slice_refs_empty?() == 0) {
+        slice next_ref = amounts~load_ref().begin_parse();
+        slice coin_data = amounts~load_ref().begin_parse();
+        slice coin_data_encode = coin::encode(coin_data);
+        inner_cell = inner_cell
+                        .store_uint(10, 8)
+                        .store_uint(coin_data_encode.slice_bits() >> 3, 8)
+                        .store_slice(coin_data_encode);
+        amounts = next_ref;
     }
 
     if (tipper.slice_empty?() != -1) {
@@ -21,11 +22,11 @@ builder tip::encode_core(tuple ds) {
     return inner_cell;
 }
 
-slice tip::encode(tuple ds) {
+slice tip::encode(slice ds) {
     return tip::encode_core(ds).end_cell().begin_parse();
 }
 
-int tip::encode_length(tuple ds) {
+int tip::encode_length(slice ds) {
     slice result = tip::encode_core(ds).end_cell().begin_parse();
     return result.slice_bits() >> 3;
 }
