@@ -1,5 +1,6 @@
 #include "varint.fc";
 #include "any_google.fc";
+#include "helper.fc";
 
 ;; return encode_len and tuple
 (int, tuple) tx_body::encode(tuple messages, slice memo_and_timeout_height, tuple ext_opts, tuple non_critical_ext_opts){
@@ -128,4 +129,17 @@
     }
 
     return (tx_body_len, return_tuple);
+}
+
+(int, tuple) slice_to_tx_body::encode(slice tx_body){
+    slice messages = tx_body~load_ref();
+    slice memo_and_timeout_height = tx_body~load_ref();
+    slice ext_opts = tx_body~load_ref();
+    slice non_critical_ext_opts = tx_body~load_ref();
+
+    tuple messages = messages.refs_to_tuple();
+    tuple ext_opts = ext_opts.refs_to_tuple();
+    tuple non_critical_ext_opts = non_critical_ext_opts.refs_to_tuple();
+
+    return tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
 }

@@ -79,3 +79,12 @@ tuple build_tx_raw_params(slice ds) {
     slice tx_data = ds~load_ref().begin_parse();
 
 }
+
+tuple refs_to_tuple(slice ds){
+    tuple result = empty_tuple?();
+    while (ds.slice_refs_empty() == 0) {
+        ds = ds~load_ref().begin_parse();
+        result~tpush(ds);
+    }
+    return result;
+}
