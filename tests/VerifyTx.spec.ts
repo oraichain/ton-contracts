@@ -11,10 +11,6 @@ import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { createHash } from 'crypto';
 
-BigInt.prototype.toJSON = function () {
-    return this.toString();
-};
-
 describe('Verify Tx', () => {
     let code: Cell;
     beforeAll(async () => {
