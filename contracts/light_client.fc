@@ -20,7 +20,7 @@
 ;; #include "utils/compact_bit_array.fc";
 ;; #include "utils/mode_info.fc";
 #include "utils/signer_info.fc";
-;; #include "utils/auth_info.fc";
+#include "utils/auth_info.fc";
 ;; #include "utils/msg_execute_contract.fc";
 ;; #include "utils/tx_raw.fc";
 ;; #include "static/op_codes.fc";
@@ -329,17 +329,20 @@ int signer_info_encode_length(slice ds) method_id {
 
 ;; ;; 
 
-;; tuple auth_info_encode(tuple sign_infos, tuple fee, tuple tip) method_id {
-;;     return auth_info::encode(sign_infos, fee, tip);
-;; }
+tuple auth_info_encode(slice sign_infos, slice fee, slice tip) method_id {
+    (int length, tuple data) = auth_info::encode(sign_infos, fee, tip);
+    return data;
+}
+
+int auth_info_encode_length(slice sign_infos, slice fee, slice tip) method_id {
+    (int length, tuple data) = auth_info::encode(sign_infos, fee, tip);
+    return length;
+}
 
 ;; tuple msg_execute_contract_encode(slice sender_contract, tuple msg, tuple funds) method_id {
 ;;     return msg_execute_contract::encode(sender_contract, msg, funds);
 ;; }
 
-;; int auth_info_encode_length(tuple sign_infos, tuple fee, tuple tip) method_id {
-;;     return auth_info::encode_length(sign_infos, fee, tip);
-;; }
 ;; ;; tx_raw
 ;; tuple tx_raw_encode(tuple auth_info, tuple tx_body, tuple signatures) method_id {
 ;;     return tx_raw::encode(auth_info, tx_body, signatures);

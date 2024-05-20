@@ -1,90 +1,56 @@
-
-;; ;; encode(message: AuthInfo, writer: BinaryWriter = BinaryWriter.create()): BinaryWriter {
-;; ;;     for (const v of message.signerInfos) {
-;; ;;       SignerInfo.encode(v!, writer.uint32(10).fork()).ldelim();
-;; ;;     }
-;; ;;     if (message.fee !== undefined) {
-;; ;;       Fee.encode(message.fee, writer.uint32(18).fork()).ldelim();
-;; ;;     }
-;; ;;     if (message.tip !== undefined) {
-;; ;;       Tip.encode(message.tip, writer.uint32(26).fork()).ldelim();
-;; ;;     }
-;; ;;     return writer;
-;; ;;   }
-
-;; #include "signer_info.fc";
-;; #include "fee.fc";
-;; #include "tip.fc";
-;; #include "varint.fc";
+#include "signer_info.fc";
+#include "fee.fc";
+#include "tip.fc";
+#include "varint.fc";
 
 ;; ;; ds ->
 ;; ;;      signInfos: tuple => items: tuple (which is signInfo)
 ;; ;;      fee: tuple
 ;; ;;      tip: tuple
-;; tuple auth_info::encode(tuple sign_infos, tuple fee, tuple tip) {
-;;     tuple result = empty_tuple();
-;;     int sign_infos_len = sign_infos.tlen();
-;;     int i = 0;
-;;     while (i < sign_infos_len) {
-;;         builder inner_cell = begin_cell();
-;;         tuple sign_info = sign_infos.at(i);
-;;         int encode_length = signer_info::encode_length(sign_info);
-;;         inner_cell = inner_cell
-;;                         .store_slice(uvarint::encode(10))
-;;                         .store_slice(uvarint::encode(encode_length));
+(int, tuple) auth_info::encode(slice sign_infos, slice fee, slice tip) {
+    tuple result = empty_tuple();
+    int length = 0;
+    while (sign_infos.slice_refs_empty?() != -1) {
+        slice next_ref = sign_infos~load_ref().begin_parse();
+        slice sign_info = sign_infos~load_ref().begin_parse();
+        (int encode_length, tuple encode_data) = signer_info::encode(sign_info);
+        builder inner_cell = begin_cell();
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(10))
+                        .store_slice(uvarint::encode(encode_length));
+        slice slice_result = inner_cell.end_cell().begin_parse();
+        result~tpush(slice_result);
+        length += encode_length + (slice_result.slice_bits() >> 3);
+        int j = 0;
+        while (j < encode_data.tlen()) {
+            result~tpush(encode_data.at(j));
+            j += 1;
+        }
+    }
 
-;;         result~tpush(inner_cell.end_cell().begin_parse());
-;;         tuple encode_data = signer_info::encode(sign_info);
-;;         int j = 0;
-;;         while (j < encode_data.tlen()) {
-;;             result~tpush(encode_data.at(j));
-;;             j += 1;
-;;         }
+    if (fee.slice_empty?() != -1) {
+        builder inner_cell = begin_cell();
+        slice fee_encode = fee::encode(fee);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(18))
+                        .store_slice(uvarint::encode(fee_encode.slice_bits() >> 3));
+        slice slice_result = inner_cell.end_cell().begin_parse();
+        length += (slice_result.slice_bits() >> 3) + (fee_encode.slice_bits() >> 3);
+        result~tpush(slice_result);
+        result~tpush(fee_encode);
+    }
 
-;;         i += 1;
-;;     }
+    if (tip.slice_empty?() != -1) {
+        builder inner_cell = begin_cell();
+        slice tip_encode = tip::encode(tip);
+        inner_cell = inner_cell
+                        .store_slice(uvarint::encode(26))
+                        .store_slice(uvarint::encode(tip_encode.slice_bits() >> 3));
+        slice slice_result = inner_cell.end_cell().begin_parse();
+        length += (slice_result.slice_bits() >> 3) + (tip_encode.slice_bits() >> 3);
+        result~tpush(slice_result);
+        result~tpush(tip_encode);
+    }
 
-;;     if (fee.tlen() > 0) {
-;;         builder inner_cell = begin_cell();
-;;         inner_cell = inner_cell
-;;                         .store_slice(uvarint::encode(18))
-;;                         .store_slice(uvarint::encode(fee::encode_length(fee)));
-;;         result~tpush(inner_cell.end_cell().begin_parse());
-;;         result~tpush(fee::encode(fee));
-;;     }
-
-;;     if (tip.tlen() > 0) {
-;;         builder inner_cell = begin_cell();
-;;         inner_cell = inner_cell
-;;                         .store_slice(uvarint::encode(26))
-;;                         .store_slice(uvarint::encode(tip::encode_length(tip)));
-;;         result~tpush(inner_cell.end_cell().begin_parse());
-;;         result~tpush(tip::encode(tip));
-;;     }
-
-;;     return result;
-;; }
-
-;; int auth_info::encode_length(tuple sign_infos, tuple fee, tuple tip) {
-;;     tuple result = empty_tuple();
-;;     int sign_infos_len = sign_infos.tlen();
-;;     int length = 0;
-
-;;     int i = 0;
-;;     while (i < sign_infos_len) {
-;;         builder inner_cell = begin_cell();
-;;         tuple sign_info = sign_infos.at(i);
-;;         length += uvarint::encode_length(10) + uvarint::encode_length(signer_info::encode_length(sign_info)) + signer_info::encode_length(sign_info);
-;;         i += 1;
-;;     }
-
-;;     if (fee.tlen() > 0) {
-;;         length += uvarint::encode_length(18) + uvarint::encode_length(fee::encode_length(fee)) + fee::encode_length(fee);
-;;     }
-
-;;     if (tip.tlen() > 0) {
-;;         length += uvarint::encode_length(26) + uvarint::encode_length(tip::encode_length(tip)) + tip::encode_length(tip);
-;;     }
-
-;;     return length;
-;; }
+    return (length, result);
+}

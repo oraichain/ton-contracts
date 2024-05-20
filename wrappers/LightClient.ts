@@ -133,7 +133,7 @@ export const getCanonicalVoteSlice = (vote: CanonicalVote): Cell => {
         .endCell();
 };
 
-export const getSignInfoTuple = (mode: SignerInfo): Cell => {
+export const getSignInfoCell = (mode: SignerInfo): Cell => {
     const typeUrl = beginCell().storeBuffer(Buffer.from(mode!.publicKey!.typeUrl)).endCell();
     const value = buildRecursiveSliceRef(mode!.publicKey!.value);
     const anyCell = beginCell()
@@ -149,7 +149,7 @@ export const getSignInfoTuple = (mode: SignerInfo): Cell => {
     return inputCell;
 };
 
-export const getFeeTuple = (fee: Fee): Cell => {
+export const getFeeCell = (fee: Fee): Cell => {
     const { lo, hi } = int64FromString(fee.gasLimit.toString());
     let buff = [] as number[];
     writeVarint64({ lo, hi }, buff, 0);
@@ -174,7 +174,7 @@ export const getFeeTuple = (fee: Fee): Cell => {
     return inputRef;
 };
 
-export const getTipTuple = (tip: Tip): Cell => {
+export const getTipCell = (tip: Tip): Cell => {
     let amountsCell;
     for (let i = tip.amount.length - 1; i >= 0; i--) {
         let innerCell = beginCell()
@@ -982,7 +982,7 @@ export class LightClient implements Contract {
 
     // fee
     async getFeeEncode(provider: ContractProvider, fee: Fee) {
-        const cell = getFeeTuple(fee);
+        const cell = getFeeCell(fee);
         const result = await provider.get('fee_encode', [
             {
                 type: 'slice',
@@ -993,7 +993,7 @@ export class LightClient implements Contract {
     }
 
     async getFeeEncodeLength(provider: ContractProvider, fee: Fee) {
-        const cell = getFeeTuple(fee);
+        const cell = getFeeCell(fee);
         const result = await provider.get('fee_encode_length', [
             {
                 type: 'slice',
@@ -1014,7 +1014,7 @@ export class LightClient implements Contract {
 
     // tip
     async getTipEncode(provider: ContractProvider, tip: Tip) {
-        const cell = getTipTuple(tip);
+        const cell = getTipCell(tip);
         const result = await provider.get('tip_encode', [
             {
                 type: 'slice',
@@ -1025,7 +1025,7 @@ export class LightClient implements Contract {
     }
 
     async getTipEncodeLength(provider: ContractProvider, tip: Tip) {
-        const cell = getTipTuple(tip);
+        const cell = getTipCell(tip);
         const result = await provider.get('tip_encode_length', [
             {
                 type: 'slice',
@@ -1061,7 +1061,7 @@ export class LightClient implements Contract {
     }
 
     async getSignerInfoEncode(provider: ContractProvider, mode: SignerInfo) {
-        const cell = getSignInfoTuple(mode);
+        const cell = getSignInfoCell(mode);
         const result = await provider.get('signer_info_encode', [
             {
                 type: 'slice',
@@ -1072,7 +1072,7 @@ export class LightClient implements Contract {
     }
 
     async getSignerInfoEncodeLength(provider: ContractProvider, mode: SignerInfo) {
-        const cell = getSignInfoTuple(mode);
+        const cell = getSignInfoCell(mode);
         const result = await provider.get('signer_info_encode_length', [
             {
                 type: 'slice',
@@ -1083,15 +1083,21 @@ export class LightClient implements Contract {
     }
 
     async getAuthInfoEncode(provider: ContractProvider, data: AuthInfo) {
-        var { signInfos, feeTuple, tipTuple } = getAuthInfoInput(data);
+        var { signInfos, fee, tip } = getAuthInfoInput(data);
 
         const result = await provider.get('auth_info_encode', [
             {
-                type: 'tuple',
-                items: signInfos as any,
+                type: 'slice',
+                cell: signInfos!,
             },
-            feeTuple,
-            tipTuple,
+            {
+                type: 'slice',
+                cell: fee,
+            },
+            {
+                type: 'slice',
+                cell: tip,
+            },
         ]);
         return result.stack.readTuple();
     }
@@ -1103,35 +1109,27 @@ export class LightClient implements Contract {
     }
 
     async getAuthInfoEncodeLength(provider: ContractProvider, data: AuthInfo) {
-        const signInfos = data.signerInfos.map((item) => getSignInfoTuple(item));
-        let feeTuple = {
-            type: 'tuple',
-            items: [],
-        } as Tuple;
-        if (data.fee) {
-            feeTuple = getFeeTuple(data.fee) as any;
-        }
-        let tipTuple = {
-            type: 'tuple',
-            items: [],
-        } as Tuple;
-        if (data.tip) {
-            tipTuple = getTipTuple(data.tip) as any;
-        }
+        var { signInfos, fee, tip } = getAuthInfoInput(data);
 
         const result = await provider.get('auth_info_encode_length', [
             {
-                type: 'tuple',
-                items: signInfos as any,
+                type: 'slice',
+                cell: signInfos!,
             },
-            feeTuple,
-            tipTuple,
+            {
+                type: 'slice',
+                cell: fee,
+            },
+            {
+                type: 'slice',
+                cell: tip,
+            },
         ]);
         return result.stack.readNumber();
     }
 
     async getVerifyTx(provider: ContractProvider, tx: TxWasm, leaves: Buffer[], leafData: Buffer) {
-        const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
+        const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
         const txBody = txBodyWasmToTuple(tx.body);
         const signatures: TupleItem[] = tx.signatures.map((item) => {
             return {
@@ -1163,8 +1161,8 @@ export class LightClient implements Contract {
                         type: 'tuple',
                         items: signInfos as any,
                     },
-                    feeTuple,
-                    tipTuple,
+                    fee as any, // FIXME
+                    tip as any, // FIXME
                 ],
             },
             {
@@ -1181,7 +1179,7 @@ export class LightClient implements Contract {
     }
 
     async getDecodedTxRaw(provider: ContractProvider, tx: TxWasm) {
-        const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
+        const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
 
         const txBody = txBodyWasmToTuple(tx.body);
         const signatures: TupleItem[] = tx.signatures.map((item) => {
@@ -1199,8 +1197,8 @@ export class LightClient implements Contract {
                         type: 'tuple',
                         items: signInfos as any,
                     },
-                    feeTuple,
-                    tipTuple,
+                    fee as any, // FIXME
+                    tip as any, // FIXME
                 ],
             },
             {
@@ -1217,7 +1215,7 @@ export class LightClient implements Contract {
     }
 
     async getTxHash(provider: ContractProvider, tx: TxWasm) {
-        const { signInfos, feeTuple, tipTuple } = getAuthInfoInput(tx.authInfo);
+        const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
 
         const txBody = txBodyWasmToTuple(tx.body);
         const signatures: TupleItem[] = tx.signatures.map((item) => {
@@ -1229,15 +1227,8 @@ export class LightClient implements Contract {
 
         const result = await provider.get('tx_hash', [
             {
-                type: 'tuple',
-                items: [
-                    {
-                        type: 'tuple',
-                        items: signInfos as any,
-                    },
-                    feeTuple,
-                    tipTuple,
-                ],
+                type: 'slice',
+                cell: signInfos!,
             },
             {
                 type: 'tuple',
@@ -1254,20 +1245,22 @@ export class LightClient implements Contract {
 }
 
 function getAuthInfoInput(data: AuthInfo) {
-    const signInfos = data.signerInfos.map((item) => getSignInfoTuple(item));
-    let feeTuple = {
-        type: 'tuple',
-        items: [],
-    } as Tuple;
+    let finalSignInfosCell;
+    for (let i = data.signerInfos.length - 1; i >= 0; i--) {
+        let innerCell = getSignInfoCell(data.signerInfos[i]);
+        if (!finalSignInfosCell) {
+            finalSignInfosCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            finalSignInfosCell = beginCell().storeRef(finalSignInfosCell!).storeRef(innerCell).endCell();
+        }
+    }
+    let fee = beginCell().endCell();
     if (data.fee) {
-        feeTuple = getFeeTuple(data.fee) as any;
+        fee = getFeeCell(data.fee) as any;
     }
-    let tipTuple = {
-        type: 'tuple',
-        items: [],
-    } as Tuple;
+    let tip = beginCell().endCell();
     if (data.tip) {
-        tipTuple = getTipTuple(data.tip) as any;
+        tip = getTipCell(data.tip) as any;
     }
-    return { signInfos, feeTuple, tipTuple };
+    return { signInfos: finalSignInfosCell, fee, tip };
 }
