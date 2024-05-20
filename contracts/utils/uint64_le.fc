@@ -45,6 +45,6 @@ slice uint64le::encode(int value){
     return uint53::write_int64_le(value); ;;8 bytes
 }
 
-int uint64le::encode_length() inline {
+int uint64le::encode_length() inline_ref {
     return 8;
 }

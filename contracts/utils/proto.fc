@@ -3,10 +3,10 @@
 #include "varbuffer.fc";
 
 ;; using inline for faster calculation
-slice proto::encode_buffer(slice value) inline {    
+slice proto::encode_buffer(slice value) inline_ref {    
     return begin_cell().store_uint(prefix::array, 8).store_slice(varbuffer::encode(value)).end_cell().begin_parse();
 }
 
-slice proto::encode_number(int value) inline {    
+slice proto::encode_number(int value) inline_ref {    
     return begin_cell().store_uint(prefix::first, 8).store_slice(uvarint::encode(value)).end_cell().begin_parse();
 }

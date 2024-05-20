@@ -35,15 +35,15 @@ slice varint::encode(int signed, int n) {
 }
 
 
-int uvarint::encode_length(int n) inline {
+int uvarint::encode_length(int n) inline_ref {
     return varint::encode_length(0, n);
 }
 
-slice uvarint::encode(int n) inline {
+slice uvarint::encode(int n) inline_ref {
     return varint::encode(0, n);
 }
 
-slice uvarint_64::encode(int n) inline {
+slice uvarint_64::encode(int n) inline_ref {
     (int lo, int hi) = n.uint_high_low();
     builder inner_cell = begin_cell();
     while(hi > 0){

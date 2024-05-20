@@ -1,6 +1,6 @@
 #include "varint.fc";
 
-int blockid::encode_length(slice ds) inline {     
+int blockid::encode_length(slice ds) inline_ref {     
     int length = 0; 
     int hash_slice = ds~load_uint(256);    
     int parts_slice = ds~load_uint(256);   

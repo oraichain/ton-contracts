@@ -23,7 +23,7 @@ int parse_int(slice string_number) impure {
     return number;
 }
 
-int bit_length(int n) inline {
+int bit_length(int n) inline_ref {
     return (log2(n) + 1) >> 0;
 }
 
@@ -40,11 +40,11 @@ int get_split_point(int n)  {
     return k;
 }
 
-int inner_hash(int left, int right) inline {
+int inner_hash(int left, int right) inline_ref {
     return  begin_cell().store_uint(prefix::inner, 8).store_uint(left, 256).store_uint(right, 256).end_cell().begin_parse().string_hash();
 }
 
-int leaf_hash(int leaf) inline {    
+int leaf_hash(int leaf) inline_ref {    
     return begin_cell().store_uint(prefix::leaf, 8).store_uint(leaf, 256).end_cell().begin_parse().string_hash();    
 }
 
