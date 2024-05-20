@@ -13,22 +13,26 @@
         slice type_url = message.at(0);
         tuple value = message.at(1);
         message_builder = message_builder.store_slice(uvarint::encode(10));
-        (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
+        (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
         slice pre_encoded = message_builder
-                                .store_slice(uvarint::encode(encode_any_len))
-                                .store_slice(encode_type_url)
+                                .store_slice(uvarint::encode(any_len))
                                 .end_cell().begin_parse();
-        return_tuple~tpush(pre_encoded);
+
         tx_body_len += pre_encoded.slice_bits() >> 3;
+
+        return_tuple~tpush(pre_encoded);
+        return_tuple~tpush(encode_type_url);
+
         int j = 0;
         int value_encoded_len = value_encoded.tlen();
         ;; flat all value to return_tuple
         while(j < value_encoded_len){
             return_tuple~tpush(value_encoded.at(j));
-            tx_body_len += value_encoded.at(j).slice_bits() >> 3;
+            ;; tx_body_len += value_encoded.at(j).slice_bits() >> 3;
             j += 1;
         }
-       
+
+        tx_body_len += any_len;
         i += 1;
     }
     
@@ -67,18 +71,26 @@
         slice type_url = ext_opt.at(0);
         tuple value = ext_opt.at(1);
         ext_opt_builder = ext_opt_builder.store_slice(uvarint::encode(8186));
-        (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
-        slice pre_encoded = ext_opt_builder.store_slice(uvarint::encode(encode_any_len)).store_slice(encode_type_url).end_cell().begin_parse();
-        return_tuple~tpush(pre_encoded);
+        (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
+        slice pre_encoded = ext_opt_builder
+                                .store_slice(uvarint::encode(any_len))
+                                .end_cell()
+                                .begin_parse();
+
         tx_body_len += pre_encoded.slice_bits() >> 3;
+        
+        return_tuple~tpush(pre_encoded);
+        return_tuple~tpush(encode_type_url);
+
         int j = 0;
         int value_encoded_len = value_encoded.tlen();
         ;; append all value to return_tuple
         while(j < value_encoded_len){
             return_tuple~tpush(value_encoded.at(j));
-            tx_body_len += value_encoded.at(j).slice_bits() >> 3;
+            ;; tx_body_len += value_encoded.at(j).slice_bits() >> 3;
             j += 1;
         }
+        tx_body_len += any_len;
         i += 1;
     }
 
@@ -91,18 +103,27 @@
         slice type_url = non_critical_ext_opt.at(0);
         tuple value = non_critical_ext_opt.at(1);
         non_critical_ext_opts_builder = non_critical_ext_opts_builder.store_slice(uvarint::encode(16378));
-        (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
-        slice pre_encoded = non_critical_ext_opts_builder.store_slice(uvarint::encode(encode_any_len)).store_slice(encode_type_url).end_cell().begin_parse();
-        return_tuple~tpush(pre_encoded);
+        (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
+
+        slice pre_encoded = non_critical_ext_opts_builder
+                            .store_slice(uvarint::encode(any_len))
+                            .end_cell()
+                            .begin_parse();
+
         tx_body_len += pre_encoded.slice_bits() >> 3;
+
+        return_tuple~tpush(pre_encoded);
+        return_tuple~tpush(encode_type_url);
+
         int j = 0;
         int value_encoded_len = value_encoded.tlen();
         ;; append all value to return_tuple
         while(j < value_encoded_len){
             return_tuple~tpush(value_encoded.at(j));
-            tx_body_len += value_encoded.at(j).slice_bits() >> 3;
             j += 1;
         }
+
+        tx_body_len += any_len;
         i += 1;
     }
 

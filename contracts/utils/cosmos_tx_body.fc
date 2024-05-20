@@ -1,3 +1,0 @@
-slice tx_body::encode(slice body){
-    
-}
