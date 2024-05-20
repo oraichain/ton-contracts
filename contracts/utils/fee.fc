@@ -2,23 +2,21 @@
 #include "varint.fc";
 
 ;; if we need more than 1023 bit => should convert return type from slice to builder
-builder fee::encode_core(tuple ds) {
-    tuple amounts = ds.at(0);
-    slice gas_limit = ds.at(1);
-    slice payer = ds.at(2);
-    slice granter = ds.at(3);
+builder fee::encode_core(slice ds) {
+    slice amount_data = ds~load_ref().begin_parse();
+    slice gas_limit = ds~load_ref().begin_parse();
+    slice payer = ds~load_ref().begin_parse();
+    slice granter = ds~load_ref().begin_parse();
 
     builder inner_cell = begin_cell();
-
-    int amount_len = amounts.tlen();
-    int i = 0;
-    while (i < amount_len) {
-        slice coin_data = amounts.at(i);
+    while (amount_data.slice_refs_empty?() == 0) {
+        slice next_ref = amount_data~load_ref().begin_parse();
+        slice coin_data = amount_data~load_ref().begin_parse();
         inner_cell = inner_cell
                         .store_slice(uvarint::encode(10))
                         .store_slice(uvarint::encode(coin::encode_length(coin_data)))
                         .store_slice(coin::encode(coin_data));
-        i = i + 1;
+        amount_data = next_ref;
     }
 
     if (gas_limit.slice_empty?() != -1) {
@@ -47,11 +45,11 @@ builder fee::encode_core(tuple ds) {
 }
 
 ;; only use this when the size < 1023 bits
-slice fee::encode(tuple ds) {
+slice fee::encode(slice ds) {
     return fee::encode_core(ds).end_cell().begin_parse();
 }
 
-int fee::encode_length(tuple ds) {
+int fee::encode_length(slice ds) {
     slice result = fee::encode_core(ds).end_cell().begin_parse();
     return result.slice_bits() >> 3;
 }

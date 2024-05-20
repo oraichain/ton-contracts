@@ -168,37 +168,29 @@ export const getSignInfoTuple = (mode: SignerInfo): Tuple => {
     };
 };
 
-export const getFeeTuple = (fee: Fee): Tuple => {
+export const getFeeTuple = (fee: Fee): Cell => {
     const { lo, hi } = int64FromString(fee.gasLimit.toString());
     let buff = [] as number[];
     writeVarint64({ lo, hi }, buff, 0);
-    const amounts = fee.amount.map((item) => {
-        return {
-            type: 'slice',
-            cell: beginCell()
-                .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
-                .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
-                .endCell(),
-        } as TupleItemSlice;
-    });
-    return {
-        type: 'tuple',
-        items: [
-            { type: 'tuple', items: amounts },
-            {
-                type: 'slice',
-                cell: beginCell().storeBuffer(Buffer.from(buff)).endCell(),
-            },
-            {
-                type: 'slice',
-                cell: beginCell().storeBuffer(Buffer.from(fee.payer)).endCell(),
-            } as TupleItemSlice,
-            {
-                type: 'slice',
-                cell: beginCell().storeBuffer(Buffer.from(fee.granter)).endCell(),
-            } as TupleItemSlice,
-        ],
-    };
+    let amountsCell;
+    for (let i = fee.amount.length - 1; i >= 0; i--) {
+        let innerCell = beginCell()
+            .storeRef(beginCell().storeBuffer(Buffer.from(fee.amount[i].denom)).endCell())
+            .storeRef(beginCell().storeBuffer(Buffer.from(fee.amount[i].amount)).endCell())
+            .endCell();
+        if (!amountsCell) {
+            amountsCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            amountsCell = beginCell().storeRef(amountsCell).storeRef(innerCell).endCell();
+        }
+    }
+    let inputRef = beginCell()
+        .storeRef(amountsCell!)
+        .storeRef(beginCell().storeBuffer(Buffer.from(buff)).endCell())
+        .storeRef(beginCell().storeBuffer(Buffer.from(fee.payer)).endCell())
+        .storeRef(beginCell().storeBuffer(Buffer.from(fee.granter)).endCell())
+        .endCell();
+    return inputRef;
 };
 
 export const getTipTuple = (tip: Tip): Cell => {
@@ -1008,14 +1000,24 @@ export class LightClient implements Contract {
 
     // fee
     async getFeeEncode(provider: ContractProvider, fee: Fee) {
-        const tuple = getFeeTuple(fee);
-        const result = await provider.get('fee_encode', [tuple]);
+        const cell = getFeeTuple(fee);
+        const result = await provider.get('fee_encode', [
+            {
+                type: 'slice',
+                cell,
+            },
+        ]);
         return result.stack.readBuffer();
     }
 
     async getFeeEncodeLength(provider: ContractProvider, fee: Fee) {
-        const tuple = getFeeTuple(fee);
-        const result = await provider.get('fee_encode_length', [tuple]);
+        const cell = getFeeTuple(fee);
+        const result = await provider.get('fee_encode_length', [
+            {
+                type: 'slice',
+                cell,
+            },
+        ]);
         return result.stack.readNumber();
     }
 
@@ -1115,7 +1117,7 @@ export class LightClient implements Contract {
             items: [],
         } as Tuple;
         if (data.fee) {
-            feeTuple = getFeeTuple(data.fee);
+            feeTuple = getFeeTuple(data.fee) as any;
         }
         let tipTuple = {
             type: 'tuple',
@@ -1266,7 +1268,7 @@ function getAuthInfoInput(data: AuthInfo) {
         items: [],
     } as Tuple;
     if (data.fee) {
-        feeTuple = getFeeTuple(data.fee);
+        feeTuple = getFeeTuple(data.fee) as any;
     }
     let tipTuple = {
         type: 'tuple',

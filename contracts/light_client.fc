@@ -260,11 +260,11 @@ slice coin_encode(slice ds) method_id {
 
 ;; Fee 
 ;; only test for < 1023 bit case
-slice fee_encode(tuple ds) method_id {
+slice fee_encode(slice ds) method_id {
     return fee::encode(ds);
 }
 
-int fee_encode_length(tuple ds) method_id {
+int fee_encode_length(slice ds) method_id {
     return fee::encode_length(ds);
 }
 
