@@ -19,7 +19,7 @@
 #include "utils/tip.fc";
 ;; #include "utils/compact_bit_array.fc";
 ;; #include "utils/mode_info.fc";
-;; #include "utils/signer_info.fc";
+#include "utils/signer_info.fc";
 ;; #include "utils/auth_info.fc";
 ;; #include "utils/msg_execute_contract.fc";
 ;; #include "utils/tx_raw.fc";
@@ -317,13 +317,15 @@ slice tip_encode(slice ds) method_id {
 ;; }
 
 ;; ;; SignerInfo
-;; tuple signer_info_encode(tuple ds) method_id {
-;;     return signer_info::encode(ds);
-;; }
+tuple signer_info_encode(slice ds) method_id {
+    (int len, tuple encode) = signer_info::encode(ds);
+    return encode;
+}
 
-;; int signer_info_encode_length(tuple ds) method_id {
-;;     return signer_info::encode_length(ds);
-;; }
+int signer_info_encode_length(slice ds) method_id {
+    (int len, tuple encode) = signer_info::encode(ds);
+    return len;
+}
 
 ;; ;; 
 

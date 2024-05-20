@@ -133,39 +133,20 @@ export const getCanonicalVoteSlice = (vote: CanonicalVote): Cell => {
         .endCell();
 };
 
-export const getSignInfoTuple = (mode: SignerInfo): Tuple => {
-    const typeUrl =
-        mode.publicKey === undefined
-            ? beginCell().endCell()
-            : beginCell().storeBuffer(Buffer.from(mode.publicKey!.typeUrl)).endCell();
-    const value = buildCellTuple(mode.publicKey?.value || new Uint8Array([]));
+export const getSignInfoTuple = (mode: SignerInfo): Cell => {
+    const typeUrl = beginCell().storeBuffer(Buffer.from(mode!.publicKey!.typeUrl)).endCell();
+    const value = buildRecursiveSliceRef(mode!.publicKey!.value);
+    const anyCell = beginCell()
+        .storeRef(typeUrl)
+        .storeRef(value || beginCell().endCell())
+        .endCell();
     const modeInfo = mode.modeInfo?.single ? getInt64Slice(mode.modeInfo?.single) : beginCell().endCell();
     const { lo, hi } = int64FromString(mode.sequence.toString());
     let buff = [] as number[];
     writeVarint64({ lo, hi }, buff, 0);
     const sequence = beginCell().storeBuffer(Buffer.from(buff)).endCell();
-
-    return {
-        type: 'tuple',
-        items: [
-            {
-                type: 'slice',
-                cell: typeUrl,
-            },
-            {
-                type: 'tuple',
-                items: value,
-            },
-            {
-                type: 'slice',
-                cell: modeInfo,
-            },
-            {
-                type: 'slice',
-                cell: sequence,
-            },
-        ],
-    };
+    const inputCell = beginCell().storeRef(anyCell).storeRef(modeInfo).storeRef(sequence).endCell();
+    return inputCell;
 };
 
 export const getFeeTuple = (fee: Fee): Cell => {
@@ -243,6 +224,7 @@ export const buildRecursiveSliceRef = (value: string | Uint8Array): Cell | undef
     for (let i = longBuf.length; i > 0; i -= 127) {
         if (!innerCell) {
             innerCell = beginCell()
+                .storeRef(beginCell().endCell()) // This still stop when reach that ref, but this will be our convention for more than two refs recursive
                 .storeBuffer(Buffer.from(longBuf.subarray(Math.max(0, i - 127), i)))
                 .endCell();
         } else {
@@ -1079,14 +1061,24 @@ export class LightClient implements Contract {
     }
 
     async getSignerInfoEncode(provider: ContractProvider, mode: SignerInfo) {
-        const tuple = getSignInfoTuple(mode);
-        const result = await provider.get('signer_info_encode', [tuple]);
+        const cell = getSignInfoTuple(mode);
+        const result = await provider.get('signer_info_encode', [
+            {
+                type: 'slice',
+                cell,
+            },
+        ]);
         return result.stack.readTuple();
     }
 
     async getSignerInfoEncodeLength(provider: ContractProvider, mode: SignerInfo) {
-        const tuple = getSignInfoTuple(mode);
-        const result = await provider.get('signer_info_encode_length', [tuple]);
+        const cell = getSignInfoTuple(mode);
+        const result = await provider.get('signer_info_encode_length', [
+            {
+                type: 'slice',
+                cell,
+            },
+        ]);
         return result.stack.readNumber();
     }
 
@@ -1096,7 +1088,7 @@ export class LightClient implements Contract {
         const result = await provider.get('auth_info_encode', [
             {
                 type: 'tuple',
-                items: signInfos,
+                items: signInfos as any,
             },
             feeTuple,
             tipTuple,
@@ -1130,7 +1122,7 @@ export class LightClient implements Contract {
         const result = await provider.get('auth_info_encode_length', [
             {
                 type: 'tuple',
-                items: signInfos,
+                items: signInfos as any,
             },
             feeTuple,
             tipTuple,
@@ -1169,7 +1161,7 @@ export class LightClient implements Contract {
                 items: [
                     {
                         type: 'tuple',
-                        items: signInfos,
+                        items: signInfos as any,
                     },
                     feeTuple,
                     tipTuple,
@@ -1205,7 +1197,7 @@ export class LightClient implements Contract {
                 items: [
                     {
                         type: 'tuple',
-                        items: signInfos,
+                        items: signInfos as any,
                     },
                     feeTuple,
                     tipTuple,
@@ -1241,7 +1233,7 @@ export class LightClient implements Contract {
                 items: [
                     {
                         type: 'tuple',
-                        items: signInfos,
+                        items: signInfos as any,
                     },
                     feeTuple,
                     tipTuple,
