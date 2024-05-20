@@ -23,36 +23,46 @@
 #include "utils/auth_info.fc";
 #include "utils/msg_execute_contract.fc";
 #include "utils/tx_raw.fc";
-
-
-
-
-const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
+#include "static/op_codes.fc";
 
 ;; storage variables
 
 ;; id is required to be able to create different instances of counters
 ;; since addresses in TON depend on the initial state of the contract
-global int ctx_id;
-global int ctx_counter;
+;; global int ctx_id;
+;; global int ctx_counter;
+global int height;
+global slice chain_id;
+global slice next_validator_hash_set;
+global cell validator_set;
 
 ;; load_data populates storage variables using stored data
 () load_data() impure {
     var ds = get_data().begin_parse();
 
-    ctx_id = ds~load_uint(32);
-    ctx_counter = ds~load_uint(32);
+    int height = ds~load_uint(256);
+
+    cell chain_id_cell = ds~load_ref();
+    chain_id = chain_id_cell.begin_parse();
+
+    cell next_validator_hash_set_cell = ds~load_ref();
+    next_validator_hash_set = next_validator_hash_set_cell.begin_parse();
+
+    cell validator_set_cell = ds~load_ref();
+    validator_set = validator_set_cell.begin_parse();
 
     ds.end_parse();
 }
 
 ;; save_data stores storage variables as a cell into persistent storage
-() save_data() impure {
+() save_data() impure inline_ref {
     set_data(
         begin_cell()
-            .store_uint(ctx_id, 32)
-            .store_uint(ctx_counter, 32)
-            .end_cell()
+            .store_uint(height, 256)
+            .store_ref(begin_cell().store_slice(chain_id).end_cell())
+            .store_ref(begin_cell().store_slice(next_validator_hash_set).end_cell())
+            .store_ref(validator_set)
+        .end_cell()
     );
 }
 
@@ -73,7 +83,7 @@ global int ctx_counter;
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
 
-    if (op == op::increase) {
+    if (op == op::execute_transaction) {
         int increase_by = in_msg_body~load_uint(32);
         ctx_counter += increase_by;
         save_data();
