@@ -586,15 +586,23 @@ export class LightClient implements Contract {
     }
 
     async getHashTreeRoot(provider: ContractProvider, leaves: Buffer[]) {
-        const items: TupleItem[] = leaves.map((leaf) => ({
-            type: 'slice',
-            cell: beginCell().storeBuffer(leaf).endCell(),
-        }));
+        let innerCell;
+        for (let i = leaves.length - 1; i >= 0; --i) {
+            if (!innerCell) {
+                innerCell = beginCell().storeBuffer(leaves[i]).endCell();
+            } else {
+                innerCell = beginCell().storeRef(innerCell).storeBuffer(leaves[i]).endCell();
+            }
+        }
 
-        const result = await provider.get('get_tree_root', [
+        const result = await provider.get('get_tree_root_from_slice_refs', [
             {
-                type: 'tuple',
-                items,
+                type: 'slice',
+                cell: innerCell!,
+            },
+            {
+                type: 'int',
+                value: BigInt(leaves.length),
             },
         ]);
 

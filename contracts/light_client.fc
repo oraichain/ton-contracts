@@ -128,8 +128,8 @@ int get_check_signature(slice data, slice signature, int public_key) method_id {
     return check_data_signature(data, signature, public_key);
 }
 
-int get_tree_root(tuple leaves) method_id {        
-    return hash_from_tree_slice(leaves);    
+int get_tree_root_from_slice_refs(slice chunks, int length) method_id {        
+    return hash_from_ref_slice(chunks, length);    
 }
 
 int get_tree_root_from_proof(int leaf, tuple branch, slice positions) method_id {
