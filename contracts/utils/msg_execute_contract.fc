@@ -1,6 +1,6 @@
 #include "coin.fc";
 #include "varint.fc";
-
+const msg_execute_contract::typeUrl = "/cosmwasm.wasm.v1.MsgExecuteContract";
 
 tuple msg_execute_contract::encode(slice sender_contract, tuple msg, tuple funds) {
     tuple return_tuple = empty_tuple();
