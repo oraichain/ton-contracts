@@ -24,13 +24,12 @@ tuple msg_execute_contract::encode(slice sender_contract, slice msg, slice funds
     tuple msg_item_tuple = empty_tuple();
     ;; get msg len
     while(msg.slice_refs_empty?() != -1) {
+        msg_size += msg.slice_bits() >> 3;
+        msg_item_tuple~tpush(msg);
         slice next_ref = msg~load_ref().begin_parse();
         slice msg_chunk = next_ref;
-        msg_size += msg_chunk.slice_bits() >> 3;
-        msg_item_tuple~tpush(msg_chunk);
         msg = next_ref;
     }
-
     return_tuple~tpush(sender_contract_prefix_msg.store_slice(uvarint::encode(msg_size)).end_cell().begin_parse());
 
     int i = 0;
