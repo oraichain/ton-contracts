@@ -253,6 +253,7 @@ export const buildRecursiveSliceRef = (value: string | Uint8Array):Cell|undefine
         if (!innerCell) {
             innerCell = beginCell()
                 .storeBuffer(Buffer.from(longBuf.subarray(Math.max(0, i - 127), i)))
+                .storeRef(beginCell().endCell())
                 .endCell();
         } else {
             innerCell = beginCell()
@@ -436,6 +437,103 @@ export const txBodyToTuple = (txBodyWasm: TxBody) => {
 
     return txBodyTuple;
 };
+
+export const buildTxBodySliceRef = (txBodyWasm:TxBody):Cell =>{
+    const messages = txBodyWasm.messages;
+    const ext_opts = txBodyWasm.extensionOptions;
+    const non_critical_ext_opts = txBodyWasm.nonCriticalExtensionOptions;
+
+    let messagesRef: Cell | undefined;
+    for(let i = txBodyWasm.messages.length - 1; i >= 0; i--){
+        const value = buildRecursiveSliceRef(messages[i].value);
+        const cell =    beginCell()
+                            .storeRef(
+                                beginCell().
+                                storeBuffer(Buffer.from(messages[i].typeUrl))
+                                .endCell()
+                            )
+                            .storeRef(value ? value : beginCell().endCell())
+                            .endCell()
+        if(!messagesRef){
+            messagesRef = beginCell()
+                            .storeSlice(cell.beginParse()) 
+                            .storeRef(beginCell().endCell())
+                            .endCell();
+        } else {
+            messagesRef = beginCell()
+                            .storeSlice(cell.beginParse())
+                            .storeRef(messagesRef)
+                            .endCell();
+        }
+    }
+    console.log(messagesRef);
+
+    let extensionOptionsRef: Cell | undefined;
+    for(let i = ext_opts.length - 1; i >= 0; i--){
+        const value = buildRecursiveSliceRef(ext_opts[i].value);
+        const cell =   beginCell()
+                            .storeRef(
+                                beginCell().
+                                storeBuffer(Buffer.from(ext_opts[i].typeUrl))
+                                .endCell()
+                            )
+                            .storeRef(value ? value : beginCell().endCell())
+                            .endCell()
+        if(!extensionOptionsRef){
+            extensionOptionsRef = beginCell()
+                            .storeSlice(cell.beginParse())
+                            .storeRef(beginCell().endCell())
+                            .endCell();
+        } else {
+            extensionOptionsRef = beginCell()
+                            .storeSlice(cell.beginParse())
+                            .storeRef(extensionOptionsRef)
+                            .endCell();
+        }
+    }
+
+    let nonCriticalExtensionOptionsRef: Cell | undefined;
+    for(let i = non_critical_ext_opts.length - 1; i >= 0; i--){
+        const value = buildRecursiveSliceRef(non_critical_ext_opts[i].value);
+        const cell =  beginCell()
+                            .storeRef(
+                                beginCell().
+                                storeBuffer(Buffer.from(non_critical_ext_opts[i].typeUrl))
+                                .endCell()
+                            )
+                            .storeRef(value ? value : beginCell().endCell())
+                            .endCell()
+        
+        if(!nonCriticalExtensionOptionsRef) {
+            nonCriticalExtensionOptionsRef = beginCell()
+                            .storeSlice(cell.beginParse())
+                            .storeRef(beginCell().endCell())
+                            .endCell();
+        } else {
+            nonCriticalExtensionOptionsRef = beginCell()
+                                                .storeSlice(cell.beginParse())
+                                                .storeRef(nonCriticalExtensionOptionsRef)
+                                                .endCell();
+        }
+    }
+  
+    let memo_timeout_height_builder = beginCell();
+
+    if (txBodyWasm.memo) {
+        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo)).endCell());
+    }
+
+    if (txBodyWasm.timeoutHeight > 0n) {
+        memo_timeout_height_builder.storeUint(txBodyWasm.timeoutHeight, 64);
+    }
+
+    return beginCell()
+                .storeRef(messagesRef ? messagesRef : beginCell().endCell())
+                .storeRef(memo_timeout_height_builder.endCell())
+                .storeRef(extensionOptionsRef ? extensionOptionsRef : beginCell().endCell())
+                .storeRef(nonCriticalExtensionOptionsRef ? nonCriticalExtensionOptionsRef : beginCell().endCell())
+                .endCell();
+}
 
 export const msgExecuteContractToTuple = (msg: MsgExecuteContract) => {
     const msgExecuteContractTuple: TupleItem[] = [];
@@ -1019,9 +1117,12 @@ export class LightClient implements Contract {
 
     // TxBody
     async getTxBody(provider: ContractProvider, txBody: TxBody) {
-        const input = txBodyToTuple(txBody);
-        console.log({ input });
-        const result = await provider.get('tx_body_encode', input);
+        const input = buildTxBodySliceRef(txBody);
+
+        const result = await provider.get('tx_body_encode', [{
+            type: 'slice',
+            cell: input,
+        }]);
 
         return result.stack.readTuple();
     }

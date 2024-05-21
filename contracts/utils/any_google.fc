@@ -27,9 +27,6 @@
             value_tuple~tpush(value);
             value = value~load_ref().begin_parse();
         }
-        int ele_size = slice_bits(value) >> 3;
-        value_byte_size += ele_size; ;; last_ref
-        value_tuple~tpush(value); ;; last_ref
         inner_cell = inner_cell.store_slice(uvarint::encode(value_byte_size));
     }
 

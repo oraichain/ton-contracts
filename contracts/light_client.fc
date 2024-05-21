@@ -15,7 +15,7 @@
 #include "utils/coin.fc";
 #include "utils/fee.fc";
 #include "utils/any_google.fc";
-;; #include "utils/tx_body.fc";
+#include "utils/tx_body.fc";
 ;; #include "utils/tip.fc";
 ;; #include "utils/compact_bit_array.fc";
 ;; #include "utils/mode_info.fc";
@@ -278,15 +278,12 @@ tuple any_encode(slice ds) method_id {
     return return_tuple;
 }
 
-;; tuple tx_body_encode(
-;;     tuple messages,
-;;     slice memo_and_timeout_height, 
-;;     tuple ext_opts, 
-;;     tuple non_critical_ext_opts
-;; ) method_id {
-;;     (_, tuple return_tuple) = tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
-;;     return return_tuple;
-;; }
+tuple tx_body_encode(
+    slice ds
+) method_id {
+    (_, tuple return_tuple) = tx_body::encode(ds);
+    return return_tuple;
+}
 
 ;; ;; Tip 
 ;; ;; only test for < 1023 bit case
