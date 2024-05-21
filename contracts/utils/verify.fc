@@ -2,6 +2,10 @@
 #include "varbuffer.fc";
 #include "common.fc";
 #include "merkleize.fc";
+#include "version.fc";
+#include "proto.fc";
+#include "time.fc";
+#include "blockid.fc";
 
 const VERIFY_ERROR_UNKNOWN_BLOCKID_FLAG = 3001;
 
@@ -106,14 +110,14 @@ int verify::verify_commit_sigs(slice header, slice commit, slice validators){
     return -1;
 }
 
-int verify::verify_block_hash(slice ds) {
+int verify::verify_block_hash(slice ds, int block_hash) {
     slice header = ds~load_ref().begin_parse();
     slice version = header~load_ref().begin_parse();
     slice chain_id = header~load_ref().begin_parse();
     int height = header~load_uint(32);
     slice time = header~load_ref().begin_parse();
     slice block_id = header~load_ref().begin_parse();
-    (_, int tx_hash) = block_id.load_uint(256);
+
     slice proposer_address = header~load_bits(160);
 
     slice first_hashes = ds~load_ref().begin_parse();
@@ -143,8 +147,8 @@ int verify::verify_block_hash(slice ds) {
         .tpush(proto::encode_buffer(last_results_hash))
         .tpush(proto::encode_buffer(evidence_hash))
         .tpush(proto::encode_buffer(proposer_address));
-    
-    if (tx_hash != hash_from_tree_slice(chunks)) {
+
+    if (block_hash != hash_from_tree_slice(chunks)) {
         return 0;
     }
     return -1; 

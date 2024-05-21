@@ -822,11 +822,19 @@ export class TestClient implements Contract {
             .storeRef(beginCell().storeBuffer(Buffer.from(header.last_results_hash, 'hex')))
             .storeRef(beginCell().storeBuffer(Buffer.from(header.evidence_hash, 'hex')));
 
-        let dsCell = beginCell().storeRef(cell).storeRef(hashCell1).storeRef(hashCell2).endCell();
+        // let dsCell = beginCell().storeRef(cell).storeRef(hashCell1).storeRef(hashCell2).endCell();
         const result = await provider.get('get_block_hash', [
             {
                 type: 'slice',
-                cell: dsCell,
+                cell: cell.endCell(),
+            },
+            {
+                type: 'slice',
+                cell: hashCell1.endCell(),
+            },
+            {
+                type: 'slice',
+                cell: hashCell2.endCell(),
             },
         ]);
 

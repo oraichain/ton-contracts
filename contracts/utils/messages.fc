@@ -1,0 +1,29 @@
+const int BOUNCEABLE = 0x18;
+const int NON_BOUNCEABLE = 0x10;
+
+const int SEND_MODE_REGULAR = 0;
+const int SEND_MODE_PAY_FEES_SEPARETELY = 1;
+const int SEND_MODE_IGNORE_ERRORS = 2;
+const int SEND_MODE_DESTROY = 32;
+const int SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE = 64;
+const int SEND_MODE_CARRY_ALL_BALANCE = 128;
+
+() emit_log_simple(int event_id, cell data, int query_id) impure inline {
+    var msg = begin_cell()
+    .store_uint (12, 4)         ;; ext_out_msg_info$11 src:MsgAddressInt ()
+    .store_uint (1, 2)          ;; addr_extern$01
+    .store_uint (256, 9)        ;; len:(## 9)
+    .store_uint(event_id, 256); ;; external_address:(bits len)
+
+    if(null?(data)) {
+        msg = msg
+      .store_uint(0, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
+      .store_uint(query_id, 64);
+    } else {
+        msg = msg
+      .store_uint(1, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
+      .store_ref(data);
+    }
+
+    send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
+}
