@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { LightClient } from '../wrappers/LightClient';
+import { TestClient } from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import * as voteFixtures from './fixtures/getSignBytes.json';
@@ -8,18 +8,18 @@ import * as voteFixtures from './fixtures/getSignBytes.json';
 describe('GetSignBytes', () => {
     let code: Cell;
     beforeAll(async () => {
-        code = await compile('LightClient');
+        code = await compile('TestClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let GetSignBytes: SandboxContract<LightClient>;
+    let GetSignBytes: SandboxContract<TestClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
         GetSignBytes = blockchain.openContract(
-            LightClient.createFromConfig(
+            TestClient.createFromConfig(
                 {
                     id: 0,
                     counter: 0,
@@ -43,15 +43,13 @@ describe('GetSignBytes', () => {
     it('test encode', async () => {
         for (const fixture of Object.values(voteFixtures)) {
             if (fixture.value !== undefined && fixture.encoding !== undefined) {
-             
                 expect(
-                          (
+                    (
                         await GetSignBytes.getVoteSignBytes({
                             ...fixture?.value,
-                            height: parseInt(fixture.value.height)
-                          
+                            height: parseInt(fixture.value.height),
                         })
-                    ).toString('hex')
+                    ).toString('hex'),
                 ).toBe(fixture.encoding);
             }
         }

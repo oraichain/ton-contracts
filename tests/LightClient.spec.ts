@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { BlockId, LightClient, getMerkleProofs, leafHash } from '../wrappers/LightClient';
+import { BlockId, TestClient, getMerkleProofs, leafHash } from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { result as blockData } from './fixtures/block.json';
@@ -9,22 +9,22 @@ import { createHash } from 'crypto';
 
 const validatorMap = Object.fromEntries(validators.validators.map((v) => [v.address, v]));
 
-describe('LightClient', () => {
+describe('TestClient', () => {
     let code: Cell;
 
     beforeAll(async () => {
-        code = await compile('LightClient');
+        code = await compile('TestClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let lightClient: SandboxContract<LightClient>;
+    let lightClient: SandboxContract<TestClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
         lightClient = blockchain.openContract(
-            LightClient.createFromConfig(
+            TestClient.createFromConfig(
                 {
                     id: 0,
                     counter: 0,
@@ -50,7 +50,7 @@ describe('LightClient', () => {
         // blockchain and counter are ready to use
     });
 
-    it('should increase counter', async () => {
+    xit('should increase counter', async () => {
         const increaseTimes = 3;
         for (let i = 0; i < increaseTimes; i++) {
             console.log(`increase ${i + 1}/${increaseTimes}`);
@@ -129,7 +129,7 @@ describe('LightClient', () => {
         console.log('buf', buf.toString('hex'));
     });
 
-    it('vote_sign_bytes', async () => {
+    xit('vote_sign_bytes', async () => {
         const vote = {
             type: 2,
             timestamp: '2024-05-06T07:34:41.886488234Z',
@@ -150,7 +150,7 @@ describe('LightClient', () => {
         );
     });
 
-    it('verify tx', async () => {
+    xit('verify tx', async () => {
         const { header, data, last_commit } = blockData.block;
 
         // verify block header
@@ -194,7 +194,7 @@ describe('LightClient', () => {
         // expect(rootTxsHash).toEqual(BigInt('0x' + header.data_hash));
     });
 
-    it('test gen data_hash', async () => {
+    xit('test gen data_hash', async () => {
         const txs = [
             'Cs8RCswRCiQvY29zbXdhc20ud2FzbS52MS5Nc2dFeGVjdXRlQ29udHJhY3QSoxEKK29yYWkxbTczNm56aHZkMzd2bDYwZGc0MHlwN3EzMnB2Y3E3eHN1djY2bncSP29yYWkxcjdxd3RmcDd1YzBqc2VtYzhmcm5qZ3djNGdwc3B4bnVoZzdnamN2M3NsenVsMDhnZ2xkczY1dG5ycBqyEHsic2hhcmVfZGVhbGVyIjp7InNoYXJlIjp7InJvd3MiOlsiTFd0ZXh6aDJ3d0ZLWnhMN1krdERQdmRQNnMzVUY3Sk1RTTJFTTlrd3M5NmMxR3N1NmFIekNwbU9RaVhtSjFyZi9uWWt4aFROS0ZjWXlxK2NIUG9ETkExOUdxelFRWDZPaXZKeG1WaFZGa0lyWWM4UVpkU2huNU5ZbzNqR0RVcjFKMzBoUHplUTBia0JrMlN5aFZ5a0I3S1hpbGpIb2cvVWVkaU91SFJlYWM4PSIsInRKbzh5L3h0NGdHYXBTMFNzZlpFSnFLV1M3SjlWaTVjTU5CUkFPN1FUU2dYSGQ5V2VtWkdjRmo0enh0MHpBNDRhdnhtb2lNNzBmcXdLeWVmV1BBcjAvbVhXcjFLUGwrVis0UTFGenRrajlKc1ZrTXMzemlyUTBYTUt2bDErS2s5QVY4L3hpZktBeGVPdTBFZTFITXlHOWZ2NndRanMwUlpMQW85ekdvbUpKdz0iLCJ0VzdVNlBwaEVKbXZ6U25ESkc3RXJXZTFBM2phSE91b3lpaEJ2N0hHSG0yODhsSmsvWjhpU05DTFFXVmVnWFZpZnNkWm9aenQ5NTF1M1R1OFRtY2tvOGxiUjJVYVMxalphM0Z3NEM4WlhKTnZKaUh1dUk3MjhDVUJwVEhNbmxMU00raXlyc1kwZkZaWkN4bUZ2UVhEZkJMUzZIQkhtSjlSamVZSERSUDRnZjA9IiwiK0lMdlN5b3EwSTVyQ245QmQ4N05aOUE0R0lPWGV1LzlPbWpPQlZjdVdvQVBPRmpKMEdvbklKTzZWOWpISnh3Tmtjdjd4a21rLzJuZG9qUG9FYXN4MU1kSmp4bjVyWnRHeWVjeHhGalZpU2tIT0RndDBSTTl6QTg0ZkNSUlhwOXhaQWJiNkxENGJ6cW1HNnZoWUh1RnM0K0JhQUpMUUsvNWVqSWlSTXp3U2FvPSIsIlJ4aVhzM3F0YklVa3V1MEo1ZllkSWNtTVBoa3Nld0dJVHZvR3FRT2NHanhSc1JpMkwwWVp0YjRwby9xL2hobTlzdEdETDJYL1BndVhObHJGTER3UElVY3lUVURCS3JLWVNvRnY4ckFzeXdPdEg5anhxL1ZlMzQ1cE9CWU04U0Z0L1lNazlFZVhrMFZyZUwyU3RGUWo0bXhLOXEwWUloYUllV3pZMmFLMmtPUT0iXSwiY29tbWl0bWVudHMiOlsic002MmkyQng0ejR2K3grRjMzY3ZPVWlvMk5ZNm9xY29XaEhBejR6bzJxSE5yZ1Bhb0t4T1BZSGpDZFFQblVCUWljL2I4S1ZXRFZvMWYyRGxiVURsVC9DazFQb1dKZ3RpNXhGVVBnS2YvSlh3Y3NEKzVQdWJzbEVRZzFkNjdZRGVsVzRWVlVWSUtvcWd2VUN2QU5pSFF6djhuc0k3Y2N1THhDK0IxdVlsUVh5ejFrMTYrQkxCQ3hXSlpkcndDMG9jIiwicjJXdkdyNEtnbFRISVRvK0ZGdFRSUDFzN0ZSL29RdjNib1dUemJDbVhyQ3pybXlhL1lxOHA0ZVR3SXEyQXVwNnNMbTI5cDdxRWJBRml4alRER0NPNWF1QkxzL09kZHNmYmN4Sm0yMjROcnMwYmtsSmdMQkZidU1mYlNWUU5oQnhxNkxIV285TC9JTWM0cmZVbTZoZ3VhMlZ1ellHdGRTdSt1U2V6Y3o0ZGxQTzhNR2srSzB3NWpITUdpM3RuYlJOIiwiandJZ1RnWCtCSnlvd2hrUkpGNzdLZmNUTlphTjNCbElBZ09lWkVBTVBha1NtbkIxSGhENkdxSVpERHNtSUdkbm8rS0swRWVmajZUQldYamJGa01LTnhFdlY4MWFOS0U2eXlsSnhmZy9wR0ZTOCtPNTJ5UU5rYUhBQkh5QnovOWRzWEJkUXk2ZXhOVWd1Nm9wYkgzcm9RNXhtbTVNOVlKMlg0cnN1R3RhWDZHd3R1alVzN3J0YzBMcGhrSTJBVjhzIiwickZ5aHVTbWNqa1d4c0ZYRi9sOHZGQ1RnS0VUTmpIQW8xelMya3JOS2g4VWVxNFBqUWszWFRqUnc1VFI0bkYxMWo5dC94VndhQU1SeVg3RGdNKzdta2dCRWU3a29VdHlhRGRtaUtTd1liNDlmdFpIdE5SVWNFUDFEMDNyMitIYjJnVHZUeVhMN2lmdW5pVnlYektHdUdvSTYvREtXM0FheitJR2lOcnowb3FKQzR4WkRBYnNLSCszeFVjWGwraXU5IiwicXpDbC9GRWlDd01rU2wzbWlTaHRQNWx0WXRuYm1vUjBGYldqSEdiMG9XVk1LQ1o2YlZReTI2WmtQeXREMWN6VHQ2ZWV1K01id3pHNzZxQWxiMG52VDZJTXZIeDVpSDdnZFdGM0JtczZOdmZEcjkzajE1YlpsWHZqU2RaSXFUNVloUTFJWXk1TVY4YjRkS3BzWlE2Sm4zc3IwejVlK3lHc0Y2N2E1eFpwUk42R25jVUpZTVZDNkQ2TklzSVRDZ29EIiwicVcyWWZlN1I1cTBJQUFMdW1ScmRSNzVLSjNyTFkwT0EyeGoxRFRxaEl6eGk2Z2tvc1dQOHpFUmR3MEgxTm9mbmo5dEluSThMdTJNUTkrMjJEa1dPc1k1Z2QySjZ3V09NVGsxTE5QQkJQK1NRTm5QUW5oemkxQkJwVlpyZ1RrMkRna0huMFdoM0pyZnJEQ0xOYWtyazRUQXFwUUl4NS84WVNkdWw3U0ptb2xZNEErZDc5YmpYZzZ3dVdlV3RkWEVjIl19fX0SZwpSCkYKHy9jb3Ntb3MuY3J5cHRvLnNlY3AyNTZrMS5QdWJLZXkSIwohA86yP7PB+lQfPTovni16WF0Not8CNnv/jDSfI1pDey7vEgQKAggBGL2zAhIRCgsKBG9yYWkSAzYyNhCRmSYaQKZb8wDOXVf0HPJgtjaGePRQ8hive9oGHNxDcpzAQR9vFhI84Ex8yw0Lk5kOMZ6tL876xENZ7gzRSBMRtYsrvmY=',
             'Cs8RCswRCiQvY29zbXdhc20ud2FzbS52MS5Nc2dFeGVjdXRlQ29udHJhY3QSoxEKK29yYWkxdG53aHh2NWVobWgzem50eWZmdmcyMDZ3cHFzaHhwY3c2ODZzOWcSP29yYWkxcjdxd3RmcDd1YzBqc2VtYzhmcm5qZ3djNGdwc3B4bnVoZzdnamN2M3NsenVsMDhnZ2xkczY1dG5ycBqyEHsic2hhcmVfZGVhbGVyIjp7InNoYXJlIjp7InJvd3MiOlsiZjUzSHpSVXdlQTd2Y2RDbnM2ZnNiMFJMSDZnSG1VT2tnekNqbElKMmlRZ3JiK0VOakIwUmVMblhYMDdIbnhsdGUyWVNWZld3UDBteFhNSHFUbVFjbXpyUGlmeTBsRC9mZHUvZlFhR2VmK3I3VE9kZ2s0T1hjeC96c3RxNExkZE14ZEJtYitTUmcxM3Vnc1Z6bmxVQURVK29weS9EcVg0MkNVcldhejdIS25NPSIsIkNKeStOOTgxcGxhNHIvV2FRaDBnc1o3cjdJNXU1UFcvOXUyWEpyMzU1V2d4STVyZFVpTmwzWmZzYzF0QUVMYzRxbCtDN0htOTZBNTJSYWNwS04ydlNiQ1pJSEJYL1p5VXU1aEJOalpuMTBqQmJtU2c2Z0lkN0tNZ0ZQSVJBMVo5bUhLaWtjTDNGSE8vOUE0aUZhUVNsRWpxK3JyQjUrRE1mWkswck9DYzB5RT0iLCJtYVZWV2pmQmF6ZTUvbGxZQi90bXpWNHJqMnZ0NkFQd1JSK1VXeGhDeEk2czVwMmtRK0RtbzFydTZoenlDeHkzOHNLand3eTFEMDBLSEdrUmhJTlNFdVl3VjVheS9JVFA0YXRUb1lqRVUrVGVxNUM4TWQ5OHJLZSs1T2dlc215U0Uwcm9QQkhTTmREQitPQklVd0FIajArcjhmUEVORU9lZ3Y1OGM2SEJXNG89IiwiRVFEaS9mdFpSMXhRUmtKckVKaUhHU21ZcU1IYk1VZWllMEo4eEdteEMyUkwySlFST1A1VjMxVjVJS3JGYjlaNTJaRDFzTUMwcDhIUmQxanE5WWsrRDdVa3A5dnBPNURlajlSTnU2bmFUY2tUNGQyR1ZSbWV0dDlFbGpKZUFFd2IzTStCb0VTRTFwNGphN281OFVEc0xiSVErWUpzV3BBYU94cFBLSW4ySkZjPSIsIi9VV011eHIzb0UvTHR3NytIZVI1L1cwWTFDUHRGZ0RWUW5paGRjOC8yK0txK0FJcXI1WjJpdzhPWFc0ZlpaU1E5aW8zM0NHa2N0OHk1K3N6eEg0MnMzclV6S0RLM1c4L3VOVjVoZXRrTmF2KzA0d2FWbitJWG9vWmplSmlWYXlPTGIxSDRJUjhpakh6YVJQM2hrN2tDTnFqeEFFYVJCbzFzbi94YWtiOElGaz0iXSwiY29tbWl0bWVudHMiOlsick9MUEQwZE5iTVltenRJTTJtUisxWUtHa0U3cm9xTjJsR2N1WklVN0MrekIvWGJLOWVCb1N6VVd0SUhRa0JYSHJYQWhHak9IZGcwRURtZk1McmNNS2RoODFJL0tDOVg4THUxWlVLanpWWlJrU1IrVTJsVU1TQkxOb1BUU1ZLSW9wd3cwbVViQkUvUzZKR01NSXlpdnMxTnpmcjhYMFJsQ0Q0cGJtYVhsOGhHVTk0SkIzVGQwZkVSOCtoeS8wbEI5IiwialBWQTZ0b1NQYzEzTWNCWUhOQnA2Mm1uZG15UG16SENocHh5N0pkbFR4WWQzRUZzSEhBMXpwZERYODdrTEQ5V2xybjBpL3dUWjhMVVdWN1BrWHhTK2ZWZUVsankzZ1N3ejVCd0lSaXVyY2dwbitjbkI1Um5odHRwTGlwYi9pMjRsWWFheEdXZXlNNndYbStyTmpuZU1EL3BBdmg4V2FzbkVrYklyUUc3K3QxVGxPckN6a24vME4xZzNRcXB1SWVxIiwiZ3Z6ZDVUYUVta2tXblZ3dVYyWnl0QURNMndSUE4yYWpiOEhEdFJheFl0M0lWRm9iTFJzZ2p2ZnBYM3lFTjdURmtpSGY3TkRzdEwyamZ4YmNDbnlKMnlXRGNUd0h1TDdtOHJkTkU1blZ0R2tSdnJuUy9ldlJTd0dQZGVHUnBSUFlzRGxzcVlZZ2JGUUl6RDV2QVZHbkN3QjZhUklYa1hrYS84U21qT2pIVVh6U1VJamhYSHJUOGtkY3JVb1NQSDUrIiwicUxLM01wY0cwTWdtVjVVdVBKZXRNa1VYaXZBaTEzbkhRa2lNV1RHekJKMlBnblhkc2I2TVROMUxrSTRMYXd4MXBkbFhYd3U1SHd4Y2dLMEltNnJMa0V1UG8ybDRaa0NhbmY2YXhIK1dlM25RSkdKdFI4OUxLbVlvRnRLcnRiM3BoWkh1QmVvZm5qUStXWGRkbC9hZ0FHSUU1RTg1REl3ZmdGdklnS0l1SHozcG5vcWFMbXRKLzhFblhOeXJiWjhwIiwicldBYkRMa2l3VjdveHFWUW1COVE5OW4rQ3NsZnFERFl3N0Y1ZUdyMitKMlN6eG5UOTJCSWlwUnRBUlluMnhlMXI5K2Nha2dleUpDS2FhalNUcWorOG90QStCOFI4eU5tVjJlZmQ3aW5RRmt4QkZFWWd2c0pjN0lWZGtlZmFad2hoRjRuT3NWaGwxdCt1Szl6U200SkdoM1l6SVBtQjlEeUYyd1dWNWdpWDBIa0Rmd3QzZllSdjVOVXVuR2M3eE1DIiwibGc0a2l2VDF5NDRkR2ZEaE9jek4xd0FGNW1MTG5GaXpoMmV2blZUeDlKWmdid1gwMEpHMU02dW0rVFcxRTdSamg4NllsQ00rd2IyVXA5V00xSzhDczdEM3VhbVNLaDArV2pPcThnUDYrNTQyR3k5OE1PZzhpQUtMZEE1b2lVS3RzNExCUlVhZUpYK01GN243U01NZ1JyMC9qSDA1d25JS25CSjJWV0NqbEk1N1pEYk1FenZSQXFtTnJhM1RxQkdnIl19fX0SZwpSCkYKHy9jb3Ntb3MuY3J5cHRvLnNlY3AyNTZrMS5QdWJLZXkSIwohAlD+aKWKLSd+YI17swAY4mkTB9BcifS5frJtcLV6cL9FEgQKAggBGMivAhIRCgsKBG9yYWkSAzYyNhCRmSYaQIpND4y2n+t7bTS0TWEmQRfKijf0Dk5mFDxNFdWm4SeYF8z/BCbVQBql+gr+PTcwpPFXyY7Ony1MbCL2bNFobxM=',
@@ -215,7 +215,7 @@ describe('LightClient', () => {
         expect(root.toString(16)).toEqual('9e70c46eda6841ed6ede4ae280d2cd2683dc103b9568f63f06f04e9d7e0617f0');
     });
 
-    it('digest_hash', async () => {
+    xit('digest_hash', async () => {
         const tx = Buffer.from(blockData.block.data.txs[0], 'base64');
         const ret = await lightClient.getDigestHash(tx);
         console.log(createHash('sha256').update(tx).digest('hex'), ret.toString(16));

@@ -1,0 +1,355 @@
+#include "imports/stdlib.fc";
+#include "utils/common.fc";
+#include "utils/proto.fc";
+#include "utils/varint.fc";
+#include "utils/varbuffer.fc";
+#include "utils/version.fc";
+#include "utils/time.fc";
+#include "utils/blockid.fc";
+#include "utils/merkleize.fc";
+#include "utils/uint64_le.fc";
+#include "utils/canonical_vote.fc";
+#include "utils/pubkey.fc";
+#include "utils/verify.fc";
+#include "utils/validator_hash_input.fc";
+#include "utils/coin.fc";
+#include "utils/fee.fc";
+#include "utils/any_google.fc";
+#include "utils/tx_body.fc";
+#include "utils/tip.fc";
+#include "utils/compact_bit_array.fc";
+#include "utils/mode_info.fc";
+#include "utils/signer_info.fc";
+#include "utils/auth_info.fc";
+#include "utils/msg_execute_contract.fc";
+#include "utils/tx_raw.fc";
+#include "static/op_codes.fc";
+
+;; storage variables
+
+;; id is required to be able to create different instances of counters
+;; since addresses in TON depend on the initial state of the contract
+;; global int ctx_id;
+;; global int ctx_counter;
+global int height;
+global slice chain_id;
+global slice next_validator_hash_set;
+global cell validator_set;
+
+;; load_data populates storage variables using stored data
+() load_data() impure {
+    var ds = get_data().begin_parse();
+
+    ;; int height = ds~load_uint(256);
+
+    ;; cell chain_id_cell = ds~load_ref();
+    ;; chain_id = chain_id_cell.begin_parse();
+
+    ;; cell next_validator_hash_set_cell = ds~load_ref();
+    ;; next_validator_hash_set = next_validator_hash_set_cell.begin_parse();
+
+    ;; cell validator_set_cell = ds~load_ref();
+    ;; validator_set = validator_set_cell.begin_parse();
+
+    ds.end_parse();
+}
+
+;; save_data stores storage variables as a cell into persistent storage
+() save_data() impure inline_ref {
+    set_data(
+        begin_cell()
+            .store_uint(height, 256)
+            .store_ref(begin_cell().store_slice(chain_id).end_cell())
+            .store_ref(begin_cell().store_slice(next_validator_hash_set).end_cell())
+            .store_ref(validator_set)
+        .end_cell()
+    );
+}
+
+;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    ;; if (in_msg_body.slice_empty?()) { ;; ignore all empty messages
+    ;;     return ();
+    ;; }
+
+    ;; slice cs = in_msg_full.begin_parse();
+    ;; int flags = cs~load_uint(4);
+    ;; if (flags & 1) { ;; ignore all bounced messages
+    ;;     return ();
+    ;; }
+
+    ;; load_data(); ;; here we populate the storage variables
+
+    ;; int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
+    ;; int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
+
+    ;; if (op == op::execute_transaction) {
+    ;;     int increase_by = in_msg_body~load_uint(32);
+    ;;     ctx_counter += increase_by;
+    ;;     save_data();
+    ;;     return ();
+    ;; }
+
+
+    return ();
+    ;; throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
+}
+
+;; get methods are a means to conveniently read contract data using, for example, HTTP APIs
+;; they are marked with method_id
+;; note that unlike in many other smart contract VMs, get methods cannot be called by other contracts
+
+;; int get_counter() method_id {
+;;     load_data();
+;;     return ctx_counter;
+;; }
+
+;; int get_id() method_id {
+;;     load_data();
+;;     return ctx_id;
+;; }
+
+
+int get_encode_uint_length(int number) method_id {
+    return uvarint::encode_length(number);    
+}
+
+int get_buffer_encode_length(slice buf) method_id {
+    return varbuffer::encode_length(buf);    
+}
+
+slice get_encode_uint(int number) method_id {
+    return uvarint::encode(number);    
+}
+
+slice get_buffer_encode(slice value) method_id {
+    return varbuffer::encode(value);    
+}
+
+int version_encode_length(slice version) method_id {
+    return version::encode_length(version);
+}
+
+slice version_encode(slice version) method_id {
+    return version::encode(version);
+}
+
+int get_check_signature(slice data, slice signature, int public_key) method_id {
+    return check_data_signature(data, signature, public_key);
+}
+
+int get_tree_root_from_slice_refs(slice chunks, int length) method_id {        
+    return root_hash_from_ref_slice(chunks, length);    
+}
+
+int get_tree_root_from_proof(int leaf, tuple branch, slice positions) method_id {
+    return hash_from_tree_proof(leaf, branch, positions);
+}
+
+;; Time 
+int time_encode_length(slice time) method_id {
+    return time::encode_length(time);
+}
+
+slice time_encode(slice time) method_id {
+    return time::encode(time);
+}
+
+int get_block_hash(slice header, slice first_hashes, slice second_hashes) method_id {
+    slice version = header~load_ref().begin_parse();
+    slice chain_id = header~load_ref().begin_parse();
+    int height = header~load_uint(32);
+    slice time = header~load_ref().begin_parse();
+    slice block_id = header~load_ref().begin_parse();
+    slice proposer_address = header~load_bits(160);
+
+    slice last_commit_hash = first_hashes~load_ref().begin_parse();
+    slice data_hash = first_hashes~load_ref().begin_parse();
+    slice validators_hash = first_hashes~load_ref().begin_parse();
+    slice next_validators_hash = first_hashes~load_ref().begin_parse();
+
+
+    slice consensus_hash = second_hashes~load_ref().begin_parse();
+    slice app_hash = second_hashes~load_ref().begin_parse();
+    slice last_results_hash = second_hashes~load_ref().begin_parse();
+    slice evidence_hash = second_hashes~load_ref().begin_parse();    
+
+    tuple chunks = empty_tuple()
+        .tpush(version::encode(version))
+        .tpush(proto::encode_buffer(chain_id))
+        .tpush(proto::encode_number(height))
+        .tpush(time::encode(time))
+        .tpush(blockid::encode(block_id))
+        .tpush(proto::encode_buffer(last_commit_hash))
+        .tpush(proto::encode_buffer(data_hash))
+        .tpush(proto::encode_buffer(validators_hash))
+        .tpush(proto::encode_buffer(next_validators_hash))
+        .tpush(proto::encode_buffer(consensus_hash))
+        .tpush(proto::encode_buffer(app_hash))
+        .tpush(proto::encode_buffer(last_results_hash))
+        .tpush(proto::encode_buffer(evidence_hash))
+        .tpush(proto::encode_buffer(proposer_address));
+    
+    
+    return hash_from_tree_slice(chunks);              
+    
+}
+
+;; BlockId
+int blockid_encoding_length(slice data) method_id {
+    return blockid::encode_length(data);
+}
+
+slice blockid_encode(slice data) method_id {
+    return blockid::encode(data);
+}
+
+
+;; Int64LE
+slice uint64le_encode(int value) method_id {
+    return uint64le::encode(value);
+}
+
+slice canonical_vote_encode(slice vote) method_id {
+    int vote_type = vote~load_uint(32);
+    int height = vote~load_uint(32);
+    int round = vote~load_uint(32);
+    slice block_id = vote~load_ref().begin_parse();
+    slice timestamp = vote~load_ref().begin_parse();
+    slice chain_id = vote~load_ref().begin_parse();
+
+    return canonical_vote::encode(vote_type, height, round, block_id, timestamp, chain_id);
+}
+
+slice get_vote_sign_bytes(slice vote) method_id {    
+    slice encoded =  canonical_vote_encode(vote);
+    return varbuffer::encode(encoded);
+}
+
+int verify_vote(slice vote, slice signature, int public_key) method_id {
+    slice data = get_vote_sign_bytes(vote);
+    return check_data_signature(data, signature, public_key);
+}
+
+;; int digest(tuple buf) method_id {
+;;     return buf.digest_hash();
+;; }
+
+;; Pubkey
+int pubkey_encode_length(slice pub) method_id {
+    return pubkey::encode_length(pub);
+}
+
+slice pubkey_encode(slice pub) method_id {
+    return pubkey::encode(pub);
+}
+
+int verify_commit_sigs(slice header, slice commit, slice validators) method_id {
+    return verify::verify_commit_sigs(header, commit, validators);
+}
+
+;; Validator Hash Input
+slice validator_hash_input_encode(slice ds) method_id {
+    return validator_hash_input::encode(ds);
+}
+
+;; Coin
+slice coin_encode(slice ds) method_id {
+    return coin::encode(ds);
+}
+
+;; Fee 
+;; only test for < 1023 bit case
+slice fee_encode(slice ds) method_id {
+    return fee::encode(ds);
+}
+
+int fee_encode_length(slice ds) method_id {
+    return fee::encode_length(ds);
+}
+
+;; any-protobuf
+tuple any_encode(slice ds) method_id {
+    tuple return_tuple = empty_tuple();
+    (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(ds);
+    return_tuple~tpush(encode_any_len);
+    return_tuple~tpush(encode_type_url);
+    return_tuple~tpush(value_encoded);
+    return return_tuple;
+}
+
+tuple tx_body_encode(slice ds ) method_id {
+    (_, tuple return_tuple) = tx_body::encode(ds);
+    return return_tuple;
+}
+
+;; ;; Tip 
+;; ;; only test for < 1023 bit case
+slice tip_encode(slice ds) method_id {
+    return tip::encode(ds);
+}
+
+int tip_encode_length(slice ds) method_id {
+    return tip::encode_length(ds);
+}
+
+;; CompactBitArray
+tuple compact_bit_array_encode(tuple ds) method_id {
+    return compact_bit_array::encode(ds);
+}
+
+int compact_bit_array_encode_length(tuple ds) method_id {
+    return compact_bit_array::encode_length(ds);
+}
+
+;; ModeInfo
+slice mode_info_encode(slice ds) method_id {
+    return mode_info::encode(ds);
+}
+
+int mode_info_encode_length(slice ds) method_id {
+    return mode_info::encode_length(ds);
+}
+
+;; ;; SignerInfo
+tuple signer_info_encode(slice ds) method_id {
+    (int len, tuple encode) = signer_info::encode(ds);
+    return encode;
+}
+
+int signer_info_encode_length(slice ds) method_id {
+    (int len, tuple encode) = signer_info::encode(ds);
+    return len;
+}
+
+;; ;; 
+
+tuple auth_info_encode(slice sign_infos, slice fee, slice tip) method_id {
+    (int length, tuple data) = auth_info::encode(sign_infos, fee, tip);
+    return data;
+}
+
+int auth_info_encode_length(slice sign_infos, slice fee, slice tip) method_id {
+    (int length, tuple data) = auth_info::encode(sign_infos, fee, tip);
+    return length;
+}
+
+slice msg_execute_contract_encode(slice ds) method_id {
+    slice sender_contract = ds~load_ref().begin_parse();
+    slice msg = ds~load_ref().begin_parse();
+    slice funds = ds~load_ref().begin_parse();
+    return msg_execute_contract::encode(sender_contract, msg, funds);
+}
+
+;; tx_raw
+tuple tx_raw_encode(slice ds) method_id {
+    return tx_raw::encode(ds);
+}
+
+int tx_hash(slice ds) method_id {
+    return digest_hash(tx_raw::encode(ds));
+}
+
+int verify_tx(slice ds) method_id {
+    return verify::verify_tx(ds);
+}

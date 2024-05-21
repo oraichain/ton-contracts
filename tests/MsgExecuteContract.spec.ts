@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { LightClient } from '../wrappers/LightClient';
+import { TestClient } from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
@@ -10,18 +10,18 @@ import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 describe('MsgExecuteContractProtobuf', () => {
     let code: Cell;
     beforeAll(async () => {
-        code = await compile('LightClient');
+        code = await compile('TestClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let MsgExecuteContractProtobufEncode: SandboxContract<LightClient>;
+    let MsgExecuteContractProtobufEncode: SandboxContract<TestClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
         MsgExecuteContractProtobufEncode = blockchain.openContract(
-            LightClient.createFromConfig(
+            TestClient.createFromConfig(
                 {
                     id: 0,
                     counter: 0,
@@ -62,15 +62,15 @@ describe('MsgExecuteContractProtobuf', () => {
         
         let resultSlice = result.asSlice();
         let buffer = Buffer.alloc(0);
-        while(resultSlice.remainingRefs > 0) {
-            console.log("before_nextRef")
-            const nextRef = result.asSlice().loadRef().beginParse();
-            console.log("nextRef")
-            buffer = Buffer.concat([buffer, Buffer.from(resultSlice.clone().asCell().bits.toString(), 'hex')]);
-            console.log("buffer")
-            resultSlice = nextRef.clone();
-            console.log("resultSlice")
-        }
+        // while(resultSlice.remainingRefs > 0) {
+        //     console.log("before_nextRef")
+        //     const nextRef = result.asSlice().loadRef().beginParse();
+        //     console.log("nextRef")
+        //     buffer = Buffer.concat([buffer, Buffer.from(resultSlice.clone().asCell().bits.toString(), 'hex')]);
+        //     console.log("buffer")
+        //     resultSlice = nextRef.clone();
+        //     console.log("resultSlice")
+        // }
         // console.log(buffer.length);
         // console.log(buffer.toString('hex'));
         // expect(buffer.toString('hex')).toEqual(Buffer.from(encodedMsgExecute).toString('hex'));
