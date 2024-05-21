@@ -3,8 +3,14 @@
 ;; #include "helper.fc";
 
 ;; return encode_len and tuple
-(int, tuple) tx_body::encode(slice messages, slice memo_and_timeout_height,  slice ext_opts, slice non_critical_ext_opts)
-{
+(int, tuple) tx_body::encode(slice ds)
+{       
+    slice messages = ds~load_ref().begin_parse();
+    slice memo_and_timeout_height = ds~load_ref().begin_parse();
+    slice ext_opts = ds~load_ref().begin_parse();
+    slice non_critical_ext_opts = ds~load_ref().begin_parse();
+
+
     tuple return_tuple = empty_tuple();
     int tx_body_len = 0;
     while(messages.slice_refs_empty?() == 0){

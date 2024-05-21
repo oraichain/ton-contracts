@@ -278,13 +278,8 @@ tuple any_encode(slice ds) method_id {
     return return_tuple;
 }
 
-tuple tx_body_encode(
-    slice messages,
-    slice memo_and_timeout_height, 
-    slice ext_opts, 
-    slice non_critical_ext_opts
-) method_id {
-    (_, tuple return_tuple) = tx_body::encode(messages, memo_and_timeout_height, ext_opts, non_critical_ext_opts);
+tuple tx_body_encode(slice ds ) method_id {
+    (_, tuple return_tuple) = tx_body::encode(ds);
     return return_tuple;
 }
 
@@ -339,14 +334,14 @@ int auth_info_encode_length(slice sign_infos, slice fee, slice tip) method_id {
     return length;
 }
 
-tuple msg_execute_contract_encode(slice sender_contract, slice msg, slice funds) method_id {
+slice msg_execute_contract_encode(slice sender_contract, slice msg, slice funds) method_id {
     return msg_execute_contract::encode(sender_contract, msg, funds);
 }
 
-;; ;; tx_raw
-;; tuple tx_raw_encode(tuple auth_info, tuple tx_body, tuple signatures) method_id {
-;;     return tx_raw::encode(auth_info, tx_body, signatures);
-;; }
+;; tx_raw
+tuple tx_raw_encode(slice ds) method_id {
+    return tx_raw::encode(ds);
+}
 
 ;; int tx_hash(tuple auth_info, tuple tx_body, tuple signatures) method_id {
 ;;     return digest_hash(tx_raw::encode(auth_info, tx_body, signatures));

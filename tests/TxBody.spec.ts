@@ -6,7 +6,6 @@ import { compile } from '@ton/blueprint';
 import { toHex } from '@cosmjs/encoding';
 import { sha256 } from '@cosmjs/crypto';
 import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
-import { Any } from 'cosmjs-types/google/protobuf/any';
 import { TxBody } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 
 describe('TxBodyProtobuf', () => {

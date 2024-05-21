@@ -2,7 +2,7 @@
 #include "varint.fc";
 const msg_execute_contract::typeUrl = "/cosmwasm.wasm.v1.MsgExecuteContract";
 
-tuple msg_execute_contract::encode(slice sender_contract, slice msg, slice funds) {
+slice msg_execute_contract::encode(slice sender_contract, slice msg, slice funds) {
     tuple return_tuple = empty_tuple();
     builder sender_contract_prefix_msg = begin_cell();
     slice sender = sender_contract~load_ref().begin_parse();
@@ -47,5 +47,19 @@ tuple msg_execute_contract::encode(slice sender_contract, slice msg, slice funds
         funds = next_ref;
     }
 
-    return return_tuple;
+    cell valueCell = begin_cell().end_cell();
+    int len = return_tuple.tlen();
+    int i = len - 1;
+
+    while(i >= 0){
+        slice inner_cell = return_tuple.at(i);
+        if(valueCell.cell_depth() == 0){
+            valueCell = begin_cell().store_ref(begin_cell().end_cell()).store_slice(inner_cell).end_cell();
+        } else {
+            valueCell = begin_cell().store_ref(valueCell).store_slice(inner_cell).end_cell();
+        }
+        i -= 1;
+    }
+
+    return valueCell.begin_parse();
 }

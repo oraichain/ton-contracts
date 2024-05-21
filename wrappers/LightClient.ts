@@ -347,23 +347,25 @@ export const getMerkleProofs = (leaves: Buffer[], leafData: Buffer) => {
     return { root, branch, positions: positions.endCell() };
 };
 
-export const txBodyWasmToTuple = (txBodyWasm: TxBodyWasm) => {
-    const txBodyTuple: TupleItem[] = [];
-    const messagesTuple: TupleItem[] = txBodyWasm.messages.map((msg) => {
-        return {
-            type: 'tuple',
-            items: [
-                {
-                    type: 'slice',
-                    cell: beginCell().storeBuffer(Buffer.from(msg.typeUrl)).endCell(),
-                },
-                {
-                    type: 'tuple',
-                    items: msgExecuteContractToCell(msg.value) as any,
-                },
-            ],
-        };
-    });
+export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
+    let messagesCell: Cell | undefined;
+
+    for (let i = txBodyWasm.messages.length - 1; i >= 0; i--) {
+        const typeUrl = beginCell()
+                            .storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl))
+                        .endCell();
+        const value = msgExecuteContractToCell(txBodyWasm.messages[i].value);
+        let innerCell = beginCell()
+            .storeRef(typeUrl)
+            .storeRef(value || beginCell().endCell())
+            .endCell();
+        if(!messagesCell){
+            messagesCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            messagesCell = beginCell().storeRef(messagesCell).storeRef(innerCell).endCell();
+        }
+    }  
+
     let memo_timeout_height_builder = beginCell();
 
     if (txBodyWasm.memo) {
@@ -374,18 +376,47 @@ export const txBodyWasmToTuple = (txBodyWasm: TxBodyWasm) => {
         memo_timeout_height_builder.storeUint(txBodyWasm.timeoutHeight, 64);
     }
 
-    const ext_opts_tuple = txBodyWasm.extensionOptions.map(anyToTuple) as any;
-    const non_critical_ext_opts_tuple = txBodyWasm.nonCriticalExtensionOptions.map(anyToTuple) as any;
+    let extCell;
+    for (let i = txBodyWasm.extensionOptions.length - 1; i >= 0; i--) {
+        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl)).endCell();
+        const value = buildRecursiveSliceRef(txBodyWasm.extensionOptions[i].value);
+        let innerCell = beginCell()
+            .storeRef(typeUrl)
+            .storeRef(value || beginCell().endCell())
+            .endCell();
+        if (!extCell) {
+            extCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            extCell = beginCell().storeRef(extCell).storeRef(innerCell).endCell();
+        }
+    }
 
-    txBodyTuple.push({ type: 'tuple', items: messagesTuple });
-    txBodyTuple.push({ type: 'slice', cell: memo_timeout_height_builder.endCell() });
-    txBodyTuple.push({ type: 'tuple', items: ext_opts_tuple });
-    txBodyTuple.push({ type: 'tuple', items: non_critical_ext_opts_tuple });
+    let nonExtCell;
+    for (let i = txBodyWasm.nonCriticalExtensionOptions.length - 1; i >= 0; i--) {
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.nonCriticalExtensionOptions[i].typeUrl))
+            .endCell();
+        const value = buildRecursiveSliceRef(txBodyWasm.nonCriticalExtensionOptions[i].value);
+        let innerCell = beginCell()
+            .storeRef(typeUrl)
+            .storeRef(value || beginCell().endCell())
+            .endCell();
+        if (!nonExtCell) {
+            nonExtCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            nonExtCell = beginCell().storeRef(nonExtCell).storeRef(innerCell).endCell();
+        }
+    }
 
-    return txBodyTuple;
+    return beginCell()
+                .storeRef(messagesCell ? messagesCell : beginCell().endCell())
+                .storeRef(memo_timeout_height_builder.endCell())
+                .storeRef(extCell ? extCell : beginCell().endCell())
+                .storeRef(nonExtCell ? nonExtCell : beginCell().endCell())
+            .endCell()
 };
 
-export const txBodyToTuple = (txBodyWasm: TxBody) => {
+export const txBodyToSliceRef = (txBodyWasm: TxBody) => {
     let messagesCell;
     for (let i = txBodyWasm.messages.length - 1; i >= 0; i--) {
         const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl)).endCell();
@@ -442,15 +473,14 @@ export const txBodyToTuple = (txBodyWasm: TxBody) => {
         }
     }
 
-    return [
-        { type: 'slice', cell: messagesCell },
-        { type: 'slice', cell: memo_timeout_height_builder.endCell() },
-        { type: 'slice', cell: txBodyWasm.extensionOptions.length == 0 ? beginCell().endCell() : extCell },
-        {
-            type: 'slice',
-            cell: txBodyWasm.nonCriticalExtensionOptions.length == 0 ? beginCell().endCell() : nonExtCell,
-        },
-    ];
+    return beginCell()
+                .storeRef(messagesCell ? messagesCell : beginCell().endCell())
+                .storeRef(memo_timeout_height_builder.endCell())
+                .storeRef(extCell ? extCell : beginCell().endCell())
+                .storeRef(nonExtCell ? nonExtCell : beginCell().endCell())
+            .endCell()
+               
+                
 };
 
 export const msgExecuteContractToCell = (msg: MsgExecuteContract) => {
@@ -474,12 +504,12 @@ export const msgExecuteContractToCell = (msg: MsgExecuteContract) => {
             fundCell = beginCell().storeRef(fundCell).storeRef(innerCell).endCell();
         }
     }
-
-    return [
-        { type: 'slice', cell: sender_contract },
-        { type: 'slice', cell: msgToTuple! },
-        { type: 'slice', cell: msg.funds.length == 0 ? beginCell().endCell() : fundCell! },
-    ];
+    
+    return beginCell()
+                .storeRef(sender_contract)
+                .storeRef(msgToTuple ? msgToTuple : beginCell().endCell())
+                .storeRef(fundCell ? fundCell : beginCell().endCell())
+            .endCell();
 };
 
 export type PubKey = {
@@ -1047,8 +1077,11 @@ export class LightClient implements Contract {
 
     // TxBody
     async getTxBody(provider: ContractProvider, txBody: TxBody) {
-        const input = txBodyToTuple(txBody) as TupleItem[];
-        const result = await provider.get('tx_body_encode', input);
+        const input = txBodyToSliceRef(txBody);
+        const result = await provider.get('tx_body_encode', [{
+            type: 'slice',
+            cell: input,
+        }]);
 
         return result.stack.readTuple();
     }
@@ -1171,7 +1204,7 @@ export class LightClient implements Contract {
 
     async getVerifyTx(provider: ContractProvider, tx: TxWasm, leaves: Buffer[], leafData: Buffer) {
         const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
-        const txBody = txBodyWasmToTuple(tx.body);
+        const txBody = txBodyWasmToRef(tx.body);
         const signatures: TupleItem[] = tx.signatures.map((item) => {
             return {
                 type: 'slice',
@@ -1222,34 +1255,41 @@ export class LightClient implements Contract {
     async getDecodedTxRaw(provider: ContractProvider, tx: TxWasm) {
         const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
 
-        const txBody = txBodyWasmToTuple(tx.body);
-        const signatures: TupleItem[] = tx.signatures.map((item) => {
-            return {
-                type: 'slice',
-                cell: beginCell().storeBuffer(Buffer.from(item)).endCell(),
-            };
-        });
+        const authInfo = beginCell()
+                            .storeRef(signInfos || beginCell().endCell())
+                            .storeRef(fee)
+                            .storeRef(tip)
+                            .endCell()
+
+
+        const txBody = txBodyWasmToRef(tx.body);
+
+        let signatureCell: Cell | undefined;
+
+        for (let i = tx.signatures.length - 1; i >= 0; i--) {
+            let signature = tx.signatures[i];
+            let cell = beginCell()
+                        .storeRef(
+                            beginCell()
+                                .storeBuffer(Buffer.from(signature))
+                            .endCell())
+                        .endCell();
+            if (!signatureCell) {
+                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+            } else {
+                signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
+            }
+        }
 
         const result = await provider.get('tx_raw_encode', [
             {
-                type: 'tuple',
-                items: [
-                    {
-                        type: 'tuple',
-                        items: signInfos as any,
-                    },
-                    fee as any, // FIXME
-                    tip as any, // FIXME
-                ],
-            },
-            {
-                type: 'tuple',
-                items: txBody,
-            },
-            {
-                type: 'tuple',
-                items: signatures,
-            },
+                type: 'slice',
+                cell: beginCell()
+                .storeRef(authInfo)
+                .storeRef(txBody)
+                .storeRef(signatureCell || beginCell().endCell())
+                .endCell(),
+            }
         ]);
 
         return result.stack.readTuple();
@@ -1258,7 +1298,7 @@ export class LightClient implements Contract {
     async getTxHash(provider: ContractProvider, tx: TxWasm) {
         const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
 
-        const txBody = txBodyWasmToTuple(tx.body);
+        const txBody = txBodyWasmToRef(tx.body);
         const signatures: TupleItem[] = tx.signatures.map((item) => {
             return {
                 type: 'slice',
