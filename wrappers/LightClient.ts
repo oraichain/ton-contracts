@@ -102,7 +102,7 @@ export const getTimeSlice = (timestampz: string): Cell => {
     const { seconds, nanoseconds } = getTimeComponent(timestampz);
 
     let cell = beginCell();
-    cell = cell.storeUint(seconds, 32).storeUint(nanoseconds, 32);
+    cell = cell.storeUint(seconds < 0 ? 0 : seconds, 32).storeUint(nanoseconds < 0 ? 0 : nanoseconds, 32);
 
     return cell.endCell();
 };
@@ -831,51 +831,46 @@ export class LightClient implements Contract {
 
     async getVerifyCommitSigs(provider: ContractProvider, header: Header, commit: Commit, validators: Validators[]) {
         const sliceHeader = beginCell()
+            .storeUint(parseInt(header.height), 32)
             .storeRef(getVersionSlice(header.version))
             .storeRef(beginCell().storeBuffer(Buffer.from(header.chain_id)).endCell())
-            .storeUint(parseInt(header.height), 32)
             .storeRef(getTimeSlice(header.time))
             .storeRef(getBlockSlice(header.last_block_id))
             .endCell();
 
-        const tupleSignatures = commit.signatures
-            .filter((sig) => sig.signature)
-            .map((signature) => {
-                return {
-                    type: 'slice',
-                    cell: beginCell()
-                        .storeUint(signature.block_id_flag, 8)
-                        .storeBuffer(Buffer.from(signature.validator_address, 'hex'))
-                        .storeRef(getTimeSlice(signature.timestamp))
-                        .storeBuffer(signature.signature ? Buffer.from(signature.signature, 'base64') : Buffer.from(''))
-                        .endCell(),
-                } as TupleItemSlice;
-            });
+        let signatureCell;
+        for (let i = commit.signatures.length - 1; i >= 0; i--) {
+            let signature = commit.signatures[i];
+            console.log(signature.timestamp);
+            let cell = beginCell()
+                .storeUint(signature.block_id_flag, 8)
+                .storeBuffer(Buffer.from(signature.validator_address, 'hex'))
+                .storeRef(getTimeSlice(signature.timestamp))
+                .storeBuffer(signature.signature ? Buffer.from(signature.signature, 'base64') : Buffer.from(''))
+                .endCell();
+            if (!signatureCell) {
+                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+            } else {
+                signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
+            }
+        }
+        console.log(signatureCell);
 
-        const tupleCommit: TupleItem[] = [
-            {
-                type: 'int',
-                value: BigInt(commit.height),
-            },
-            {
-                type: 'int',
-                value: BigInt(commit.round),
-            },
-            {
-                type: 'slice',
-                cell: getBlockSlice(commit.block_id),
-            },
-            {
-                type: 'tuple',
-                items: tupleSignatures,
-            },
-        ];
+        let commitCell = beginCell()
+            .storeUint(BigInt(commit.height), 32)
+            .storeUint(BigInt(commit.round), 32)
+            .storeRef(getBlockSlice(commit.block_id))
+            .storeRef(signatureCell!)
+            .endCell();
 
-        const tupleValidators = validators.map((validators) => {
-            let builder = beginCell().storeBuffer(Buffer.from(validators.address, 'hex'));
-            if (validators?.pub_key?.value) {
+        let validatorCell;
+        for (let i = validators.length - 1; i >= 0; i--) {
+            let builder = beginCell().storeBuffer(Buffer.from(validators[i].address, 'hex'));
+            if (validators[i]?.pub_key?.value) {
                 builder = builder.storeRef(
-                    beginCell().storeBuffer(Buffer.from(validators.pub_key.value, 'base64')).endCell(),
+                    beginCell()
+                        .storeBuffer(Buffer.from(validators[i].pub_key.value as string, 'base64'))
+                        .endCell(),
                 );
             } else {
                 builder = builder.storeRef(
@@ -891,12 +886,14 @@ export class LightClient implements Contract {
                         .endCell(),
                 );
             }
-            builder = builder.storeUint(parseInt(validators.voting_power), 32);
-            return {
-                type: 'slice',
-                cell: builder.endCell(),
-            } as TupleItemSlice;
-        });
+            builder = builder.storeUint(parseInt(validators[i].voting_power), 32);
+            let innerCell = builder.endCell();
+            if (!validatorCell) {
+                validatorCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            } else {
+                validatorCell = beginCell().storeRef(validatorCell).storeRef(innerCell).endCell();
+            }
+        }
 
         const result = await provider.get('verify_commit_sigs', [
             {
@@ -904,12 +901,12 @@ export class LightClient implements Contract {
                 cell: sliceHeader,
             },
             {
-                type: 'tuple',
-                items: tupleCommit,
+                type: 'slice',
+                cell: commitCell,
             },
             {
-                type: 'tuple',
-                items: tupleValidators,
+                type: 'slice',
+                cell: validatorCell!,
             },
         ]);
         return result.stack.readNumber();

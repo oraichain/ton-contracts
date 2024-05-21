@@ -22,11 +22,11 @@ slice verify::get_vote_sign_bytes(slice vote){
 
 }
 
-int verify::verify_commit_sigs(slice header, tuple commit, tuple validators){
+int verify::verify_commit_sigs(slice header, slice commit, slice validators){
     ;; header
+    int height = header~load_uint(32);
     slice version = header~load_ref().begin_parse();
     slice chain_id = header~load_ref().begin_parse();
-    int height = header~load_uint(32);
     slice time = header~load_ref().begin_parse();
     slice last_block_id = header~load_ref().begin_parse();
 
@@ -34,33 +34,29 @@ int verify::verify_commit_sigs(slice header, tuple commit, tuple validators){
     int committed_voting_power = 0;
     int total_voting_power = 0;
     cell validators_by_address = new_dict();
-    int validators_len = validators.tlen();
-
     
     ;; build validator map
-    int i = 0;
-    while(i < validators_len){
-        slice validator_i =  validators.at(i);
+    while(validators.slice_refs_empty?() != -1){
+        slice next_ref = validators~load_ref().begin_parse();
+        slice validator_i =  validators~load_ref().begin_parse();
         int address = validator_i~load_uint(160);
         validators_by_address~udict_set(160, address, validator_i);
         int voting_power = validator_i~load_uint(32);
         total_voting_power += voting_power;
-        i += 1;
+        validators = next_ref;
     }
 
     ;; hanle commit
-    int height = commit.at(0);
-    int round = commit.at(1);
-    slice block_id = commit.at(2);
-    tuple signatures = commit.at(3);
-    int signatures_len = signatures.tlen();
+    int height = commit~load_uint(32);
+    int round = commit~load_uint(32);
+    slice block_id = commit~load_ref().begin_parse();
+    slice signatures = commit~load_ref().begin_parse();
 
     ;;iterate signatures commit
-    int i = 0;
-    while(i < signatures_len){
-        slice cs = signatures.at(i);
+    while(signatures.slice_refs_empty?() != -1){
+        slice next_ref = signatures~load_ref().begin_parse();
+        slice cs = signatures~load_ref().begin_parse();
         int cs_bits_len = slice_bits(cs);
-
         if(cs_bits_len >= 8 + 160 + 512) {
             int block_id_flag = cs~load_uint(8);
             int validator_address = cs~load_uint(160);
@@ -98,8 +94,7 @@ int verify::verify_commit_sigs(slice header, tuple commit, tuple validators){
                 }
             }
         }
-        i += 1;
-
+        signatures = next_ref;
     }
 
     int two_thirds = total_voting_power * 2 / 3;
