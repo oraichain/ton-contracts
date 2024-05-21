@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { LightClient } from '../wrappers/LightClient';
+import { LightClient, Opcodes } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { result as blockData } from './fixtures/block.json';
@@ -17,6 +17,12 @@ describe('LightClient', () => {
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
+        blockchain.verbosity = {
+            blockchainLogs: true,
+            debugLogs: true,
+            print: true,
+            vmLogs: 'vm_logs_full',
+        };
 
         lightClient = blockchain.openContract(
             LightClient.createFromConfig(
@@ -88,6 +94,12 @@ describe('LightClient', () => {
                 blockId: blockData.block_id,
             },
         });
-        console.log(result.events);
+        expect(result.transactions).toHaveTransaction({
+            success: true,
+            op: Opcodes.verify_receipt,
+        });
+        // result.transactions.forEach((item) => {
+        //     console.log(item.events);
+        // });
     });
 });

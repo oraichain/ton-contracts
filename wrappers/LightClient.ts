@@ -78,9 +78,9 @@ export class LightClient implements Contract {
             value: opts?.value || 0,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.verify_receipt, 32)
-                .storeUint(opts?.queryID || 0, 64)
-                .storeRef(cell)
+                // .storeUint(Opcodes.verify_receipt, 32)
+                // .storeUint(opts?.queryID || 0, 64)
+                // .storeRef(cell)
                 .endCell(),
         });
     }
