@@ -359,7 +359,7 @@ export const txBodyWasmToTuple = (txBodyWasm: TxBodyWasm) => {
                 },
                 {
                     type: 'tuple',
-                    items: msgExecuteContractToTuple(msg.value),
+                    items: msgExecuteContractToCell(msg.value) as any,
                 },
             ],
         };
@@ -409,30 +409,33 @@ export const txBodyToTuple = (txBodyWasm: TxBody) => {
     return txBodyTuple;
 };
 
-export const msgExecuteContractToTuple = (msg: MsgExecuteContract) => {
-    const msgExecuteContractTuple: TupleItem[] = [];
-
+export const msgExecuteContractToCell = (msg: MsgExecuteContract) => {
     const sender_contract = beginCell()
         .storeRef(beginCell().storeBuffer(Buffer.from(msg.sender)).endCell())
         .storeRef(beginCell().storeBuffer(Buffer.from(msg.contract)).endCell())
         .endCell();
 
-    const msgToTuple = buildCellTuple(msg.msg);
+    const msgToTuple = buildRecursiveSliceRef(msg.msg);
 
-    const fundsToTuple: TupleItem[] = msg.funds.map((item) => {
-        return {
-            type: 'slice',
-            cell: beginCell()
-                .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
-                .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
-                .endCell(),
-        };
-    });
+    let fundCell;
+    for (let i = msg.funds.length - 1; i >= 0; i--) {
+        let item = msg.funds[i];
+        let innerCell = beginCell()
+            .storeRef(beginCell().storeBuffer(Buffer.from(item.denom)).endCell())
+            .storeRef(beginCell().storeBuffer(Buffer.from(item.amount)).endCell())
+            .endCell();
+        if (!fundCell) {
+            fundCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            fundCell = beginCell().storeRef(fundCell).storeRef(innerCell).endCell();
+        }
+    }
 
-    msgExecuteContractTuple.push({ type: 'slice', cell: sender_contract });
-    msgExecuteContractTuple.push({ type: 'tuple', items: msgToTuple });
-    msgExecuteContractTuple.push({ type: 'tuple', items: fundsToTuple });
-    return msgExecuteContractTuple;
+    return [
+        { type: 'slice', cell: sender_contract },
+        { type: 'slice', cell: msgToTuple! },
+        { type: 'slice', cell: msg.funds.length == 0 ? beginCell().endCell() : fundCell! },
+    ];
 };
 
 export type PubKey = {
@@ -1098,7 +1101,7 @@ export class LightClient implements Contract {
     }
 
     async getMsgExecuteContract(provider: ContractProvider, msg: MsgExecuteContract) {
-        const input = msgExecuteContractToTuple(msg);
+        const input = msgExecuteContractToCell(msg) as TupleItem[];
         const result = await provider.get('msg_execute_contract_encode', input);
         return result.stack.readTuple();
     }

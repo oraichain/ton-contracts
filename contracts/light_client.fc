@@ -21,7 +21,7 @@
 #include "utils/mode_info.fc";
 #include "utils/signer_info.fc";
 #include "utils/auth_info.fc";
-;; #include "utils/msg_execute_contract.fc";
+#include "utils/msg_execute_contract.fc";
 ;; #include "utils/tx_raw.fc";
 ;; #include "static/op_codes.fc";
 
@@ -339,9 +339,9 @@ int auth_info_encode_length(slice sign_infos, slice fee, slice tip) method_id {
     return length;
 }
 
-;; tuple msg_execute_contract_encode(slice sender_contract, tuple msg, tuple funds) method_id {
-;;     return msg_execute_contract::encode(sender_contract, msg, funds);
-;; }
+tuple msg_execute_contract_encode(slice sender_contract, slice msg, slice funds) method_id {
+    return msg_execute_contract::encode(sender_contract, msg, funds);
+}
 
 ;; ;; tx_raw
 ;; tuple tx_raw_encode(tuple auth_info, tuple tx_body, tuple signatures) method_id {

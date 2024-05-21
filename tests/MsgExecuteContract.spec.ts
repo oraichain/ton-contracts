@@ -7,7 +7,6 @@ import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
 import { defaultRegistryTypes } from '@cosmjs/stargate';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 
-
 describe('MsgExecuteContractProtobuf', () => {
     let code: Cell;
     beforeAll(async () => {
@@ -57,11 +56,9 @@ describe('MsgExecuteContractProtobuf', () => {
             typeUrl: decodedTx.body.messages[0].typeUrl,
             value: decodedTx.body.messages[0].value,
         }) as MsgExecuteContract;
-        
 
         const encodedMsgExecute = MsgExecuteContract.encode(executeContract).finish();
         const result = await MsgExecuteContractProtobufEncode.getMsgExecuteContract(executeContract);
-
 
         let buffer = Buffer.alloc(0);
 
