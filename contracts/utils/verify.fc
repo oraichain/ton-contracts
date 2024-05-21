@@ -106,6 +106,50 @@ int verify::verify_commit_sigs(slice header, slice commit, slice validators){
     return -1;
 }
 
+int verify::verify_block_hash(slice ds) {
+    slice header = ds~load_ref().begin_parse();
+    slice version = header~load_ref().begin_parse();
+    slice chain_id = header~load_ref().begin_parse();
+    int height = header~load_uint(32);
+    slice time = header~load_ref().begin_parse();
+    slice block_id = header~load_ref().begin_parse();
+    (_, int tx_hash) = block_id.load_uint(256);
+    slice proposer_address = header~load_bits(160);
+
+    slice first_hashes = ds~load_ref().begin_parse();
+    slice last_commit_hash = first_hashes~load_ref().begin_parse();
+    slice data_hash = first_hashes~load_ref().begin_parse();
+    slice validators_hash = first_hashes~load_ref().begin_parse();
+    slice next_validators_hash = first_hashes~load_ref().begin_parse();
+
+    slice second_hashes = ds~load_ref().begin_parse();
+    slice consensus_hash = second_hashes~load_ref().begin_parse();
+    slice app_hash = second_hashes~load_ref().begin_parse();
+    slice last_results_hash = second_hashes~load_ref().begin_parse();
+    slice evidence_hash = second_hashes~load_ref().begin_parse();    
+
+    tuple chunks = empty_tuple()
+        .tpush(version::encode(version))
+        .tpush(proto::encode_buffer(chain_id))
+        .tpush(proto::encode_number(height))
+        .tpush(time::encode(time))
+        .tpush(blockid::encode(block_id))
+        .tpush(proto::encode_buffer(last_commit_hash))
+        .tpush(proto::encode_buffer(data_hash))
+        .tpush(proto::encode_buffer(validators_hash))
+        .tpush(proto::encode_buffer(next_validators_hash))
+        .tpush(proto::encode_buffer(consensus_hash))
+        .tpush(proto::encode_buffer(app_hash))
+        .tpush(proto::encode_buffer(last_results_hash))
+        .tpush(proto::encode_buffer(evidence_hash))
+        .tpush(proto::encode_buffer(proposer_address));
+    
+    if (tx_hash != hash_from_tree_slice(chunks)) {
+        return 0;
+    }
+    return -1; 
+}
+
 
 ;; int verify::verify_tx(tuple proofs, slice positions, slice data_hash, tuple auth_info, tuple tx_body, tuple signatures) {
 ;;     int tx_hash = begin_cell()

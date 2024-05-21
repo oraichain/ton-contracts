@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { LightClient } from '../wrappers/LightClient';
+import { TestClient } from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { CompactBitArray } from 'cosmjs-types/cosmos/crypto/multisig/v1beta1/multisig';
@@ -8,12 +8,12 @@ import { CompactBitArray } from 'cosmjs-types/cosmos/crypto/multisig/v1beta1/mul
 describe('Compact Bit Array', () => {
     let code: Cell;
     beforeAll(async () => {
-        code = await compile('LightClient');
+        code = await compile('TestClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let cba: SandboxContract<LightClient>;
+    let cba: SandboxContract<TestClient>;
     const dataTest = [
         {
             extraBitsStored: 5,
@@ -36,7 +36,7 @@ describe('Compact Bit Array', () => {
         blockchain = await Blockchain.create();
 
         cba = blockchain.openContract(
-            LightClient.createFromConfig(
+            TestClient.createFromConfig(
                 {
                     id: 0,
                     counter: 0,

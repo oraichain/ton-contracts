@@ -1,15 +1,15 @@
 import { toNano } from '@ton/core';
-import { LightClient } from '../wrappers/LightClient';
+import { TestClient } from '../wrappers/TestClient';
 import { compile, NetworkProvider } from '@ton/blueprint';
 
 export async function run(provider: NetworkProvider) {
     const lightClient = provider.open(
-        LightClient.createFromConfig(
+        TestClient.createFromConfig(
             {
                 id: Math.floor(Math.random() * 10000),
                 counter: 0,
             },
-            await compile('LightClient'),
+            await compile('TestClient'),
         ),
     );
 

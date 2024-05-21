@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { LightClient } from '../wrappers/LightClient';
+import { TestClient } from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
@@ -14,18 +14,18 @@ import { createHash } from 'crypto';
 describe('Verify Tx', () => {
     let code: Cell;
     beforeAll(async () => {
-        code = await compile('LightClient');
+        code = await compile('TestClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let verify: SandboxContract<LightClient>;
+    let verify: SandboxContract<TestClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
         verify = blockchain.openContract(
-            LightClient.createFromConfig(
+            TestClient.createFromConfig(
                 {
                     id: 0,
                     counter: 0,

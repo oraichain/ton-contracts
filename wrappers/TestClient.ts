@@ -26,12 +26,12 @@ import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 import { DecodedTxRaw } from '@cosmjs/proto-signing';
 import { sha256 } from '@cosmjs/crypto';
 
-export type LightClientConfig = {
+export type TestClientConfig = {
     id: number;
     counter: number;
 };
 
-export function lightClientConfigToCell(config: LightClientConfig): Cell {
+export function testClientConfigToCell(config: TestClientConfig): Cell {
     return beginCell().storeUint(config.id, 32).storeUint(config.counter, 32).endCell();
 }
 export type Version = {
@@ -516,20 +516,20 @@ export type Signature = {
     signature: string | null;
 };
 
-export class LightClient implements Contract {
+export class TestClient implements Contract {
     constructor(
         readonly address: Address,
         readonly init?: { code: Cell; data: Cell },
     ) {}
 
     static createFromAddress(address: Address) {
-        return new LightClient(address);
+        return new TestClient(address);
     }
 
-    static createFromConfig(config: LightClientConfig, code: Cell, workchain = 0) {
-        const data = lightClientConfigToCell(config);
+    static createFromConfig(config: TestClientConfig, code: Cell, workchain = 0) {
+        const data = testClientConfigToCell(config);
         const init = { code, data };
-        return new LightClient(contractAddress(workchain, init), init);
+        return new TestClient(contractAddress(workchain, init), init);
     }
 
     async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
@@ -729,7 +729,7 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
-    // LightClient testing
+    // TestClient testing
     async getBlockIdEncodingLength(provider: ContractProvider, lastBlockId: BlockId) {
         const result = await provider.get('blockid_encoding_length', [
             {
@@ -780,18 +780,12 @@ export class LightClient implements Contract {
             .storeRef(beginCell().storeBuffer(Buffer.from(header.app_hash, 'hex')))
             .storeRef(beginCell().storeBuffer(Buffer.from(header.last_results_hash, 'hex')))
             .storeRef(beginCell().storeBuffer(Buffer.from(header.evidence_hash, 'hex')));
+
+        let dsCell = beginCell().storeRef(cell).storeRef(hashCell1).storeRef(hashCell2).endCell();
         const result = await provider.get('get_block_hash', [
             {
                 type: 'slice',
-                cell: cell.endCell(),
-            },
-            {
-                type: 'slice',
-                cell: hashCell1.endCell(),
-            },
-            {
-                type: 'slice',
-                cell: hashCell2.endCell(),
+                cell: dsCell,
             },
         ]);
 
