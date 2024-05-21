@@ -1,28 +1,5 @@
 #include "imports/stdlib.fc";
-#include "utils/common.fc";
-#include "utils/proto.fc";
-#include "utils/varint.fc";
-#include "utils/varbuffer.fc";
-#include "utils/version.fc";
-#include "utils/time.fc";
-#include "utils/blockid.fc";
-#include "utils/merkleize.fc";
-#include "utils/uint64_le.fc";
-#include "utils/canonical_vote.fc";
-#include "utils/pubkey.fc";
 #include "utils/verify.fc";
-#include "utils/validator_hash_input.fc";
-#include "utils/coin.fc";
-#include "utils/fee.fc";
-#include "utils/any_google.fc";
-#include "utils/tx_body.fc";
-#include "utils/tip.fc";
-#include "utils/compact_bit_array.fc";
-#include "utils/mode_info.fc";
-#include "utils/signer_info.fc";
-#include "utils/auth_info.fc";
-#include "utils/msg_execute_contract.fc";
-;; #include "utils/tx_raw.fc";
 #include "static/errors.fc";
 #include "static/op_codes.fc";
 
