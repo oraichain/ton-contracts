@@ -100,7 +100,6 @@ export const getVersionSlice = (version: Version): Cell => {
 
 export const getTimeSlice = (timestampz: string): Cell => {
     const { seconds, nanoseconds } = getTimeComponent(timestampz);
-
     let cell = beginCell();
     cell = cell.storeUint(seconds < 0 ? 0 : seconds, 32).storeUint(nanoseconds < 0 ? 0 : nanoseconds, 32);
 
@@ -841,7 +840,6 @@ export class LightClient implements Contract {
         let signatureCell;
         for (let i = commit.signatures.length - 1; i >= 0; i--) {
             let signature = commit.signatures[i];
-            console.log(signature.timestamp);
             let cell = beginCell()
                 .storeUint(signature.block_id_flag, 8)
                 .storeBuffer(Buffer.from(signature.validator_address, 'hex'))
