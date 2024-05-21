@@ -4,11 +4,8 @@ import { LightClient } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
-import { Tx } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { defaultRegistryTypes } from '@cosmjs/stargate';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
-import { writeFileSync } from 'fs';
-import { resolve } from 'path';
 import { createHash } from 'crypto';
 
 describe('Verify Tx', () => {

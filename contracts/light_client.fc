@@ -334,7 +334,10 @@ int auth_info_encode_length(slice sign_infos, slice fee, slice tip) method_id {
     return length;
 }
 
-slice msg_execute_contract_encode(slice sender_contract, slice msg, slice funds) method_id {
+slice msg_execute_contract_encode(slice ds) method_id {
+    slice sender_contract = ds~load_ref().begin_parse();
+    slice msg = ds~load_ref().begin_parse();
+    slice funds = ds~load_ref().begin_parse();
     return msg_execute_contract::encode(sender_contract, msg, funds);
 }
 
@@ -343,10 +346,10 @@ tuple tx_raw_encode(slice ds) method_id {
     return tx_raw::encode(ds);
 }
 
-;; int tx_hash(tuple auth_info, tuple tx_body, tuple signatures) method_id {
-;;     return digest_hash(tx_raw::encode(auth_info, tx_body, signatures));
-;; }
+int tx_hash(slice ds) method_id {
+    return digest_hash(tx_raw::encode(ds));
+}
 
-;; int verify_tx(tuple proofs, slice positions, slice data_hash, tuple auth_info, tuple tx_body, tuple signatures) method_id {
-;;     return verify::verify_tx(proofs, positions, data_hash, auth_info, tx_body, signatures);
-;; }
+int verify_tx(slice ds) method_id {
+    return verify::verify_tx(ds);
+}

@@ -57,3 +57,23 @@ int hash_from_tree_proof(int leaf, tuple branch, slice positions) {
     }
     return root_hash;
 }
+
+int hash_from_tree_proof_ref(slice branch, int leaf, slice positions) {
+    int ind = 0;
+    int root_hash = leaf;        
+    while(branch.slice_refs_empty?() == 0){
+        slice next_ref = branch~load_ref().begin_parse();
+        slice branch_slice = branch~load_ref().begin_parse();
+        int item = branch_slice~load_uint(256);     
+        int position = positions~load_uint(1);
+        ;; 0: right, 1: left
+        if(position == 0) {
+            root_hash = inner_hash(root_hash, item);
+        } else {
+            root_hash = inner_hash(item, root_hash);
+        }
+        branch = next_ref;
+    }
+
+    return root_hash;
+}

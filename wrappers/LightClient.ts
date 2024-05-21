@@ -330,21 +330,34 @@ export const getMerkleProofs = (leaves: Buffer[], leafData: Buffer) => {
     const leaf = leafHash(leafData);
     let node = lookUp[Buffer.from(leaf).toString('hex')];
     let positions = beginCell();
-    const branch: TupleItem[] = [];
+    let branch = []
+    let branchCell: Cell | undefined;
     while (node.parent) {
         const isRight = node.parent.right!.value!.equals(node.value!);
         // left is 1, right is 0
         positions = positions.storeBit(isRight ? 1 : 0);
-        branch.push({
-            type: 'slice',
-            cell: beginCell()
-                .storeBuffer(isRight ? node.parent.left!.value! : node.parent.right!.value!)
-                .endCell(),
-        });
+        branch.push(isRight ? node.parent.left!.value! : node.parent.right!.value!)
         node = node.parent;
     }
 
-    return { root, branch, positions: positions.endCell() };
+    for(let i = branch.length - 1; i >= 0; i--){
+        const innerCell = beginCell()
+                                .storeBuffer(branch[i])
+                            .endCell()
+        if(!branchCell){
+            branchCell = beginCell()
+                            .storeRef(beginCell().endCell())
+                            .storeRef(innerCell)
+                            .endCell();
+        } else {
+            branchCell = beginCell()
+                            .storeRef(branchCell)
+                            .storeRef(innerCell)
+                            .endCell();
+        }
+    }
+
+    return { root, branch: branchCell, positions: positions.endCell() };
 };
 
 export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
@@ -1177,9 +1190,12 @@ export class LightClient implements Contract {
     }
 
     async getMsgExecuteContract(provider: ContractProvider, msg: MsgExecuteContract) {
-        const input = msgExecuteContractToCell(msg) as TupleItem[];
-        const result = await provider.get('msg_execute_contract_encode', input);
-        return result.stack.readTuple();
+        const input = msgExecuteContractToCell(msg);
+        const result = await provider.get('msg_execute_contract_encode', [{
+            type: 'slice',
+            cell: input
+        }]);
+        return result.stack.readCell();
     }
 
     async getAuthInfoEncodeLength(provider: ContractProvider, data: AuthInfo) {
@@ -1204,49 +1220,52 @@ export class LightClient implements Contract {
 
     async getVerifyTx(provider: ContractProvider, tx: TxWasm, leaves: Buffer[], leafData: Buffer) {
         const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
+        const authInfo = beginCell()
+                            .storeRef(signInfos || beginCell().endCell())
+                            .storeRef(fee)
+                            .storeRef(tip)
+                            .endCell()
+
+
         const txBody = txBodyWasmToRef(tx.body);
-        const signatures: TupleItem[] = tx.signatures.map((item) => {
-            return {
-                type: 'slice',
-                cell: beginCell().storeBuffer(Buffer.from(item)).endCell(),
-            };
-        });
+        let signatureCell: Cell | undefined;
+
+        for (let i = tx.signatures.length - 1; i >= 0; i--) {
+            let signature = tx.signatures[i];
+            let cell = beginCell()
+                        .storeRef(
+                            beginCell()
+                                .storeBuffer(Buffer.from(signature))
+                            .endCell())
+                        .endCell();
+            if (!signatureCell) {
+                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+            } else {
+                signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
+            }
+        }
+        const txRaw = beginCell()
+                        .storeRef(authInfo)
+                        .storeRef(txBody)
+                        .storeRef(signatureCell || beginCell().endCell())
+                    .endCell();
+
         const { branch: proofs, positions } = getMerkleProofs(leaves, leafData);
 
         const result = await provider.get('verify_tx', [
             {
-                type: 'tuple',
-                items: proofs,
-            },
-            {
-                type: 'slice',
-                cell: positions,
-            },
-            {
                 type: 'slice',
                 cell: beginCell()
-                    .storeUint(BigInt('0x' + '9e70c46eda6841ed6ede4ae280d2cd2683dc103b9568f63f06f04e9d7e0617f0'), 256)
+                        .storeRef(proofs || beginCell().endCell())
+                        .storeRef(positions)
+                        .storeRef(
+                                beginCell()
+                                    .storeUint(BigInt('0x' + '9e70c46eda6841ed6ede4ae280d2cd2683dc103b9568f63f06f04e9d7e0617f0'), 256)
+                                    .endCell()
+                                )
+                        .storeRef(txRaw)
                     .endCell(),
-            },
-            {
-                type: 'tuple',
-                items: [
-                    {
-                        type: 'tuple',
-                        items: signInfos as any,
-                    },
-                    fee as any, // FIXME
-                    tip as any, // FIXME
-                ],
-            },
-            {
-                type: 'tuple',
-                items: txBody,
-            },
-            {
-                type: 'tuple',
-                items: signatures,
-            },
+            }
         ]);
 
         return result.stack.readNumber();
@@ -1298,27 +1317,41 @@ export class LightClient implements Contract {
     async getTxHash(provider: ContractProvider, tx: TxWasm) {
         const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
 
+        const authInfo = beginCell()
+                            .storeRef(signInfos || beginCell().endCell())
+                            .storeRef(fee)
+                            .storeRef(tip)
+                            .endCell()
+
+
         const txBody = txBodyWasmToRef(tx.body);
-        const signatures: TupleItem[] = tx.signatures.map((item) => {
-            return {
-                type: 'slice',
-                cell: beginCell().storeBuffer(Buffer.from(item)).endCell(),
-            };
-        });
+
+        let signatureCell: Cell | undefined;
+
+        for (let i = tx.signatures.length - 1; i >= 0; i--) {
+            let signature = tx.signatures[i];
+            let cell = beginCell()
+                        .storeRef(
+                            beginCell()
+                                .storeBuffer(Buffer.from(signature))
+                            .endCell())
+                        .endCell();
+            if (!signatureCell) {
+                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+            } else {
+                signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
+            }
+        }
 
         const result = await provider.get('tx_hash', [
             {
                 type: 'slice',
-                cell: signInfos!,
-            },
-            {
-                type: 'tuple',
-                items: txBody,
-            },
-            {
-                type: 'tuple',
-                items: signatures,
-            },
+                cell: beginCell()
+                .storeRef(authInfo)
+                .storeRef(txBody)
+                .storeRef(signatureCell || beginCell().endCell())
+                .endCell(),
+            }
         ]);
 
         return result.stack.readBigNumber();
