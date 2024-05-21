@@ -1,0 +1,18 @@
+#include "imports/stdlib.fc";
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    slice cs = in_msg_full.begin_parse();
+    int amount = cs~load_uint(32);
+    cell receiver = cs~load_ref();
+    cell token_denom = cs~load_ref();
+
+    set_data(begin_cell().store_uint(amount, 32).store_ref(receiver).store_ref(token_denom).end_cell());
+    return ();
+}
+
+int get_amount() method_id {
+    slice ds = get_data().begin_parse();
+    int amount = ds~load_uint(32);
+    ds.end_parse();
+    return amount;
+}
