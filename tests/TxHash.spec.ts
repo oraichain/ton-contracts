@@ -7,23 +7,23 @@ import { Cell, toNano } from '@ton/core';
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import '@ton/test-utils';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
-import { LightClient } from '../wrappers/LightClient';
+import { TestClient } from '../wrappers/TestClient';
 
 describe('TxHash', () => {
     let code: Cell;
     beforeAll(async () => {
-        code = await compile('LightClient');
+        code = await compile('TestClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let TxHash: SandboxContract<LightClient>;
+    let TxHash: SandboxContract<TestClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
         TxHash = blockchain.openContract(
-            LightClient.createFromConfig(
+            TestClient.createFromConfig(
                 {
                     id: 0,
                     counter: 0,

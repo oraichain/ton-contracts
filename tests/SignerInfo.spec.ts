@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { LightClient } from '../wrappers/LightClient';
+import { TestClient } from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { toHex } from '@cosmjs/encoding';
@@ -14,18 +14,18 @@ import { SignerInfo } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 describe('Signer Info', () => {
     let code: Cell;
     beforeAll(async () => {
-        code = await compile('LightClient');
+        code = await compile('TestClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let signerInfo: SandboxContract<LightClient>;
+    let signerInfo: SandboxContract<TestClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
         signerInfo = blockchain.openContract(
-            LightClient.createFromConfig(
+            TestClient.createFromConfig(
                 {
                     id: 0,
                     counter: 0,

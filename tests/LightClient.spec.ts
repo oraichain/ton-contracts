@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { BlockId, LightClient, getMerkleProofs, leafHash } from '../wrappers/LightClient';
+import { BlockId, TestClient, getMerkleProofs, leafHash } from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { result as blockData } from './fixtures/block.json';
@@ -9,22 +9,22 @@ import { createHash } from 'crypto';
 
 const validatorMap = Object.fromEntries(validators.validators.map((v) => [v.address, v]));
 
-describe('LightClient', () => {
+describe('TestClient', () => {
     let code: Cell;
 
     beforeAll(async () => {
-        code = await compile('LightClient');
+        code = await compile('TestClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let lightClient: SandboxContract<LightClient>;
+    let lightClient: SandboxContract<TestClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
         lightClient = blockchain.openContract(
-            LightClient.createFromConfig(
+            TestClient.createFromConfig(
                 {
                     id: 0,
                     counter: 0,
