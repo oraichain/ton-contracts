@@ -17,8 +17,8 @@
 #include "utils/any_google.fc";
 ;; #include "utils/tx_body.fc";
 #include "utils/tip.fc";
-;; #include "utils/compact_bit_array.fc";
-;; #include "utils/mode_info.fc";
+#include "utils/compact_bit_array.fc";
+#include "utils/mode_info.fc";
 #include "utils/signer_info.fc";
 #include "utils/auth_info.fc";
 ;; #include "utils/msg_execute_contract.fc";
@@ -294,27 +294,27 @@ slice tip_encode(slice ds) method_id {
     return tip::encode(ds);
 }
 
-;; int tip_encode_length(slice ds) method_id {
-;;     return tip::encode_length(ds);
-;; }
+int tip_encode_length(slice ds) method_id {
+    return tip::encode_length(ds);
+}
 
-;; ;; CompactBitArray
-;; tuple compact_bit_array_encode(tuple ds) method_id {
-;;     return compact_bit_array::encode(ds);
-;; }
+;; CompactBitArray
+tuple compact_bit_array_encode(tuple ds) method_id {
+    return compact_bit_array::encode(ds);
+}
 
-;; int compact_bit_array_encode_length(tuple ds) method_id {
-;;     return compact_bit_array::encode_length(ds);
-;; }
+int compact_bit_array_encode_length(tuple ds) method_id {
+    return compact_bit_array::encode_length(ds);
+}
 
-;; ;; ModeInfo
-;; slice mode_info_encode(slice ds) method_id {
-;;     return mode_info::encode(ds);
-;; }
+;; ModeInfo
+slice mode_info_encode(slice ds) method_id {
+    return mode_info::encode(ds);
+}
 
-;; int mode_info_encode_length(slice ds) method_id {
-;;     return mode_info::encode_length(ds);
-;; }
+int mode_info_encode_length(slice ds) method_id {
+    return mode_info::encode_length(ds);
+}
 
 ;; ;; SignerInfo
 tuple signer_info_encode(slice ds) method_id {
