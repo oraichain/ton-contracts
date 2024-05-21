@@ -35,7 +35,6 @@ int verify::verify_commit_sigs(slice header, tuple commit, tuple validators){
     int total_voting_power = 0;
     cell validators_by_address = new_dict();
     int validators_len = validators.tlen();
-
     
     ;; build validator map
     int i = 0;
@@ -47,6 +46,7 @@ int verify::verify_commit_sigs(slice header, tuple commit, tuple validators){
         total_voting_power += voting_power;
         i += 1;
     }
+    ~dump(validators_by_address);
 
     ;; hanle commit
     int height = commit.at(0);
