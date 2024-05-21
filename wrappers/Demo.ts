@@ -1,6 +1,4 @@
-import { Address, Cell, Contract, ContractProvider, SendMode, Sender, beginCell, contractAddress } from '@ton/core';
-
-const MAX_BYTES_CELL = 1023 / 8 - 1;
+import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
 
 export type DemoConfig = {
     amount: number;
@@ -54,25 +52,25 @@ export class Demo implements Contract {
             value: opts.sent_funds,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(opts.amount ?? 0, 32)
-                .storeBuffer(Buffer.from(opts.receiver))
-                .storeBuffer(Buffer.from(opts.tokenDenom))
+                .storeUint(opts.amount, 32)
+                .storeRef(beginCell().storeBuffer(Buffer.from(opts.receiver)).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from(opts.tokenDenom)).endCell())
                 .endCell(),
         });
     }
 
     async getAmount(provider: ContractProvider) {
-        const result = await provider.get('getAmount', []);
+        const result = await provider.get('get_amount', []);
         return result.stack.readNumber();
     }
 
     async getReceiver(provider: ContractProvider) {
-        const result = await provider.get('getReceiver', []);
+        const result = await provider.get('get_receiver', []);
         return result.stack.readBuffer().toString('utf-8');
     }
 
     async getTokenDenom(provider: ContractProvider) {
-        const result = await provider.get('getTokenDenom', []);
+        const result = await provider.get('get_token_denom', []);
         return result.stack.readBuffer().toString('utf-8');
     }
 }
