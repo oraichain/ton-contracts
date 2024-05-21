@@ -1,137 +1,118 @@
-;; #include "varint.fc";
-;; #include "any_google.fc";
+#include "varint.fc";
+#include "any_google.fc";
 ;; #include "helper.fc";
 
-;; ;; return encode_len and tuple
-;; (int, tuple) tx_body::encode(slice tx_body){
-;;     slice messages = tx_body~load_ref();
-;;     slice memo_and_timeout_height = tx_body~load_ref();
-;;     slice ext_opts = tx_body~load_ref();
-;;     slice non_critical_ext_opts = tx_body~load_ref();
+;; return encode_len and tuple
+(int, tuple) tx_body::encode(slice messages, slice memo_and_timeout_height,  slice ext_opts, slice non_critical_ext_opts)
+{
+    tuple return_tuple = empty_tuple();
+    int tx_body_len = 0;
+    while(messages.slice_refs_empty?() == 0){
+        slice next_ref = messages~load_ref().begin_parse();
+        slice msg = messages~load_ref().begin_parse();
 
-;;     tuple return_tuple = empty_tuple();
-;;     int tx_body_len = 0;
-;;     message = messages;
+        builder message_builder = begin_cell();
+        message_builder = message_builder.store_slice(uvarint::encode(10));
+        (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(msg);
+        slice pre_encoded = message_builder
+                                .store_slice(uvarint::encode(any_len))
+                                .end_cell().begin_parse();
 
-;;     while(messages.slice_refs_empty?() == 0){
-;;         builder message_builder = begin_cell();
-;;         message_builder = message_builder.store_slice(uvarint::encode(10));
+        tx_body_len += pre_encoded.slice_bits() >> 3;
+        return_tuple~tpush(pre_encoded);
+        return_tuple~tpush(encode_type_url);
 
-;;         (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
-
-;;         slice pre_encoded = message_builder
-;;                                 .store_slice(uvarint::encode(any_len))
-;;                                 .end_cell().begin_parse();
-
-;;         tx_body_len += pre_encoded.slice_bits() >> 3;
-
-;;         return_tuple~tpush(pre_encoded);
-;;         return_tuple~tpush(encode_type_url);
-
-;;         int j = 0;
-;;         int value_encoded_len = value_encoded.tlen();
-        
-;;         ;; flat all value to return_tuple
-;;         while(j < value_encoded_len){
-;;             return_tuple~tpush(value_encoded.at(j));
-;;             j += 1;
-;;         }
-
-;;         tx_body_len += any_len;
-
-;;         message = messages~load_ref();
-;;     }
+        int j = 0;
+        int value_encoded_len = value_encoded.tlen();
+        ;; flat all value to return_tuple
+        while(j < value_encoded_len){
+            return_tuple~tpush(value_encoded.at(j));
+            j += 1;
+        }
+        tx_body_len += any_len;
+        messages = next_ref;
+    }
     
-;;     builder memo_and_timeout_height_builder = begin_cell();
+    builder memo_and_timeout_height_builder = begin_cell();
 
-;;     if(memo_and_timeout_height.slice_empty?() != -1){
-;;         slice memo = memo_and_timeout_height~load_ref().begin_parse();
-;;         int timeout_height = memo_and_timeout_height~load_uint(8 * 64); ;;64 bytes
+    if(memo_and_timeout_height.slice_empty?() != -1){
+        slice memo = memo_and_timeout_height~load_ref().begin_parse();
+        int timeout_height = memo_and_timeout_height~load_uint(8 * 64); ;;64 bytes
        
-;;         if(memo.slice_empty?() != -1){
-;;             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(18)).store_slice(memo);
+        if(memo.slice_empty?() != -1){
+            memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(18)).store_slice(memo);
            
-;;         }
+        }
 
-;;         if(memo.slice_empty?() != -1){
-;;             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(24));
-;;             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint_64::encode(timeout_height));
-;;         }
+        if(memo.slice_empty?() != -1){
+            memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint::encode(24));
+            memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint_64::encode(timeout_height));
+        }
 
-;;     }
+    }
 
-;;     slice memo_and_timeout_height_slice = memo_and_timeout_height_builder.end_cell().begin_parse();
+    slice memo_and_timeout_height_slice = memo_and_timeout_height_builder.end_cell().begin_parse();
 
-;;     if(memo_and_timeout_height_slice.slice_empty?() != -1){
-;;         return_tuple~tpush(memo_and_timeout_height_slice);
-;;         tx_body_len += slice_bits(memo_and_timeout_height_slice) >> 3;
-;;     }
+    if(memo_and_timeout_height_slice.slice_empty?() != -1){
+        return_tuple~tpush(memo_and_timeout_height_slice);
+        tx_body_len += slice_bits(memo_and_timeout_height_slice) >> 3;
+    }
     
-;;     int ext_opts_len = ext_opts.tlen();
 
-;;     int i = 0;
-
-;;     while(i < ext_opts_len){
-;;         builder ext_opt_builder = begin_cell();
-;;         tuple ext_opt = ext_opts.at(i);
-;;         slice type_url = ext_opt.at(0);
-;;         tuple value = ext_opt.at(1);
-;;         ext_opt_builder = ext_opt_builder.store_slice(uvarint::encode(8186));
-;;         (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
-;;         slice pre_encoded = ext_opt_builder
-;;                                 .store_slice(uvarint::encode(any_len))
-;;                                 .end_cell()
-;;                                 .begin_parse();
-
-;;         tx_body_len += pre_encoded.slice_bits() >> 3;
-        
-;;         return_tuple~tpush(pre_encoded);
-;;         return_tuple~tpush(encode_type_url);
-
-;;         int j = 0;
-;;         int value_encoded_len = value_encoded.tlen();
-;;         ;; append all value to return_tuple
-;;         while(j < value_encoded_len){
-;;             return_tuple~tpush(value_encoded.at(j));
-;;             ;; tx_body_len += value_encoded.at(j).slice_bits() >> 3;
-;;             j += 1;
-;;         }
-;;         tx_body_len += any_len;
-;;         i += 1;
-;;     }
+    while(ext_opts.slice_refs_empty?() != -1){
+        slice next_ref = ext_opts~load_ref().begin_parse();
+        slice msg = ext_opts~load_ref().begin_parse();
+        builder ext_opt_builder = begin_cell();
+        ext_opt_builder = ext_opt_builder.store_slice(uvarint::encode(8186));
+        (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(msg);
+        slice pre_encoded = ext_opt_builder
+                                .store_slice(uvarint::encode(any_len))
+                                .end_cell()
+                                .begin_parse();
+        tx_body_len += pre_encoded.slice_bits() >> 3;
+        return_tuple~tpush(pre_encoded);
+        return_tuple~tpush(encode_type_url);
+        int j = 0;
+        int value_encoded_len = value_encoded.tlen();
+        ;; append all value to return_tuple
+        while(j < value_encoded_len){
+            return_tuple~tpush(value_encoded.at(j));
+            ;; tx_body_len += value_encoded.at(j).slice_bits() >> 3;
+            j += 1;
+        }
+        tx_body_len += any_len;
+        ext_opts = next_ref;
+    }
 
 
-;;     int non_critical_ext_opts_len = non_critical_ext_opts.tlen();
-;;     int i = 0;
-;;     while(i < non_critical_ext_opts_len){
-;;         builder non_critical_ext_opts_builder = begin_cell();
-;;         tuple non_critical_ext_opt = non_critical_ext_opts.at(i);
-;;         slice type_url = non_critical_ext_opt.at(0);
-;;         tuple value = non_critical_ext_opt.at(1);
-;;         non_critical_ext_opts_builder = non_critical_ext_opts_builder.store_slice(uvarint::encode(16378));
-;;         (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(type_url, value);
+    while(non_critical_ext_opts.slice_refs_empty?() != -1){
+        slice next_ref = non_critical_ext_opts~load_ref().begin_parse();
+        slice msg = non_critical_ext_opts~load_ref().begin_parse();
+        builder non_critical_ext_opts_builder = begin_cell();
+        non_critical_ext_opts_builder = non_critical_ext_opts_builder.store_slice(uvarint::encode(16378));
+        (int any_len, slice encode_type_url, tuple value_encoded) = any::encode(msg);
 
-;;         slice pre_encoded = non_critical_ext_opts_builder
-;;                             .store_slice(uvarint::encode(any_len))
-;;                             .end_cell()
-;;                             .begin_parse();
+        slice pre_encoded = non_critical_ext_opts_builder
+                            .store_slice(uvarint::encode(any_len))
+                            .end_cell()
+                            .begin_parse();
 
-;;         tx_body_len += pre_encoded.slice_bits() >> 3;
+        tx_body_len += pre_encoded.slice_bits() >> 3;
 
-;;         return_tuple~tpush(pre_encoded);
-;;         return_tuple~tpush(encode_type_url);
+        return_tuple~tpush(pre_encoded);
+        return_tuple~tpush(encode_type_url);
 
-;;         int j = 0;
-;;         int value_encoded_len = value_encoded.tlen();
-;;         ;; append all value to return_tuple
-;;         while(j < value_encoded_len){
-;;             return_tuple~tpush(value_encoded.at(j));
-;;             j += 1;
-;;         }
+        int j = 0;
+        int value_encoded_len = value_encoded.tlen();
+        ;; append all value to return_tuple
+        while(j < value_encoded_len){
+            return_tuple~tpush(value_encoded.at(j));
+            j += 1;
+        }
 
-;;         tx_body_len += any_len;
-;;         i += 1;
-;;     }
+        tx_body_len += any_len;
+        non_critical_ext_opts = next_ref;
+    }
 
-;;     return (tx_body_len, return_tuple);
-;; }
+    return (tx_body_len, return_tuple);
+}

@@ -71,7 +71,7 @@ describe('TxBodyProtobuf', () => {
                 buffer = Buffer.concat([buffer, Buffer.from(item.cell.bits.toString(), 'hex')]);
             }
         }
-        
+
         expect(buffer.toString('hex')).toBe(Buffer.from(TxBody.encode(decodedTx.body).finish()).toString('hex'));
     });
     it('slice to TxBodyEncode', async () => {
@@ -101,7 +101,7 @@ describe('TxBodyProtobuf', () => {
                 buffer = Buffer.concat([buffer, Buffer.from(item.cell.bits.toString(), 'hex')]);
             }
         }
-        
+
         expect(buffer.toString('hex')).toBe(Buffer.from(TxBody.encode(decodedTx.body).finish()).toString('hex'));
     });
 });

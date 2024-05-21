@@ -386,10 +386,22 @@ export const txBodyWasmToTuple = (txBodyWasm: TxBodyWasm) => {
 };
 
 export const txBodyToTuple = (txBodyWasm: TxBody) => {
-    const txBodyTuple: TupleItem[] = [];
-    const messagesTuple: TupleItem[] = txBodyWasm.messages.map(anyToTuple);
-    let memo_timeout_height_builder = beginCell();
+    let messagesCell;
+    for (let i = txBodyWasm.messages.length - 1; i >= 0; i--) {
+        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl)).endCell();
+        const value = buildRecursiveSliceRef(txBodyWasm.messages[i].value);
+        let innerCell = beginCell()
+            .storeRef(typeUrl)
+            .storeRef(value || beginCell().endCell())
+            .endCell();
+        if (!messagesCell) {
+            messagesCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            messagesCell = beginCell().storeRef(messagesCell).storeRef(innerCell).endCell();
+        }
+    }
 
+    let memo_timeout_height_builder = beginCell();
     if (txBodyWasm.memo) {
         memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo)).endCell());
     }
@@ -398,15 +410,47 @@ export const txBodyToTuple = (txBodyWasm: TxBody) => {
         memo_timeout_height_builder.storeUint(txBodyWasm.timeoutHeight, 64);
     }
 
-    const ext_opts_tuple = txBodyWasm.extensionOptions.map(anyToTuple) as any;
-    const non_critical_ext_opts_tuple = txBodyWasm.nonCriticalExtensionOptions.map(anyToTuple) as any;
+    let extCell;
+    for (let i = txBodyWasm.extensionOptions.length - 1; i >= 0; i--) {
+        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl)).endCell();
+        const value = buildRecursiveSliceRef(txBodyWasm.extensionOptions[i].value);
+        let innerCell = beginCell()
+            .storeRef(typeUrl)
+            .storeRef(value || beginCell().endCell())
+            .endCell();
+        if (!extCell) {
+            extCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            extCell = beginCell().storeRef(extCell).storeRef(innerCell).endCell();
+        }
+    }
 
-    txBodyTuple.push({ type: 'tuple', items: messagesTuple });
-    txBodyTuple.push({ type: 'slice', cell: memo_timeout_height_builder.endCell() });
-    txBodyTuple.push({ type: 'tuple', items: ext_opts_tuple });
-    txBodyTuple.push({ type: 'tuple', items: non_critical_ext_opts_tuple });
+    let nonExtCell;
+    for (let i = txBodyWasm.nonCriticalExtensionOptions.length - 1; i >= 0; i--) {
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.nonCriticalExtensionOptions[i].typeUrl))
+            .endCell();
+        const value = buildRecursiveSliceRef(txBodyWasm.nonCriticalExtensionOptions[i].value);
+        let innerCell = beginCell()
+            .storeRef(typeUrl)
+            .storeRef(value || beginCell().endCell())
+            .endCell();
+        if (!nonExtCell) {
+            nonExtCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            nonExtCell = beginCell().storeRef(nonExtCell).storeRef(innerCell).endCell();
+        }
+    }
 
-    return txBodyTuple;
+    return [
+        { type: 'slice', cell: messagesCell },
+        { type: 'slice', cell: memo_timeout_height_builder.endCell() },
+        { type: 'slice', cell: txBodyWasm.extensionOptions.length == 0 ? beginCell().endCell() : extCell },
+        {
+            type: 'slice',
+            cell: txBodyWasm.nonCriticalExtensionOptions.length == 0 ? beginCell().endCell() : nonExtCell,
+        },
+    ];
 };
 
 export const msgExecuteContractToCell = (msg: MsgExecuteContract) => {
@@ -1003,8 +1047,7 @@ export class LightClient implements Contract {
 
     // TxBody
     async getTxBody(provider: ContractProvider, txBody: TxBody) {
-        const input = txBodyToTuple(txBody);
-        console.log({ input });
+        const input = txBodyToTuple(txBody) as TupleItem[];
         const result = await provider.get('tx_body_encode', input);
 
         return result.stack.readTuple();
