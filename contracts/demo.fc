@@ -1,0 +1,66 @@
+#include "imports/stdlib.fc";
+
+global int amount;
+global slice receiver;
+global slice token_denom;
+
+;; load_data populates storage variables using stored data
+() load_data() impure {
+    var ds = get_data().begin_parse();
+
+    amount = ds~load_uint(32);
+    cell receiver_cell = ds~load_ref();
+    receiver = receiver_cell.begin_parse();
+    cell token_denom_cell = ds~load_ref();
+    token_denom = token_denom_cell.begin_parse();
+    ds.end_parse();
+}
+
+;; save_data stores storage variables as a cell into persistent storage
+() save_data() impure inline_ref {
+    set_data(
+        begin_cell()
+            .store_uint(amount, 32)
+            .store_ref(begin_cell().store_slice(receiver).end_cell())
+            .store_ref(begin_cell().store_slice(token_denom).end_cell())
+            .end_cell()
+    );
+}
+
+;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) { ;; ignore all empty messages
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+
+    load_data(); ;; here we populate the storage variables
+
+    amount = in_msg_body~load_uint(32);
+    cell receiver_ref = in_msg_body~load_ref();
+    receiver = receiver_ref.begin_parse();
+    cell token_denom_ref = in_msg_body~load_ref();
+    token_denom = token_denom_ref.begin_parse();
+    save_data();
+    return ();
+}
+
+int get_amount() method_id {
+    load_data();
+    return amount;
+}
+
+slice get_receiver() method_id {
+    load_data();
+    return receiver;
+}
+
+slice get_token_denom() method_id {
+    load_data();
+    return token_denom;
+}
