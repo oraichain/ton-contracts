@@ -14,6 +14,9 @@ describe('Demo', () => {
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
     let demo: SandboxContract<Demo>;
+    const receiverAddr = 'orai1knzg7jdc49ghnc2pkqg6vks8ccsk6efzfgv6gv';
+    const tokenDenom = 'orai';
+    const originalAmount = 1000;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
@@ -21,9 +24,9 @@ describe('Demo', () => {
         demo = blockchain.openContract(
             Demo.createFromConfig(
                 {
-                    amount: 1000,
-                    receiver: 'orai1knzg7jdc49ghnc2pkqg6vks8ccsk6efzfgv6gv',
-                    tokenDenom: 'orai',
+                    amount: originalAmount,
+                    receiver: receiverAddr,
+                    tokenDenom,
                 },
                 code,
             ),
@@ -48,6 +51,33 @@ describe('Demo', () => {
 
     it('should return data', async () => {
         const amount = await demo.getAmount();
-        console.log("amount: ", amount)
+        const receiver = await demo.getReceiver();
+        const denom = await demo.getTokenDenom();
+        expect(amount).toEqual(originalAmount);
+        expect(receiver).toEqual(receiverAddr);
+        expect(denom).toEqual(tokenDenom);
+    });
+
+    it('should update data', async () => {
+        const newAmount = 10;
+        const newReceiver = 'foobar';
+        const newTokenDenom = 'usdt';
+        const updateResult = await demo.sendUpdateDemoData(deployer.getSender(), {
+            sent_funds: '0.01', // must be greater than 0?
+            amount: newAmount,
+            receiver: newReceiver,
+            tokenDenom: newTokenDenom,
+        });
+        expect(updateResult.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: demo.address,
+            success: true,
+        });
+        const amount = await demo.getAmount();
+        const receiver = await demo.getReceiver();
+        const denom = await demo.getTokenDenom();
+        expect(amount).toEqual(newAmount);
+        expect(receiver).toEqual(newReceiver);
+        expect(denom).toEqual(newTokenDenom);
     });
 });
