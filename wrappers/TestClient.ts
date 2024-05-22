@@ -681,29 +681,6 @@ export class TestClient implements Contract {
         return result.stack.readBigNumber();
     }
 
-    async getHashFromTreeProof(provider: ContractProvider, leaves: Buffer[], leafData: Buffer) {
-        const { branch, positions } = getMerkleProofs(leaves, leafData);
-        console.log(branch);
-        console.log(positions);
-        const leaf = BigInt('0x' + leafHash(leafData).toString('hex'));
-        const result = await provider.get('get_tree_root_from_proof', [
-            {
-                type: 'int',
-                value: leaf,
-            },
-            {
-                type: 'tuple',
-                items: branch,
-            },
-            {
-                type: 'slice',
-                cell: positions,
-            },
-        ]);
-
-        return result.stack.readBigNumber();
-    }
-
     async getDigestHash(provider: ContractProvider, longBuf: Buffer) {
         const items: TupleItem[] = [];
 

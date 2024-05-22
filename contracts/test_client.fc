@@ -231,9 +231,9 @@ int verify_vote(slice vote, slice signature, int public_key) method_id {
     return check_data_signature(data, signature, public_key);
 }
 
-;; int digest(tuple buf) method_id {
-;;     return buf.digest_hash();
-;; }
+int digest(tuple buf) method_id {
+    return buf.digest_hash();
+}
 
 ;; Pubkey
 int pubkey_encode_length(slice pub) method_id {
