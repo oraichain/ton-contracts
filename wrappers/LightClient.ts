@@ -73,9 +73,6 @@ export class LightClient implements Contract {
             .storeRef(getCommitCell(data.blockProof.commit))
             .storeRef(getValidatorsCell(data.blockProof.validators)!)
             .endCell();
-        // #DEBUG#: s0 = CS{Cell{0408013270fe} bits: 0..32; refs: 0..4}
-        // #DEBUG#: s0 = CS{Cell{0210013270fd00000000} bits: 0..64; refs: 0..2}
-        // #DEBUG#: s0 = CS{Cell{0200} bits: 0..0; refs: 0..2}
         const cell = beginCell().storeRef(blockProof).endCell();
         await provider.internal(via, {
             value: opts?.value || 0,
@@ -146,8 +143,8 @@ const getValidatorsCell = (validators: Validators[]) => {
         } else {
             validatorCell = beginCell().storeRef(validatorCell).storeRef(innerCell).endCell();
         }
-        return validatorCell;
     }
+    return validatorCell;
 };
 
 const getBlockHashCell = (header: BlockHeader) => {

@@ -846,7 +846,18 @@ export class TestClient implements Contract {
         const result = await provider.get('validator_hash_input_encode', [
             {
                 type: 'slice',
-                cell: beginCell().storeBuffer(pubkeyBuffer).storeUint(votingPower, 32).endCell(),
+                cell: beginCell()
+                    .storeBuffer(
+                        Buffer.from(
+                            Array.from({ length: 40 })
+                                .map(() => 0)
+                                .join(''),
+                            'hex',
+                        ),
+                    )
+                    .storeRef(beginCell().storeBuffer(pubkeyBuffer).endCell())
+                    .storeUint(votingPower, 32)
+                    .endCell(),
             },
         ]);
         return result.stack.readBuffer();

@@ -3,14 +3,13 @@
 #include "static/errors.fc";
 #include "static/op_codes.fc";
 #include "utils/messages.fc";
+#include "utils/helper.fc";
 
 ;; storage variables
 
 global int height;
 global slice chain_id;
 global slice next_validator_hash_set;
-;; first ref is validator dictionary
-;; second ref is validator array
 global cell validator_info;
 
 ;; load_data populates storage variables using stored data
@@ -74,6 +73,13 @@ global cell validator_info;
         (_, cell inner_header) = header.load_ref();
         int result = verify::verify_commit_sigs(inner_header.begin_parse(), commit, validators);
         throw_if(error::invalid_untrusted_validators, result != -1);
+        ;; ~dump(verify::verify_validators(validators, get_validator_hash(header)));
+        ;; if (slice_empty?(next_validator_hash_set)) {
+
+        ;; }
+        ;; if (equal_slice?(get_next_validator_hash(header), next_validator_hash_set)) {
+
+        ;; }
         save_data();
         return ();
     }

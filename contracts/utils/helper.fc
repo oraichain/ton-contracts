@@ -1,0 +1,22 @@
+slice get_next_validator_hash(slice header) inline_ref {
+    header~load_ref().begin_parse();
+    slice first_hashes = header~load_ref().begin_parse();
+    slice last_commit_hash = first_hashes~load_ref().begin_parse();
+    slice data_hash = first_hashes~load_ref().begin_parse();
+    slice validators_hash = first_hashes~load_ref().begin_parse();
+    slice next_validators_hash = first_hashes~load_ref().begin_parse();
+    return next_validators_hash;
+}
+
+slice get_validator_hash(slice header) inline_ref {
+    header~load_ref().begin_parse();
+    slice first_hashes = header~load_ref().begin_parse();
+    slice last_commit_hash = first_hashes~load_ref().begin_parse();
+    slice data_hash = first_hashes~load_ref().begin_parse();
+    slice validators_hash = first_hashes~load_ref().begin_parse();
+    return validators_hash;
+}
+
+int equal_slice? (slice a, slice b) {
+    return a.slice_hash() == b.slice_hash();
+}

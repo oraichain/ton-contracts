@@ -68,7 +68,7 @@ describe('LightClient', () => {
                     blockId: block_id,
                 },
             },
-            { value: toNano('5') },
+            { value: toNano('10') },
         );
         // expect(result.transactions).toHaveTransaction({
         //     success: true,

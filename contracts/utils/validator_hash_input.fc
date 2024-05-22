@@ -4,7 +4,7 @@
 (int) validator_hash_input::encode_length(slice data) {
     int voting_power = 0;
     if (data.slice_empty?() != -1) {
-        data~skip_bits(256);
+        data~skip_bits(160);
         voting_power = data~load_uint(32);
     }
     return 40 + varint::encode_length(0, voting_power);
@@ -12,14 +12,13 @@
 
 (slice) validator_hash_input::encode(slice data) {
     builder inner_cell = begin_cell().store_uint(0x0a, 8).store_uint(0x25, 8);
-    slice pubkey = data~load_bits(256);
+    data~skip_bits(160);
+    slice pubkey = data~load_ref().begin_parse();
     slice pubkey_encode = pubkey::encode(pubkey);
     inner_cell = inner_cell.store_slice(pubkey_encode);
     inner_cell = inner_cell.store_uint(0x10, 8);
     int voting_power = data~load_uint(32);
     slice voting_power_encode = varint::encode(0, voting_power);
     inner_cell = inner_cell.store_slice(voting_power_encode);
-    slice pubkey = data~load_bits(256);
-
     return inner_cell.end_cell().begin_parse();
 }

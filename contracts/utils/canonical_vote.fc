@@ -19,16 +19,19 @@ slice canonical_vote::encode(
         inner_cell = inner_cell.store_uint(prefix::number, 8)
             .store_uint(vote_type, 8);
     }
-
+    
+    ~dump(height);
     if(height > 0){
         inner_cell = inner_cell.store_uint(0x11,8)
             .store_slice(uint64le::encode(height));       
     }
+    ~dump(height);
 
     if(round > 0){
         inner_cell = inner_cell.store_uint(0x19, 8)
             .store_slice(uint64le::encode(round));       
     }
+
 
     if(block_id.slice_empty?() != -1){        
         inner_cell = inner_cell.store_uint(0x22, 8)          
@@ -37,10 +40,11 @@ slice canonical_vote::encode(
         
     }
 
+
     ;; time field
     inner_cell = inner_cell.store_uint(0x2a, 8)
         .store_uint(time::encode_length(timestamp), 8)
-        .store_slice(time::encode(timestamp));    
+        .store_slice(time::encode(timestamp));   
    
 
     ;; chain_id field    
