@@ -60,11 +60,9 @@ global cell validator_info;
     load_data(); ;; here we populate the storage variables
 
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
-    ~dump(op);
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
    
     if (op == op::verify_receipt) {
-        emit_log_simple(log::verify_receipt, begin_cell().store_int(0, 8).end_cell() ,query_id);
         slice body = in_msg_body~load_ref().begin_parse();
         slice block_proof = body~load_ref().begin_parse();
         int block_hash = block_proof~load_uint(256);
@@ -73,19 +71,12 @@ global cell validator_info;
         slice validators = block_proof~load_ref().begin_parse();
         int result = verify::verify_block_hash(header, block_hash);
         throw_if(error::invalid_block_header, result != -1);
+        (_, cell inner_header) = header.load_ref();
+        int result = verify::verify_commit_sigs(inner_header.begin_parse(), commit, validators);
+        throw_if(error::invalid_untrusted_validators, result != -1);
         save_data();
         return ();
     }
 
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
-}
-
-int verify_receipt(slice ds) method_id {
-    slice block_proof = ds~load_ref().begin_parse();
-    int block_hash = block_proof~load_uint(256);
-    slice header = block_proof~load_ref().begin_parse();
-    slice commit = block_proof~load_ref().begin_parse();
-    slice validators = block_proof~load_ref().begin_parse();
-    int result = verify::verify_block_hash(header, block_hash);
-    return result;
 }

@@ -1,5 +1,5 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
-import { BlockId, getBlockSlice, getTimeSlice, getVersionSlice, Version } from './TestClient';
+import { BlockId, Commit, getBlockSlice, getTimeSlice, getVersionSlice, Validators, Version } from './TestClient';
 import { crc32 } from '../crc32';
 
 export type BlockHeader = {
@@ -20,7 +20,7 @@ export type BlockHeader = {
 };
 
 export type VerifyReceiptParams = {
-    blockProof: { header: BlockHeader; blockId: BlockId };
+    blockProof: { header: BlockHeader; commit: Commit; validators: Validators[]; blockId: BlockId };
 };
 
 export type LightClientConfig = {
@@ -70,9 +70,12 @@ export class LightClient implements Contract {
         const blockProof = beginCell()
             .storeUint(BigInt('0x' + data.blockProof.blockId.hash), 256)
             .storeRef(getBlockHashCell(data.blockProof.header))
-            .storeRef(beginCell().endCell())
-            .storeRef(beginCell().endCell())
+            .storeRef(getCommitCell(data.blockProof.commit))
+            .storeRef(getValidatorsCell(data.blockProof.validators)!)
             .endCell();
+        // #DEBUG#: s0 = CS{Cell{0408013270fe} bits: 0..32; refs: 0..4}
+        // #DEBUG#: s0 = CS{Cell{0210013270fd00000000} bits: 0..64; refs: 0..2}
+        // #DEBUG#: s0 = CS{Cell{0200} bits: 0..0; refs: 0..2}
         const cell = beginCell().storeRef(blockProof).endCell();
         await provider.internal(via, {
             value: opts?.value || 0,
@@ -84,24 +87,68 @@ export class LightClient implements Contract {
                 .endCell(),
         });
     }
-
-    async getVerifyReceipt(provider: ContractProvider, data: VerifyReceiptParams) {
-        const blockProof = beginCell()
-            .storeUint(BigInt('0x' + data.blockProof.blockId.hash), 256)
-            .storeRef(getBlockHashCell(data.blockProof.header))
-            .storeRef(beginCell().endCell())
-            .storeRef(beginCell().endCell())
-            .endCell();
-        const cell = beginCell().storeRef(blockProof).endCell();
-        const result = await provider.get('verify_receipt', [
-            {
-                type: 'slice',
-                cell: cell,
-            },
-        ]);
-        return result.stack.readNumber();
-    }
 }
+
+const getCommitCell = (commit: Commit) => {
+    let signatureCell;
+    for (let i = commit.signatures.length - 1; i >= 0; i--) {
+        let signature = commit.signatures[i];
+        let cell = beginCell()
+            .storeUint(signature.block_id_flag, 8)
+            .storeBuffer(Buffer.from(signature.validator_address, 'hex'))
+            .storeRef(getTimeSlice(signature.timestamp))
+            .storeBuffer(signature.signature ? Buffer.from(signature.signature, 'base64') : Buffer.from(''))
+            .endCell();
+        if (!signatureCell) {
+            signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+        } else {
+            signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
+        }
+    }
+
+    let commitCell = beginCell()
+        .storeUint(BigInt(commit.height), 32)
+        .storeUint(BigInt(commit.round), 32)
+        .storeRef(getBlockSlice(commit.block_id))
+        .storeRef(signatureCell!)
+        .endCell();
+    return commitCell;
+};
+
+const getValidatorsCell = (validators: Validators[]) => {
+    let validatorCell;
+    for (let i = validators.length - 1; i >= 0; i--) {
+        let builder = beginCell().storeBuffer(Buffer.from(validators[i].address, 'hex'));
+        if (validators[i]?.pub_key?.value) {
+            builder = builder.storeRef(
+                beginCell()
+                    .storeBuffer(Buffer.from(validators[i].pub_key.value as string, 'base64'))
+                    .endCell(),
+            );
+        } else {
+            builder = builder.storeRef(
+                beginCell()
+                    .storeBuffer(
+                        Buffer.from(
+                            Array.from({ length: 32 })
+                                .map(() => 0)
+                                .join(''),
+                            'hex',
+                        ),
+                    )
+                    .endCell(),
+            );
+        }
+        builder = builder.storeUint(parseInt(validators[i].voting_power), 32);
+        let innerCell = builder.endCell();
+        if (!validatorCell) {
+            validatorCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+        } else {
+            validatorCell = beginCell().storeRef(validatorCell).storeRef(innerCell).endCell();
+        }
+        return validatorCell;
+    }
+};
 
 const getBlockHashCell = (header: BlockHeader) => {
     let cell = beginCell()
@@ -125,5 +172,5 @@ const getBlockHashCell = (header: BlockHeader) => {
         .storeRef(beginCell().storeBuffer(Buffer.from(header.evidenceHash, 'hex')));
 
     let dsCell = beginCell().storeRef(cell).storeRef(hashCell1).storeRef(hashCell2).endCell();
-    return dsCell;
+    return dsCell!;
 };
