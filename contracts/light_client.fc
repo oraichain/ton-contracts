@@ -64,15 +64,15 @@ global cell validator_info;
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
    
     if (op == op::verify_receipt) {
-        ;; emit_log_simple(log::verify_receipt, begin_cell().store_int(0, 8).end_cell() ,query_id);
-        ;; slice body = in_msg_body~load_ref().begin_parse();
-        ;; slice block_proof = body~load_ref().begin_parse();
-        ;; int block_hash = block_proof~load_uint(256);
-        ;; slice heaeder = block_proof~load_ref().begin_parse();
-        ;; slice commit = block_proof~load_ref().begin_parse();
-        ;; slice validators = block_proof~load_ref().begin_parse();
-        ;; int result = verify::verify_block_hash(header, block_hash);
-        ;; throw_if(error::invalid_block_header, result != -1);
+        emit_log_simple(log::verify_receipt, begin_cell().store_int(0, 8).end_cell() ,query_id);
+        slice body = in_msg_body~load_ref().begin_parse();
+        slice block_proof = body~load_ref().begin_parse();
+        int block_hash = block_proof~load_uint(256);
+        slice header = block_proof~load_ref().begin_parse();
+        slice commit = block_proof~load_ref().begin_parse();
+        slice validators = block_proof~load_ref().begin_parse();
+        int result = verify::verify_block_hash(header, block_hash);
+        throw_if(error::invalid_block_header, result != -1);
         save_data();
         return ();
     }

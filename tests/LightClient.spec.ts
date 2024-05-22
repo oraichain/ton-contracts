@@ -66,27 +66,31 @@ describe('LightClient', () => {
                 },
             }),
         ).toBe(-1);
-        const result = await lightClient.sendVerifyReceipt(user.getSender(), {
-            blockProof: {
-                header: {
-                    appHash: header.app_hash,
-                    chainId: header.chain_id,
-                    consensusHash: header.consensus_hash,
-                    dataHash: header.data_hash,
-                    evidenceHash: header.evidence_hash,
-                    height: BigInt(header.height),
-                    lastBlockId: header.last_block_id,
-                    lastCommitHash: header.last_commit_hash,
-                    lastResultsHash: header.last_results_hash,
-                    validatorHash: header.validators_hash,
-                    nextValidatorHash: header.next_validators_hash,
-                    proposerAddress: header.proposer_address,
-                    time: header.time,
-                    version: header.version,
+        const result = await lightClient.sendVerifyReceipt(
+            user.getSender(),
+            {
+                blockProof: {
+                    header: {
+                        appHash: header.app_hash,
+                        chainId: header.chain_id,
+                        consensusHash: header.consensus_hash,
+                        dataHash: header.data_hash,
+                        evidenceHash: header.evidence_hash,
+                        height: BigInt(header.height),
+                        lastBlockId: header.last_block_id,
+                        lastCommitHash: header.last_commit_hash,
+                        lastResultsHash: header.last_results_hash,
+                        validatorHash: header.validators_hash,
+                        nextValidatorHash: header.next_validators_hash,
+                        proposerAddress: header.proposer_address,
+                        time: header.time,
+                        version: header.version,
+                    },
+                    blockId: blockData.block_id,
                 },
-                blockId: blockData.block_id,
             },
-        }, {value: toNano('10')});
+            { value: toNano('0.5') },
+        );
         expect(result.transactions).toHaveTransaction({
             success: true,
             op: Opcodes.verify_receipt,
