@@ -10,7 +10,7 @@
 global int height;
 global slice chain_id;
 global slice next_validator_hash_set;
-global cell validator_info;
+global slice validator_info;
 
 ;; load_data populates storage variables using stored data
 () load_data() impure {
@@ -25,7 +25,7 @@ global cell validator_info;
     next_validator_hash_set = next_validator_hash_set_cell.begin_parse();
 
     cell validator_set_cell = ds~load_ref();
-    validator_info = validator_set_cell;
+    validator_info = validator_set_cell.begin_parse();
 
     ds.end_parse();
 }
@@ -37,7 +37,7 @@ global cell validator_info;
             .store_uint(height, 32)
             .store_ref(begin_cell().store_slice(chain_id).end_cell())
             .store_ref(begin_cell().store_slice(next_validator_hash_set).end_cell())
-            .store_ref(validator_info)
+            .store_ref(begin_cell().store_slice(validator_info).end_cell())
         .end_cell()
     );
 }
@@ -61,28 +61,34 @@ global cell validator_info;
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
    
-    if (op == op::verify_receipt) {
-        slice body = in_msg_body~load_ref().begin_parse();
-        slice block_proof = body~load_ref().begin_parse();
+    if (op == op::verify_block_hash) {
+        slice block_proof = in_msg_body~load_ref().begin_parse();
         int block_hash = block_proof~load_uint(256);
         slice header = block_proof~load_ref().begin_parse();
-        slice commit = block_proof~load_ref().begin_parse();
-        slice validators = block_proof~load_ref().begin_parse();
         int result = verify::verify_block_hash(header, block_hash);
         throw_if(error::invalid_block_header, result != -1);
-        (_, cell inner_header) = header.load_ref();
-        int result = verify::verify_commit_sigs(inner_header.begin_parse(), commit, validators);
-        throw_if(error::invalid_untrusted_validators, result != -1);
-        ;; ~dump(verify::verify_validators(validators, get_validator_hash(header)));
-        ;; if (slice_empty?(next_validator_hash_set)) {
-
-        ;; }
-        ;; if (equal_slice?(get_next_validator_hash(header), next_validator_hash_set)) {
-
-        ;; }
+        (int temp_height, slice temp_chain_id, slice temp_next_validator_hash) = get_data_from_header(header);
+        height = temp_height;
+        chain_id = temp_chain_id;
+        next_validator_hash_set = temp_next_validator_hash;
         save_data();
         return ();
     }
 
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
+}
+
+int get_height() method_id {
+    load_data();
+    return height;
+}
+
+slice get_chain_id() method_id {
+    load_data();
+    return chain_id;
+}
+
+slice get_next_validator_hash_set() method_id {
+    load_data();
+    return next_validator_hash_set;
 }

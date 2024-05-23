@@ -23,6 +23,11 @@ export type VerifyReceiptParams = {
     blockProof: { header: BlockHeader; commit: Commit; validators: Validators[]; blockId: BlockId };
 };
 
+export type VerifyBlockHashParams = {
+    header: BlockHeader;
+    blockId: BlockId;
+};
+
 export type LightClientConfig = {
     height: number;
     chainId: string;
@@ -40,6 +45,7 @@ export function lightClientConfigToCell(config: LightClientConfig): Cell {
 
 export const Opcodes = {
     verify_receipt: crc32('op::verify_receipt'),
+    verify_block_hash: crc32('op::verify_block_hash'),
 };
 
 export class LightClient implements Contract {
@@ -66,23 +72,54 @@ export class LightClient implements Contract {
         });
     }
 
-    async sendVerifyReceipt(provider: ContractProvider, via: Sender, data: VerifyReceiptParams, opts?: any) {
+    // async sendVerifyReceipt(provider: ContractProvider, via: Sender, data: VerifyReceiptParams, opts?: any) {
+    //     const blockProof = beginCell()
+    //         .storeUint(BigInt('0x' + data.blockProof.blockId.hash), 256)
+    //         .storeRef(getBlockHashCell(data.blockProof.header))
+    //         .storeRef(getCommitCell(data.blockProof.commit))
+    //         .storeRef(getValidatorsCell(data.blockProof.validators)!)
+    //         .endCell();
+    //     const cell = beginCell().storeRef(blockProof).endCell();
+    //     await provider.internal(via, {
+    //         value: opts?.value || 0,
+    //         sendMode: SendMode.PAY_GAS_SEPARATELY,
+    //         body: beginCell()
+    //             .storeUint(Opcodes.verify_receipt, 32)
+    //             .storeUint(opts?.queryID || 0, 64)
+    //             .storeRef(cell)
+    //             .endCell(),
+    //     });
+    // }
+
+    async sendVerifyBlockHash(provider: ContractProvider, via: Sender, data: VerifyBlockHashParams, opts?: any) {
         const blockProof = beginCell()
-            .storeUint(BigInt('0x' + data.blockProof.blockId.hash), 256)
-            .storeRef(getBlockHashCell(data.blockProof.header))
-            .storeRef(getCommitCell(data.blockProof.commit))
-            .storeRef(getValidatorsCell(data.blockProof.validators)!)
+            .storeUint(BigInt('0x' + data.blockId.hash), 256)
+            .storeRef(getBlockHashCell(data.header))
             .endCell();
-        const cell = beginCell().storeRef(blockProof).endCell();
         await provider.internal(via, {
             value: opts?.value || 0,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.verify_receipt, 32)
+                .storeUint(Opcodes.verify_block_hash, 32)
                 .storeUint(opts?.queryID || 0, 64)
-                .storeRef(cell)
+                .storeRef(blockProof)
                 .endCell(),
         });
+    }
+
+    async getHeight(provider: ContractProvider) {
+        const result = await provider.get('get_height', []);
+        return result.stack.readNumber();
+    }
+
+    async getChainId(provider: ContractProvider) {
+        const result = await provider.get('get_chain_id', []);
+        return result.stack.readBuffer().toString('utf-8');
+    }
+
+    async getNextValidatorHash(provider: ContractProvider) {
+        const result = await provider.get('get_next_validator_hash_set', []);
+        return result.stack.readCell();
     }
 }
 

@@ -32,7 +32,7 @@ slice reverse_buffer_slice_int(int number){
     return inner_cell.end_cell().begin_parse();
 }
 
-slice uint53::write_int64_le(int number){
+slice uint53::write_int64_le(int number) {
     (int high, int low) = number.uint_high_low();
     return begin_cell()
             .store_slice(reverse_buffer_slice_int(low))

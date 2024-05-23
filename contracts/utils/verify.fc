@@ -22,15 +22,8 @@ slice verify::get_vote_sign_bytes(slice vote){
     slice block_id = vote~load_ref().begin_parse();
     slice timestamp = vote~load_ref().begin_parse();
     slice chain_id = vote~load_ref().begin_parse();
-    ;; ~dump(vote_type);
-    ;; ~dump(height);
-    ;; ~dump(round);
-    ;; ~dump(block_id);
-    ;; ~dump(timestamp);
-    ;; ~dump(chain_id);
     slice encoded =  canonical_vote::encode(vote_type, height, round, block_id, timestamp, chain_id);
     return varbuffer::encode(encoded);
-
 }
 
 int verify::verify_commit_sigs(slice header, slice commit, slice validators){
@@ -46,7 +39,6 @@ int verify::verify_commit_sigs(slice header, slice commit, slice validators){
     int total_voting_power = 0;
     cell validators_by_address = new_dict();
 
-    
     ;; build validator map
     while(validators.slice_refs_empty?() != -1){
         slice next_ref = validators~load_ref().begin_parse();
@@ -65,7 +57,9 @@ int verify::verify_commit_sigs(slice header, slice commit, slice validators){
     slice signatures = commit~load_ref().begin_parse();
 
     ;;iterate signatures commit
+    int index = 0;
     while(signatures.slice_refs_empty?() != -1){
+        accept_message();
         slice next_ref = signatures~load_ref().begin_parse();
         slice cs = signatures~load_ref().begin_parse();
         int cs_bits_len = slice_bits(cs);
@@ -93,13 +87,9 @@ int verify::verify_commit_sigs(slice header, slice commit, slice validators){
                         .end_cell()
                         .begin_parse();
                         
-                ~dump(-100);
+                ~dump(index);
                 slice sign_bytes = verify::get_vote_sign_bytes(vote);
-                ~dump(sign_bytes);
-                ~dump(-101);
-
                 slice pubkey = validator~load_ref().begin_parse();
-
                 int verify_pubkey = pubkey~load_uint(256);
 
                 int is_valid = check_data_signature(sign_bytes, signatures, verify_pubkey);
@@ -108,6 +98,7 @@ int verify::verify_commit_sigs(slice header, slice commit, slice validators){
                 }
             }
         }
+        index += 1;
         signatures = next_ref;
     }
 
@@ -140,7 +131,7 @@ int verify::verify_block_hash(slice ds, int block_hash) {
     slice consensus_hash = second_hashes~load_ref().begin_parse();
     slice app_hash = second_hashes~load_ref().begin_parse();
     slice last_results_hash = second_hashes~load_ref().begin_parse();
-    slice evidence_hash = second_hashes~load_ref().begin_parse();    
+    slice evidence_hash = second_hashes~load_ref().begin_parse();
 
     tuple chunks = empty_tuple()
         .tpush(version::encode(version))
@@ -158,9 +149,11 @@ int verify::verify_block_hash(slice ds, int block_hash) {
         .tpush(proto::encode_buffer(evidence_hash))
         .tpush(proto::encode_buffer(proposer_address));
 
+
     if (block_hash != hash_from_tree_slice(chunks)) {
         return 0;
     }
+
     return -1; 
 }
 

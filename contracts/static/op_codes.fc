@@ -1,3 +1,4 @@
 const log::verify_receipt = 1;
 
 const op::verify_receipt = "op::verify_receipt"c; 
+const op::verify_block_hash = "op::verify_block_hash"c;

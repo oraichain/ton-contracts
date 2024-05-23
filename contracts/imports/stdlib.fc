@@ -449,6 +449,9 @@ builder store_dict(builder b, cell c) asm(c b) "STDICT";
 ;;; otherwise store 1 true bit and ref to cell
 builder store_maybe_ref(builder b, cell c) asm(c b) "STOPTREF";
 
+(slice, slice) load_slice(slice s, int len) asm( -> 1 0) "LDSLICEX";
+forall X -> tuple tset(tuple t, int k, X x) asm(t x k) "SETINDEXVAR";
+forall X -> (tuple, ()) ~tset(tuple t, int k, X x) asm(t x k) "SETINDEXVAR";
 
 {-
   # Address manipulation primitives

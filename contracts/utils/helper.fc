@@ -1,13 +1,3 @@
-slice get_next_validator_hash(slice header) inline_ref {
-    header~load_ref().begin_parse();
-    slice first_hashes = header~load_ref().begin_parse();
-    slice last_commit_hash = first_hashes~load_ref().begin_parse();
-    slice data_hash = first_hashes~load_ref().begin_parse();
-    slice validators_hash = first_hashes~load_ref().begin_parse();
-    slice next_validators_hash = first_hashes~load_ref().begin_parse();
-    return next_validators_hash;
-}
-
 slice get_validator_hash(slice header) inline_ref {
     header~load_ref().begin_parse();
     slice first_hashes = header~load_ref().begin_parse();
@@ -16,6 +6,23 @@ slice get_validator_hash(slice header) inline_ref {
     slice validators_hash = first_hashes~load_ref().begin_parse();
     return validators_hash;
 }
+
+;; return_type (height, chain_id, next_validator_hash)
+(int, slice, slice) get_data_from_header(slice header) inline_ref {
+    slice inner_header = header~load_ref().begin_parse();
+    slice version = inner_header~load_ref().begin_parse();
+    slice chain_id = inner_header~load_ref().begin_parse();
+    int height = inner_header~load_uint(32);
+    slice time = inner_header~load_ref().begin_parse();
+    slice block_id = inner_header~load_ref().begin_parse();
+    slice first_hashes = header~load_ref().begin_parse();
+    slice last_commit_hash = first_hashes~load_ref().begin_parse();
+    slice data_hash = first_hashes~load_ref().begin_parse();
+    slice validators_hash = first_hashes~load_ref().begin_parse();
+    slice next_validators_hash = first_hashes~load_ref().begin_parse();
+    return (height, chain_id, next_validators_hash);
+}
+
 
 int equal_slice? (slice a, slice b) {
     return a.slice_hash() == b.slice_hash();
