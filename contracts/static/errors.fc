@@ -1,4 +1,4 @@
 const int error::invalid_block_header = 401;
 const int error::invalid_untrusted_validators = 402;
 const int error::invalid_verify_sigs = 403;
-
+const int error::not_complete_verify_sigs = 404;

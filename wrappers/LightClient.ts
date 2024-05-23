@@ -54,6 +54,7 @@ export type LightClientConfig = {
 export function lightClientConfigToCell(config: LightClientConfig): Cell {
     return beginCell()
         .storeUint(0, 1)
+        .storeUint(0, 8)
         .storeRef(
             beginCell()
                 .storeUint(config.height, 32)

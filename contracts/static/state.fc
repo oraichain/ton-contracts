@@ -1,1 +1,2 @@
-const state::verify_sigs = 0;
+const state::initial = 0;
+const state::verify_sigs = 11;
