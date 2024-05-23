@@ -1,5 +1,24 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
-import { BlockId, Commit, getBlockSlice, getTimeSlice, getVersionSlice, Validators, Version } from './TestClient';
+import {
+    Address,
+    beginCell,
+    Cell,
+    Contract,
+    contractAddress,
+    ContractProvider,
+    Dictionary,
+    Sender,
+    SendMode,
+} from '@ton/core';
+import {
+    BlockId,
+    Commit,
+    getBlockSlice,
+    getTimeSlice,
+    getVersionSlice,
+    Header,
+    Validators,
+    Version,
+} from './TestClient';
 import { crc32 } from '../crc32';
 
 export type BlockHeader = {
@@ -19,10 +38,6 @@ export type BlockHeader = {
     evidenceHash: string;
 };
 
-export type VerifyReceiptParams = {
-    blockProof: { header: BlockHeader; commit: Commit; validators: Validators[]; blockId: BlockId };
-};
-
 export type VerifyBlockHashParams = {
     header: BlockHeader;
     blockId: BlockId;
@@ -31,21 +46,48 @@ export type VerifyBlockHashParams = {
 export type LightClientConfig = {
     height: number;
     chainId: string;
+    dataHash: string;
+    validatorHashSet: string;
     nextValidatorHashSet: string;
 };
 
 export function lightClientConfigToCell(config: LightClientConfig): Cell {
     return beginCell()
-        .storeUint(config.height, 32)
-        .storeRef(beginCell().storeBuffer(Buffer.from(config.chainId)).endCell())
-        .storeRef(beginCell().storeBuffer(Buffer.from(config.nextValidatorHashSet)).endCell())
-        .storeRef(beginCell().storeRef(beginCell().endCell()).storeRef(beginCell().endCell()).endCell())
+        .storeUint(0, 1)
+        .storeRef(
+            beginCell()
+                .storeUint(config.height, 32)
+                .storeRef(beginCell().storeBuffer(Buffer.from(config.chainId)).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from(config.dataHash)).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from(config.validatorHashSet)).endCell())
+                .endCell(),
+        )
+        .storeRef(
+            beginCell()
+                .storeRef(
+                    beginCell()
+                        .storeUint(0, 256)
+                        .storeRef(beginCell().storeDict(Dictionary.empty()).endCell())
+                        .storeRef(beginCell().storeDict(Dictionary.empty()).endCell())
+                        .endCell(),
+                )
+                .storeRef(
+                    beginCell()
+                        .storeUint(0, 256)
+                        .storeRef(beginCell().storeDict(Dictionary.empty()).endCell())
+                        .storeRef(beginCell().storeDict(Dictionary.empty()).endCell())
+                        .endCell(),
+                )
+                .endCell(),
+        )
         .endCell();
 }
 
 export const Opcodes = {
-    verify_receipt: crc32('op::verify_receipt'),
     verify_block_hash: crc32('op::verify_block_hash'),
+    store_untrusted_validators: crc32('op::store_untrusted_validators'),
+    verify_sigs: crc32('op::verify_sigs'),
+    verify_receipt: crc32('op::verify_receipt'),
 };
 
 export class LightClient implements Contract {
@@ -72,24 +114,19 @@ export class LightClient implements Contract {
         });
     }
 
-    // async sendVerifyReceipt(provider: ContractProvider, via: Sender, data: VerifyReceiptParams, opts?: any) {
-    //     const blockProof = beginCell()
-    //         .storeUint(BigInt('0x' + data.blockProof.blockId.hash), 256)
-    //         .storeRef(getBlockHashCell(data.blockProof.header))
-    //         .storeRef(getCommitCell(data.blockProof.commit))
-    //         .storeRef(getValidatorsCell(data.blockProof.validators)!)
-    //         .endCell();
-    //     const cell = beginCell().storeRef(blockProof).endCell();
-    //     await provider.internal(via, {
-    //         value: opts?.value || 0,
-    //         sendMode: SendMode.PAY_GAS_SEPARATELY,
-    //         body: beginCell()
-    //             .storeUint(Opcodes.verify_receipt, 32)
-    //             .storeUint(opts?.queryID || 0, 64)
-    //             .storeRef(cell)
-    //             .endCell(),
-    //     });
-    // }
+    async sendVerifySigs(provider: ContractProvider, via: Sender, commit: Commit, opts?: any) {
+        const commitCell = getCommitCell(commit);
+        const cell = beginCell().storeRef(commitCell).endCell();
+        await provider.internal(via, {
+            value: opts?.value || 0,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Opcodes.verify_sigs, 32)
+                .storeUint(opts?.queryID || 0, 64)
+                .storeRef(cell)
+                .endCell(),
+        });
+    }
 
     async sendVerifyBlockHash(provider: ContractProvider, via: Sender, data: VerifyBlockHashParams, opts?: any) {
         const blockProof = beginCell()
@@ -107,6 +144,19 @@ export class LightClient implements Contract {
         });
     }
 
+    async sendStoreUntrustedValidators(provider: ContractProvider, via: Sender, validators: Validators[], opts?: any) {
+        const validatorCell = getValidatorsCell(validators);
+        await provider.internal(via, {
+            value: opts?.value || 0,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Opcodes.store_untrusted_validators, 32)
+                .storeUint(opts?.queryID || 0, 64)
+                .storeRef(validatorCell!)
+                .endCell(),
+        });
+    }
+
     async getHeight(provider: ContractProvider) {
         const result = await provider.get('get_height', []);
         return result.stack.readNumber();
@@ -117,9 +167,14 @@ export class LightClient implements Contract {
         return result.stack.readBuffer().toString('utf-8');
     }
 
-    async getNextValidatorHash(provider: ContractProvider) {
-        const result = await provider.get('get_next_validator_hash_set', []);
-        return result.stack.readCell();
+    async getDataHash(provider: ContractProvider) {
+        const result = await provider.get('get_data_hash', []);
+        return result.stack.readBuffer();
+    }
+
+    async getValidatorHash(provider: ContractProvider) {
+        const result = await provider.get('get_validator_hash_set', []);
+        return result.stack.readBuffer();
     }
 }
 

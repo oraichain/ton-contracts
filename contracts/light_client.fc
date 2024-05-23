@@ -4,40 +4,68 @@
 #include "static/op_codes.fc";
 #include "utils/messages.fc";
 #include "utils/helper.fc";
+#include "static/state.fc";
 
 ;; storage variables
+;; 0: false, 1: true
+global int validator_set_changed;
 
+;; store in a header_ref
 global int height;
+global int state;
 global slice chain_id;
-global slice next_validator_hash_set;
-global slice validator_info;
+global slice data_hash;
+global slice validator_hash_set;
+
+;; store in a validator_ref
+global cell trusted_validator;
+global cell untrusted_validator;
+
+;; int trusted_voting_power;
+;; global cell trusted_validators_data;
+;; global cell trusted_validators_dict;
+;; int untrusted_voting_power;
+;; global cell untrusted_validators_data;
+;; global cell untrusted_validators_dict;
 
 ;; load_data populates storage variables using stored data
 () load_data() impure {
     var ds = get_data().begin_parse();
 
-    int height = ds~load_uint(32);
+    int validator_set_changed = ds~load_uint(1);
 
-    cell chain_id_cell = ds~load_ref();
+    slice header_cell = ds~load_ref().begin_parse();
+    int height = header_cell~load_uint(32);
+    cell chain_id_cell = header_cell~load_ref();
     chain_id = chain_id_cell.begin_parse();
-
-    cell next_validator_hash_set_cell = ds~load_ref();
-    next_validator_hash_set = next_validator_hash_set_cell.begin_parse();
-
-    cell validator_set_cell = ds~load_ref();
-    validator_info = validator_set_cell.begin_parse();
-
+    cell data_hash_cell = header_cell~load_ref();
+    data_hash = data_hash_cell.begin_parse();
+    cell validator_hash_set_cell = header_cell~load_ref();
+    validator_hash_set = validator_hash_set_cell.begin_parse();
+    slice validator_cell = ds~load_ref().begin_parse();
+    trusted_validator = validator_cell~load_ref();
+    untrusted_validator = validator_cell~load_ref();
     ds.end_parse();
 }
 
 ;; save_data stores storage variables as a cell into persistent storage
 () save_data() impure inline_ref {
+    cell header_ref = begin_cell()
+                        .store_uint(height, 32)
+                        .store_ref(begin_cell().store_slice(chain_id).end_cell())
+                        .store_ref(begin_cell().store_slice(data_hash).end_cell())
+                        .store_ref(begin_cell().store_slice(validator_hash_set).end_cell())
+                        .end_cell();
+    
+    cell validator_ref = begin_cell()
+                            .store_ref(trusted_validator)
+                            .store_ref(untrusted_validator)
+                            .end_cell();
     set_data(
         begin_cell()
-            .store_uint(height, 32)
-            .store_ref(begin_cell().store_slice(chain_id).end_cell())
-            .store_ref(begin_cell().store_slice(next_validator_hash_set).end_cell())
-            .store_ref(begin_cell().store_slice(validator_info).end_cell())
+            .store_uint(validator_set_changed, 1)
+            .store_ref(header_ref)
+            .store_ref(validator_ref)
         .end_cell()
     );
 }
@@ -60,17 +88,59 @@ global slice validator_info;
 
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
-   
     if (op == op::verify_block_hash) {
         slice block_proof = in_msg_body~load_ref().begin_parse();
         int block_hash = block_proof~load_uint(256);
         slice header = block_proof~load_ref().begin_parse();
         int result = verify::verify_block_hash(header, block_hash);
         throw_if(error::invalid_block_header, result != -1);
-        (int temp_height, slice temp_chain_id, slice temp_next_validator_hash) = get_data_from_header(header);
+        (int temp_height, slice temp_chain_id, slice temp_data_hash, slice temp_validator_hash_set) = get_data_from_header(header);
         height = temp_height;
         chain_id = temp_chain_id;
-        next_validator_hash_set = temp_next_validator_hash;
+        if (temp_data_hash.equal_slice?(data_hash) == 0) {
+            validator_set_changed = 1; ;; mean that it is changed on validator set
+        } else {
+            validator_set_changed = 0;
+        }
+        data_hash = temp_data_hash;
+        validator_hash_set = temp_validator_hash_set;
+        save_data();
+        return ();
+    }
+
+    if (op == op::store_untrusted_validators) {
+        cell validators_cell = in_msg_body~load_ref();
+        builder inner_cell = begin_cell().store_ref(validators_cell);
+        slice validators = validators_cell.begin_parse();
+        cell validators_by_address = new_dict();
+        int total_voting_power = 0;
+        while(validators.slice_refs_empty?() != -1){
+            slice next_ref = validators~load_ref().begin_parse();
+            slice validator_i =  validators~load_ref().begin_parse();
+            int address = validator_i~load_uint(160);
+            validators_by_address~udict_set(160, address, validator_i);
+            int voting_power = validator_i~load_uint(32);
+            total_voting_power += voting_power;
+            validators = next_ref;
+        }
+        untrusted_validator = inner_cell.store_uint(total_voting_power, 256).store_ref(validators_by_address).end_cell();
+        save_data();
+        return ();
+    }
+
+    if (op == op::verify_sigs) {
+        slice body = in_msg_body~load_ref().begin_parse();
+        slice commit = body~load_ref().begin_parse();
+        int result = verify::verify_optimized_commit(
+            validator_set_changed,
+            height,
+            chain_id,
+            commit,
+            trusted_validator.begin_parse(),
+            untrusted_validator.begin_parse());
+        throw_if(error::invalid_verify_sigs, result != -1);
+        ;; trusted_validator = untrusted_validator;
+        ;; state = state::verify_sigs;
         save_data();
         return ();
     }
@@ -88,7 +158,12 @@ slice get_chain_id() method_id {
     return chain_id;
 }
 
-slice get_next_validator_hash_set() method_id {
+slice get_data_hash() method_id {
     load_data();
-    return next_validator_hash_set;
+    return data_hash;
+}
+
+slice get_validator_hash_set() method_id {
+    load_data();
+    return validator_hash_set;
 }

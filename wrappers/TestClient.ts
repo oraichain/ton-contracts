@@ -918,7 +918,6 @@ export class TestClient implements Contract {
                 signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
             }
         }
-        console.log(signatureCell);
 
         let commitCell = beginCell()
             .storeUint(BigInt(commit.height), 32)
