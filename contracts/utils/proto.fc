@@ -8,5 +8,5 @@ slice proto::encode_buffer(slice value) inline_ref {
 }
 
 slice proto::encode_number(int value) inline_ref {    
-    return begin_cell().store_uint(prefix::first, 8).store_slice(uvarint::encode(value)).end_cell().begin_parse();
+    return begin_cell().store_uint(prefix::first, 8).store_slice(varuint::encode(value)).end_cell().begin_parse();
 }

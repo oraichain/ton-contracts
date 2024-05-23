@@ -35,8 +35,8 @@
         builder inner_cell = begin_cell();
         (int encode_any_len, slice encode_type_url, tuple value_encoded) = any::encode(any_data);
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(10))
-                        .store_slice(uvarint::encode(encode_any_len))
+                        .store_slice(varuint::encode(10))
+                        .store_slice(varuint::encode(encode_any_len))
                         .store_slice(encode_type_url);
         length += inner_cell.end_cell().begin_parse().slice_bits() >> 3;
         return_tuple~tpush(inner_cell.end_cell().begin_parse());
@@ -52,8 +52,8 @@
     if (mode_info.slice_empty?() != -1) {
         slice mode_info_encode = mode_info::encode(mode_info);
         slice mode_info_item = begin_cell()
-                                .store_slice(uvarint::encode(18))
-                                .store_slice(uvarint::encode(mode_info_encode.slice_bits() >> 3))
+                                .store_slice(varuint::encode(18))
+                                .store_slice(varuint::encode(mode_info_encode.slice_bits() >> 3))
                                 .store_slice(mode_info_encode)
                                 .end_cell()
                                 .begin_parse();
@@ -63,7 +63,7 @@
 
     if (sequence.slice_empty?() != -1) {
         slice sequence_item = begin_cell()
-                                .store_slice(uvarint::encode(24))
+                                .store_slice(varuint::encode(24))
                                 .store_slice(sequence)
                                 .end_cell()
                                 .begin_parse();

@@ -85,8 +85,8 @@ tuple tx_raw::encode(slice ds) impure {
    
     
     slice tx_body_prefix_len = begin_cell()
-                                .store_slice(uvarint::encode(10))
-                                .store_slice(uvarint::encode(len))
+                                .store_slice(varuint::encode(10))
+                                .store_slice(varuint::encode(len))
                                 .end_cell().begin_parse();
 
     return_tuple~tpush(tx_body_prefix_len);
@@ -103,8 +103,8 @@ tuple tx_raw::encode(slice ds) impure {
     (int auth_info_len, tuple auth_info_tuple) = auth_info::encode(sign_infos, fees, tip);
 
     slice auth_info_prefix_len = begin_cell()
-                                .store_slice(uvarint::encode(18))
-                                .store_slice(uvarint::encode(auth_info_len))
+                                .store_slice(varuint::encode(18))
+                                .store_slice(varuint::encode(auth_info_len))
                                 .end_cell().begin_parse();
 
     return_tuple~tpush(auth_info_prefix_len);
@@ -119,8 +119,8 @@ tuple tx_raw::encode(slice ds) impure {
 
     ;; signatures handle
     builder signature_builder = begin_cell()
-                                .store_slice(uvarint::encode(26))
-                                .store_slice(uvarint::encode(64)); ;; signature length
+                                .store_slice(varuint::encode(26))
+                                .store_slice(varuint::encode(64)); ;; signature length
 
     ;; normaly we support single signature mode
     while(signatures.slice_refs_empty?() == 0){

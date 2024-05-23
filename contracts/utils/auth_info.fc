@@ -16,8 +16,8 @@
         (int encode_length, tuple encode_data) = signer_info::encode(sign_info);
         builder inner_cell = begin_cell();
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(10))
-                        .store_slice(uvarint::encode(encode_length));
+                        .store_slice(varuint::encode(10))
+                        .store_slice(varuint::encode(encode_length));
         slice slice_result = inner_cell.end_cell().begin_parse();
         result~tpush(slice_result);
         length += encode_length + (slice_result.slice_bits() >> 3);
@@ -32,8 +32,8 @@
         builder inner_cell = begin_cell();
         slice fee_encode = fee::encode(fee);
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(18))
-                        .store_slice(uvarint::encode(fee_encode.slice_bits() >> 3));
+                        .store_slice(varuint::encode(18))
+                        .store_slice(varuint::encode(fee_encode.slice_bits() >> 3));
         slice slice_result = inner_cell.end_cell().begin_parse();
         length += (slice_result.slice_bits() >> 3) + (fee_encode.slice_bits() >> 3);
         result~tpush(slice_result);
@@ -44,8 +44,8 @@
         builder inner_cell = begin_cell();
         slice tip_encode = tip::encode(tip);
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(26))
-                        .store_slice(uvarint::encode(tip_encode.slice_bits() >> 3));
+                        .store_slice(varuint::encode(26))
+                        .store_slice(varuint::encode(tip_encode.slice_bits() >> 3));
         slice slice_result = inner_cell.end_cell().begin_parse();
         length += (slice_result.slice_bits() >> 3) + (tip_encode.slice_bits() >> 3);
         result~tpush(slice_result);

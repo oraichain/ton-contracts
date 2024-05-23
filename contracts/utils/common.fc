@@ -70,3 +70,9 @@ tuple slice_list(tuple list, int start, int end) {
 int calculate_tx_hash(slice tx_raw) method_id {
     return digest_hash(tx_raw::encode(tx_raw));
 }
+
+(slice, ()) ~replace(slice t, slice value, int ind) {
+    var temp_slice = begin_cell().store_slice(t~load_bits(ind)).store_slice(value);
+    t~skip_bits(value.slice_bits());    
+    return (temp_slice.store_slice(t).end_cell().begin_parse(), ());
+}

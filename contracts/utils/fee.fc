@@ -13,31 +13,31 @@ builder fee::encode_core(slice ds) {
         slice next_ref = amount_data~load_ref().begin_parse();
         slice coin_data = amount_data~load_ref().begin_parse();
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(10))
-                        .store_slice(uvarint::encode(coin::encode_length(coin_data)))
+                        .store_slice(varuint::encode(10))
+                        .store_slice(varuint::encode(coin::encode_length(coin_data)))
                         .store_slice(coin::encode(coin_data));
         amount_data = next_ref;
     }
 
     if (gas_limit.slice_empty?() != -1) {
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(16))
+                        .store_slice(varuint::encode(16))
                         .store_slice(gas_limit);
     }
 
     if (payer.slice_empty?() != -1) {
         int payer_length = payer.slice_bits() >> 3;
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(26))
-                        .store_slice(uvarint::encode(payer_length))
+                        .store_slice(varuint::encode(26))
+                        .store_slice(varuint::encode(payer_length))
                         .store_slice(payer);
     }
 
     if (granter.slice_empty?() != -1) {
         int granter_length = granter.slice_bits() >> 3;
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(34))
-                        .store_slice(uvarint::encode(granter_length))
+                        .store_slice(varuint::encode(34))
+                        .store_slice(varuint::encode(granter_length))
                         .store_slice(granter);
     }
 

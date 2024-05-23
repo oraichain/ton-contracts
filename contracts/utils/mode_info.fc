@@ -6,7 +6,7 @@ slice mode_info::encode_single(slice ds) {
     builder inner_cell = begin_cell();
     if (ds.slice_empty?() != -1) {
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(8))
+                        .store_slice(varuint::encode(8))
                         .store_slice(ds);
     }
     return inner_cell.end_cell().begin_parse();
@@ -15,8 +15,8 @@ slice mode_info::encode_single(slice ds) {
 slice mode_info::encode(slice ds) {
     slice single_encode = mode_info::encode_single(ds);
     return begin_cell()
-            .store_slice(uvarint::encode(10))
-            .store_slice(uvarint::encode(single_encode.slice_bits() >> 3))
+            .store_slice(varuint::encode(10))
+            .store_slice(varuint::encode(single_encode.slice_bits() >> 3))
             .store_slice(single_encode)
             .end_cell()
             .begin_parse();

@@ -8,13 +8,13 @@ tuple compact_bit_array::encode(tuple ds) {
 
     if (extra_bits_stored != 0) {
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(8))
-                        .store_slice(uvarint::encode(extra_bits_stored));
+                        .store_slice(varuint::encode(8))
+                        .store_slice(varuint::encode(extra_bits_stored));
     }
     int elems_len = elems.tlen();
 
     if (elems_len > 0) {
-        inner_cell = inner_cell.store_slice(uvarint::encode(18));
+        inner_cell = inner_cell.store_slice(varuint::encode(18));
         int i = 0;
         int value_byte_size = 0;
         while (i < elems_len){
@@ -23,7 +23,7 @@ tuple compact_bit_array::encode(tuple ds) {
             value_byte_size += ele_size;
             i += 1;
         }
-        inner_cell = inner_cell.store_slice(uvarint::encode(value_byte_size));
+        inner_cell = inner_cell.store_slice(varuint::encode(value_byte_size));
     }
 
     result~tpush(inner_cell.end_cell().begin_parse());

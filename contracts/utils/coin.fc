@@ -6,16 +6,16 @@ slice coin::encode(slice ds) {
     if (denom.slice_empty?() != -1) {
         int denom_length = denom.slice_bits() >> 3;
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(10))
-                        .store_slice(uvarint::encode(denom_length))
+                        .store_slice(varuint::encode(10))
+                        .store_slice(varuint::encode(denom_length))
                         .store_slice(denom);
     }
     slice amount = ds~load_ref().begin_parse();
     if (amount.slice_empty?() != -1) {
         int amount_length = amount.slice_bits() >> 3;
         inner_cell = inner_cell
-                        .store_slice(uvarint::encode(18))
-                        .store_slice(uvarint::encode(amount_length))
+                        .store_slice(varuint::encode(18))
+                        .store_slice(varuint::encode(amount_length))
                         .store_slice(amount);
     }
     return inner_cell.end_cell().begin_parse();

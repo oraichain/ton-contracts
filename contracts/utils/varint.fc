@@ -35,11 +35,11 @@ slice varint::encode(int signed, int n) {
 }
 
 
-int uvarint::encode_length(int n) inline_ref {
+int varuint::encode_length(int n) inline_ref {
     return varint::encode_length(0, n);
 }
 
-slice uvarint::encode(int n) inline_ref {
+slice varuint::encode(int n) inline_ref {
     return varint::encode(0, n);
 }
 

@@ -8,10 +8,10 @@
     slice value = msg~load_ref().begin_parse();
   
     if(type_url.slice_empty?() != -1){
-        slice prefix_varint = uvarint::encode(10);
+        slice prefix_varint = varuint::encode(10);
         inner_cell = inner_cell.store_slice(prefix_varint);
         int type_url_len = slice_bits(type_url) >> 3;
-        slice type_url_len_varint = uvarint::encode(type_url_len);
+        slice type_url_len_varint = varuint::encode(type_url_len);
         inner_cell = inner_cell.store_slice(type_url_len_varint);
         inner_cell = inner_cell.store_slice(type_url);
     }
@@ -20,7 +20,7 @@
     int value_byte_size = 0;
 
     if(value.slice_refs_empty?() == 0){
-        inner_cell = inner_cell.store_slice(uvarint::encode(18));
+        inner_cell = inner_cell.store_slice(varuint::encode(18));
         while (value.slice_refs_empty?() == 0){
             int ele_size = slice_bits(value) >> 3;
             value_byte_size += ele_size;
@@ -30,7 +30,7 @@
         int ele_size = slice_bits(value) >> 3;
         value_byte_size += ele_size; ;; last_ref
         value_tuple~tpush(value); ;; last_ref
-        inner_cell = inner_cell.store_slice(uvarint::encode(value_byte_size));
+        inner_cell = inner_cell.store_slice(varuint::encode(value_byte_size));
     }
 
     int len = value_byte_size + (slice_bits(inner_cell.end_cell().begin_parse()) >> 3);

@@ -111,7 +111,7 @@ global cell validator_set;
 
 
 int get_encode_uint_length(int number) method_id {
-    return uvarint::encode_length(number);    
+    return varuint::encode_length(number);    
 }
 
 int get_buffer_encode_length(slice buf) method_id {
@@ -119,7 +119,7 @@ int get_buffer_encode_length(slice buf) method_id {
 }
 
 slice get_encode_uint(int number) method_id {
-    return uvarint::encode(number);    
+    return varuint::encode(number);    
 }
 
 slice get_buffer_encode(slice value) method_id {

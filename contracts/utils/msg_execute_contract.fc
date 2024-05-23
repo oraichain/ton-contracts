@@ -12,13 +12,13 @@ slice msg_execute_contract::encode(slice sender_contract, slice msg, slice funds
     int contract_len = slice_bits(contract) >> 3;
 
     sender_contract_prefix_msg = sender_contract_prefix_msg
-                                .store_slice(uvarint::encode(10))
-                                .store_slice(uvarint::encode(sender_len))
+                                .store_slice(varuint::encode(10))
+                                .store_slice(varuint::encode(sender_len))
                                 .store_slice(sender)
-                                .store_slice(uvarint::encode(18))
-                                .store_slice(uvarint::encode(contract_len))
+                                .store_slice(varuint::encode(18))
+                                .store_slice(varuint::encode(contract_len))
                                 .store_slice(contract)
-                                .store_slice(uvarint::encode(26));
+                                .store_slice(varuint::encode(26));
 
     int msg_size = 0;
     tuple msg_item_tuple = empty_tuple();
@@ -26,11 +26,11 @@ slice msg_execute_contract::encode(slice sender_contract, slice msg, slice funds
     while(msg.slice_refs_empty?() != -1) {
         msg_size += msg.slice_bits() >> 3;
         msg_item_tuple~tpush(msg);
-        slice next_ref = msg~load_ref().begin_parse();
+            slice next_ref = msg~load_ref().begin_parse();
         slice msg_chunk = next_ref;
         msg = next_ref;
     }
-    return_tuple~tpush(sender_contract_prefix_msg.store_slice(uvarint::encode(msg_size)).end_cell().begin_parse());
+    return_tuple~tpush(sender_contract_prefix_msg.store_slice(varuint::encode(msg_size)).end_cell().begin_parse());
 
     int i = 0;
     while (i < msg_item_tuple.tlen()) {
@@ -41,10 +41,10 @@ slice msg_execute_contract::encode(slice sender_contract, slice msg, slice funds
     while(funds.slice_refs_empty?() != -1) {
         slice next_ref = funds~load_ref().begin_parse();
         slice coin = funds~load_ref().begin_parse();
-        builder coin_cell = begin_cell();
-        coin_cell = coin_cell.store_slice(uvarint::encode(42)).store_slice(uvarint::encode(coin::encode_length(coin))).store_slice(coin::encode(coin));
+            builder coin_cell = begin_cell();
+            coin_cell = coin_cell.store_slice(varuint::encode(42)).store_slice(varuint::encode(coin::encode_length(coin))).store_slice(coin::encode(coin));
         return_tuple~tpush(coin_cell.end_cell().begin_parse());
-        funds = next_ref;
+            funds = next_ref;
     }
 
     cell valueCell = begin_cell().end_cell();
