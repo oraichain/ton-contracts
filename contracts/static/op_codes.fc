@@ -6,3 +6,6 @@ const op::verify_sigs = "op::verify_sigs"c;
 const op::verify_receipt = "op::verify_receipt"c; 
 
 
+;; bridge adapter
+const op::verify_tx = "op::verify_tx"c;
+const op::confirm_tx = "op::confirm_tx"c;
