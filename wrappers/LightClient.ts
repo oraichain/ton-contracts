@@ -54,6 +54,7 @@ export type LightClientConfig = {
 export function lightClientConfigToCell(config: LightClientConfig): Cell {
     return beginCell()
         .storeUint(0, 1)
+        .storeUint(0, 8)
         .storeRef(
             beginCell()
                 .storeUint(config.height, 32)
@@ -88,6 +89,7 @@ export const Opcodes = {
     store_untrusted_validators: crc32('op::store_untrusted_validators'),
     verify_sigs: crc32('op::verify_sigs'),
     verify_receipt: crc32('op::verify_receipt'),
+    verify_untrusted_validators: crc32('op::verify_untrusted_validators'),
 };
 
 export class LightClient implements Contract {
@@ -154,6 +156,18 @@ export class LightClient implements Contract {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
                 .storeUint(Opcodes.verify_receipt, 32)
+                .storeUint(opts?.queryID || 0, 64)
+                .storeRef(beginCell().endCell())
+                .endCell(),
+        });
+    }
+
+    async sendVerifyUntrustedValidators(provider: ContractProvider, via: Sender, opts?: any) {
+        await provider.internal(via, {
+            value: opts?.value || 0,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Opcodes.verify_untrusted_validators, 32)
                 .storeUint(opts?.queryID || 0, 64)
                 .storeRef(beginCell().endCell())
                 .endCell(),
