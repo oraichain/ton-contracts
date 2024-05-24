@@ -59,8 +59,8 @@ int verify::verify_optimized_commit(
 
     int is_satisfy_trusted = -1;
     int is_satisfy_untrusted = -1;
-
-    int index = 0;
+    
+    slice sign_bytes = null();
     while(signatures.slice_refs_empty?() != -1){
         slice next_ref = signatures~load_ref().begin_parse();
         slice cs = signatures~load_ref().begin_parse();
@@ -77,7 +77,10 @@ int verify::verify_optimized_commit(
             int is_absent = block_id_flag == BlockIDFlagAbsent;
             throw_if(VERIFY_ERROR_UNKNOWN_BLOCKID_FLAG, is_commit + is_nil + is_absent == 0);
             
-            slice vote = begin_cell()
+            
+
+            if (sign_bytes.slice_data_empty?()) {
+                slice vote = begin_cell()
                         .store_uint(PrecommitType, 32)
                         .store_uint(height, 32)
                         .store_uint(round, 32)
@@ -86,157 +89,162 @@ int verify::verify_optimized_commit(
                         .store_ref(begin_cell().store_slice(chain_id).end_cell())
                         .end_cell()
                         .begin_parse();
-            slice sign_bytes = verify::get_vote_sign_bytes(vote);
+                sign_bytes = verify::get_vote_sign_bytes(vote);
+            } else {
+                ;; change timestamp only, at 696 + 8(buffer length) = timestamp index
+                sign_bytes~replace(time::encode(timestamp), 704);    
+            }            
+            
             
             if (trusted_voting_power != 0) {
-                (slice validator, int is_exist) = trusted_validators_dict.udict_get?(160, validator_address);
+                    (slice validator, int is_exist) = trusted_validators_dict.udict_get?(160, validator_address);
 
-                if(is_exist == -1){
-                    slice pubkey = validator~load_ref().begin_parse();
-                    int verify_pubkey = pubkey~load_uint(256);
+                    if(is_exist == -1){
+                        slice pubkey = validator~load_ref().begin_parse();
+                        int verify_pubkey = pubkey~load_uint(256);
 
-                    int is_valid = check_data_signature(sign_bytes, signatures, verify_pubkey);
-                    if(is_valid){
-                        trusted_committed_voting_power += validator~load_uint(32);
+                        int is_valid = check_data_signature(sign_bytes, signatures, verify_pubkey);
+                        if(is_valid){
+                            trusted_committed_voting_power += validator~load_uint(32);
+                        }
                     }
-                }
 
-                is_satisfy_trusted = trusted_committed_voting_power > trusted_voting_power;
-            }
+                    is_satisfy_trusted = trusted_committed_voting_power > trusted_voting_power;
+                }
             
-            if (validator_set_changed) {
+                if (validator_set_changed) {
                     (slice validator, int is_exist) = untrusted_validators_dict.udict_get?(160, validator_address);
-                if(is_exist == -1){
-                    slice pubkey = validator~load_ref().begin_parse();
-                    int verify_pubkey = pubkey~load_uint(256);
+                    if(is_exist == -1){
+                        slice pubkey = validator~load_ref().begin_parse();
+                        int verify_pubkey = pubkey~load_uint(256);
 
-                    int is_valid = check_data_signature(sign_bytes, signatures, verify_pubkey);
-                    if(is_valid){
-                        untrusted_committed_voting_power += validator~load_uint(32);
+                        int is_valid = check_data_signature(sign_bytes, signatures, verify_pubkey);
+                        if(is_valid){
+                            untrusted_committed_voting_power += validator~load_uint(32);
+                        }
+
                     }
-
                 }
-            }
 
-            is_satisfy_untrusted = untrusted_committed_voting_power > untrusted_voting_power;
+                is_satisfy_untrusted = untrusted_committed_voting_power > untrusted_voting_power;
             
-            if (is_satisfy_trusted & is_satisfy_untrusted) {
-                return -1;
-            }
-        }
-        index += 1;
-        signatures = next_ref;
-    }
-
-    return 0;
-}
-
-int verify::verify_commit_sigs(slice header, slice commit, slice validators){
-    ;; header
-    int height = header~load_uint(32);
-    slice version = header~load_ref().begin_parse();
-    slice chain_id = header~load_ref().begin_parse();
-    slice time = header~load_ref().begin_parse();
-    slice last_block_id = header~load_ref().begin_parse();
-
-    ;; validators
-    int committed_voting_power = 0;
-    int total_voting_power = 0;
-    cell validators_by_address = new_dict();
-
-    ;; build validator map
-    while(validators.slice_refs_empty?() != -1){
-        slice next_ref = validators~load_ref().begin_parse();
-        slice validator_i =  validators~load_ref().begin_parse();
-        int address = validator_i~load_uint(160);
-        validators_by_address~udict_set(160, address, validator_i);
-        int voting_power = validator_i~load_uint(32);
-        total_voting_power += voting_power;
-        validators = next_ref;
-    }
-
-    ;; hanle commit
-    int height = commit~load_uint(32);
-    int round = commit~load_uint(32);
-    slice block_id = commit~load_ref().begin_parse();
-    slice signatures = commit~load_ref().begin_parse();
-
-    ;;iterate signatures commit
-    int index = 0;
-    while(signatures.slice_refs_empty?() != -1){
-        slice next_ref = signatures~load_ref().begin_parse();
-        slice cs = signatures~load_ref().begin_parse();
-        int cs_bits_len = slice_bits(cs);
-        if(cs_bits_len >= 8 + 160 + 512) {
-            int block_id_flag = cs~load_uint(8);
-            int validator_address = cs~load_uint(160);
-            slice signatures = cs~load_bits(512);
-            slice timestamp = cs~load_ref().begin_parse();
-
-            ;; check block_id_flag
-            int is_commit = block_id_flag == BlockIDFlagCommit;
-            int is_nil = block_id_flag == BlockIDFlagNil;
-            int is_absent = block_id_flag == BlockIDFlagAbsent;
-            throw_if(VERIFY_ERROR_UNKNOWN_BLOCKID_FLAG, is_commit + is_nil + is_absent == 0);
-            (slice validator, int is_exist) = validators_by_address.udict_get?(160, validator_address);
-
-            if(is_exist == -1){
-                slice vote = begin_cell()
-                        .store_uint(PrecommitType, 32)
-                        .store_uint(height, 32)
-                        .store_uint(round, 32)
-                        .store_ref(begin_cell().store_slice(last_block_id).end_cell())
-                        .store_ref(begin_cell().store_slice(timestamp).end_cell())
-                        .store_ref(begin_cell().store_slice(chain_id).end_cell())
-                        .end_cell()
-                        .begin_parse();
-                        
-                slice sign_bytes = verify::get_vote_sign_bytes(vote);
-                slice pubkey = validator~load_ref().begin_parse();
-                int verify_pubkey = pubkey~load_uint(256);
-
-                int is_valid = check_data_signature(sign_bytes, signatures, verify_pubkey);
-                if(is_valid){
-                    committed_voting_power += validator~load_uint(32);
+                if (is_satisfy_trusted & is_satisfy_untrusted) {
+                    return -1;
                 }
             }
+        
+            signatures = next_ref;
         }
-        index += 1;
-        signatures = next_ref;
+
+        return 0;
     }
 
-    int two_thirds = total_voting_power * 2 / 3;
+    ;; int verify::verify_commit_sigs(slice header, slice commit, slice validators){
+    ;;     ;; header
+    ;;     int height = header~load_uint(32);
+    ;;     slice version = header~load_ref().begin_parse();
+    ;;     slice chain_id = header~load_ref().begin_parse();
+    ;;     slice time = header~load_ref().begin_parse();
+    ;;     slice last_block_id = header~load_ref().begin_parse();
 
-    if(committed_voting_power < two_thirds){
-        return 0;
-    } 
+    ;;     ;; validators
+    ;;     int committed_voting_power = 0;
+    ;;     int total_voting_power = 0;
+    ;;     cell validators_by_address = new_dict();
 
-    return -1;
-}
+    ;;     ;; build validator map
+    ;;     while(validators.slice_refs_empty?() != -1){
+    ;;         slice next_ref = validators~load_ref().begin_parse();
+    ;;         slice validator_i =  validators~load_ref().begin_parse();
+    ;;         int address = validator_i~load_uint(160);
+    ;;         validators_by_address~udict_set(160, address, validator_i);
+    ;;         int voting_power = validator_i~load_uint(32);
+    ;;         total_voting_power += voting_power;
+    ;;         validators = next_ref;
+    ;;     }
 
-int verify::verify_block_hash(slice ds, int block_hash) {
-    slice header = ds~load_ref().begin_parse();
-    slice version = header~load_ref().begin_parse();
-    slice chain_id = header~load_ref().begin_parse();
-    int height = header~load_uint(32);
-    slice time = header~load_ref().begin_parse();
-    slice block_id = header~load_ref().begin_parse();
+    ;;     ;; hanle commit
+    ;;     int height = commit~load_uint(32);
+    ;;     int round = commit~load_uint(32);
+    ;;     slice block_id = commit~load_ref().begin_parse();
+    ;;     slice signatures = commit~load_ref().begin_parse();
 
-    slice proposer_address = header~load_bits(160);
+    ;;     ;;iterate signatures commit
+    ;;     int index = 0;
+    ;;     while(signatures.slice_refs_empty?() != -1){
+    ;;         slice next_ref = signatures~load_ref().begin_parse();
+    ;;         slice cs = signatures~load_ref().begin_parse();
+    ;;         int cs_bits_len = slice_bits(cs);
+    ;;         if(cs_bits_len >= 8 + 160 + 512) {
+    ;;             int block_id_flag = cs~load_uint(8);
+    ;;             int validator_address = cs~load_uint(160);
+    ;;             slice signatures = cs~load_bits(512);
+    ;;             slice timestamp = cs~load_ref().begin_parse();
 
-    slice first_hashes = ds~load_ref().begin_parse();
-    slice last_commit_hash = first_hashes~load_ref().begin_parse();
-    slice data_hash = first_hashes~load_ref().begin_parse();
-    slice validators_hash = first_hashes~load_ref().begin_parse();
-    slice next_validators_hash = first_hashes~load_ref().begin_parse();
+    ;;             ;; check block_id_flag
+    ;;             int is_commit = block_id_flag == BlockIDFlagCommit;
+    ;;             int is_nil = block_id_flag == BlockIDFlagNil;
+    ;;             int is_absent = block_id_flag == BlockIDFlagAbsent;
+    ;;             throw_if(VERIFY_ERROR_UNKNOWN_BLOCKID_FLAG, is_commit + is_nil + is_absent == 0);
+    ;;             (slice validator, int is_exist) = validators_by_address.udict_get?(160, validator_address);
 
-    slice second_hashes = ds~load_ref().begin_parse();
-    slice consensus_hash = second_hashes~load_ref().begin_parse();
-    slice app_hash = second_hashes~load_ref().begin_parse();
-    slice last_results_hash = second_hashes~load_ref().begin_parse();
-    slice evidence_hash = second_hashes~load_ref().begin_parse();
+    ;;             if(is_exist == -1){
+    ;;                 slice vote = begin_cell()
+    ;;                         .store_uint(PrecommitType, 32)
+    ;;                         .store_uint(height, 32)
+    ;;                         .store_uint(round, 32)
+    ;;                         .store_ref(begin_cell().store_slice(last_block_id).end_cell())
+    ;;                         .store_ref(begin_cell().store_slice(timestamp).end_cell())
+    ;;                         .store_ref(begin_cell().store_slice(chain_id).end_cell())
+    ;;                         .end_cell()
+    ;;                         .begin_parse();
+                        
+    ;;                 slice sign_bytes = verify::get_vote_sign_bytes(vote);
+    ;;                 slice pubkey = validator~load_ref().begin_parse();
+    ;;                 int verify_pubkey = pubkey~load_uint(256);
 
-    tuple chunks = empty_tuple()
+    ;;                 int is_valid = check_data_signature(sign_bytes, signatures, verify_pubkey);
+    ;;                 if(is_valid){
+    ;;                     committed_voting_power += validator~load_uint(32);
+    ;;                 }
+    ;;             }
+    ;;         }
+    ;;         index += 1;
+    ;;         signatures = next_ref;
+    ;;     }
+
+    ;;     int two_thirds = total_voting_power * 2 / 3;
+
+    ;;     if(committed_voting_power < two_thirds){
+    ;;         return 0;
+    ;;     } 
+
+    ;;     return -1;
+    ;; }
+
+    int verify::verify_block_hash(slice ds, int block_hash) {
+        slice header = ds~load_ref().begin_parse();
+        slice version = header~load_ref().begin_parse();
+        slice chain_id = header~load_ref().begin_parse();
+        int height = header~load_uint(32);
+        slice time = header~load_ref().begin_parse();
+        slice block_id = header~load_ref().begin_parse();
+
+        slice proposer_address = header~load_bits(160);
+
+        slice first_hashes = ds~load_ref().begin_parse();
+        slice last_commit_hash = first_hashes~load_ref().begin_parse();
+        slice data_hash = first_hashes~load_ref().begin_parse();
+        slice validators_hash = first_hashes~load_ref().begin_parse();
+        slice next_validators_hash = first_hashes~load_ref().begin_parse();
+
+        slice second_hashes = ds~load_ref().begin_parse();
+        slice consensus_hash = second_hashes~load_ref().begin_parse();
+        slice app_hash = second_hashes~load_ref().begin_parse();
+        slice last_results_hash = second_hashes~load_ref().begin_parse();
+        slice evidence_hash = second_hashes~load_ref().begin_parse();
+
+        tuple chunks = empty_tuple()
         .tpush(version::encode(version))
         .tpush(proto::encode_buffer(chain_id))
         .tpush(proto::encode_number(height))
@@ -253,43 +261,43 @@ int verify::verify_block_hash(slice ds, int block_hash) {
         .tpush(proto::encode_buffer(proposer_address));
 
 
-    if (block_hash != hash_from_tree_slice(chunks)) {
-        return 0;
+        if (block_hash != hash_from_tree_slice(chunks)) {
+            return 0;
+        }
+
+        return -1; 
     }
 
-    return -1; 
-}
-
-int verify::verify_validators(slice validators, slice validator_hash_set) {
-    tuple validator_tuple = empty_tuple();
-    while (validators.slice_refs_empty?() != -1) {
-        slice next_ref = validators~load_ref().begin_parse();
-        slice validator = validators~load_ref().begin_parse();
-        validator_tuple~tpush(validator_hash_input::encode(validator));
-        validators = next_ref;
+    int verify::verify_validators(slice validators, slice validator_hash_set) {
+        tuple validator_tuple = empty_tuple();
+        while (validators.slice_refs_empty?() != -1) {
+            slice next_ref = validators~load_ref().begin_parse();
+            slice validator = validators~load_ref().begin_parse();
+            validator_tuple~tpush(validator_hash_input::encode(validator));
+            validators = next_ref;
+        }
+        return validator_hash_set~load_uint(256) == hash_from_tree_slice(validator_tuple);
     }
-    return validator_hash_set~load_uint(256) == hash_from_tree_slice(validator_tuple);
-}
 
 
-int verify::verify_tx(slice ds) {
-    slice proofs = ds~load_ref().begin_parse();
-    slice positions =  ds~load_ref().begin_parse();
-    slice data_hash = ds~load_ref().begin_parse();
-    slice tx_raw = ds~load_ref().begin_parse();
+    int verify::verify_tx(slice ds) {
+        slice proofs = ds~load_ref().begin_parse();
+        slice positions =  ds~load_ref().begin_parse();
+        slice data_hash = ds~load_ref().begin_parse();
+        slice tx_raw = ds~load_ref().begin_parse();
   
-    int tx_hash = begin_cell()
+        int tx_hash = begin_cell()
                     .store_uint(prefix::leaf, 8)
                     .store_uint(calculate_tx_hash(tx_raw), 256)
                     .end_cell()
                     .begin_parse()
                     .string_hash();
 
-    int calculate_data_hash = hash_from_tree_proof_ref(proofs, tx_hash, positions);
+        int calculate_data_hash = hash_from_tree_proof_ref(proofs, tx_hash, positions);
     
-    if (data_hash~load_uint(256) == calculate_data_hash) {
-        return -1;
-    }
+        if (data_hash~load_uint(256) == calculate_data_hash) {
+            return -1;
+        }
 
-    return 0;
-}
+        return 0;
+    }
