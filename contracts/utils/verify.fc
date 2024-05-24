@@ -26,29 +26,6 @@ slice verify::get_vote_sign_bytes(slice vote){
     return varbuffer::encode(encoded);
 }
 
-int merkle_for_validator_hash_set(slice chunks, int length) {
-    if (length == 0) { 
-        ;; empty is 0 in bigint           
-        return 0;
-    }
-    
-    if(length == 1) { 
-        chunks~load_ref();
-        slice new_slice = validator_hash_input::encode(chunks~load_ref().begin_parse());
-        return new_slice~load_uint(new_slice.slice_bits() >> 3).leaf_hash();        
-    }
-   
-    int k = get_split_point(length);
-    int left = merkle_for_validator_hash_set(chunks, k);     
-    ;; next k items
-    repeat(k) {
-        chunks = chunks~load_ref().begin_parse();
-    }
-    int right = merkle_for_validator_hash_set(chunks, length - k);            
-    
-    return inner_hash(left, right); 
-}
-
 int verify::verify_validators_set(slice validator_hash_set, slice untrusted_validators) {
     tuple validators_tuple = empty_tuple();
     int index = 0;
