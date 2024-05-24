@@ -5,10 +5,13 @@
 #include "utils/messages.fc";
 #include "utils/helper.fc";
 #include "static/state.fc";
+#include "utils/validator_hash_input.fc";
+#include "utils/merkleize.fc";
 
 ;; storage variables
 ;; 0: false, 1: true
 global int validator_set_changed;
+global int state;
 
 ;; store in a header_ref
 global int height;
@@ -28,6 +31,7 @@ global cell untrusted_validator;
     var ds = get_data().begin_parse();
 
     int validator_set_changed = ds~load_uint(1);
+    int state = ds~load_uint(8);
     slice header_cell = ds~load_ref().begin_parse();
     int height = header_cell~load_uint(32);
     cell chain_id_cell = header_cell~load_ref();
@@ -58,6 +62,7 @@ global cell untrusted_validator;
     set_data(
         begin_cell()
             .store_uint(validator_set_changed, 1)
+            .store_uint(state, 8)
             .store_ref(header_ref)
             .store_ref(validator_ref)
         .end_cell()
@@ -98,6 +103,7 @@ global cell untrusted_validator;
         }
         data_hash = temp_data_hash;
         validator_hash_set = temp_validator_hash_set;
+        state = state::initial;
         save_data();
         return ();
     }
@@ -118,11 +124,23 @@ global cell untrusted_validator;
             validators = next_ref;
         }
         untrusted_validator = inner_cell.store_uint(total_voting_power, 256).store_ref(validators_by_address).end_cell();
+        state = state::initial;
+        save_data();
+        return ();
+    }
+
+    if (op == op::verify_untrusted_validators) {
+        int result = verify::verify_validators_set(validator_hash_set, untrusted_validator.begin_parse());
+        throw_if(error::invalid_verify_validators_set, result != -1);
+        state = state::verify_untrusted_validators;
         save_data();
         return ();
     }
 
     if (op == op::verify_sigs) {
+        if (validator_set_changed == 0) {
+            throw_if(error::invalid_state, state != state::verify_untrusted_validators);
+        }
         slice body = in_msg_body~load_ref().begin_parse();
         slice commit = body~load_ref().begin_parse();
         int result = verify::verify_optimized_commit(
@@ -134,6 +152,7 @@ global cell untrusted_validator;
             untrusted_validator.begin_parse());
         throw_if(error::invalid_verify_sigs, result != -1);
         trusted_validator = untrusted_validator;
+        state = state::initial;
         save_data();
         return ();
     }

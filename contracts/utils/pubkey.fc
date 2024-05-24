@@ -4,17 +4,15 @@
     if (pub.slice_empty?() == -1) {
         return 1;
     }
-    return 37;
+    return 2 + (pub.slice_bits() >> 3);
 }
 
 ;; notice: only receive pubkey value
 slice pubkey::encode(slice pub) {
+    int len = pub.slice_bits() >> 3;
     return begin_cell()
-            .store_uint(0x16, 8)
-            .store_uint(0x24, 8)
-            .store_uint(0xde, 8)
-            .store_uint(0x64, 8)
-            .store_uint(0x20, 8)
+            .store_uint(0x0a, 8)
+            .store_uint(len, 8)
             .store_slice(pub)
             .end_cell()
             .begin_parse();
