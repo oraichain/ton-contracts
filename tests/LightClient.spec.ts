@@ -20,7 +20,7 @@ describe('LightClient', () => {
         blockchain = await Blockchain.create();
         blockchain.verbosity = {
             ...blockchain.verbosity,
-            vmLogs: 'vm_logs_gas',
+            // vmLogs: 'vm_logs_gas',
         };
         lightClient = blockchain.openContract(
             LightClient.createFromConfig(
@@ -133,27 +133,27 @@ describe('LightClient', () => {
             op: Opcodes.store_untrusted_validators,
         });
         result = await lightClient.sendVerifyUntrustedValidators(user.getSender(), {
-            value: toNano('0.5'),
+            value: toNano('1'),
         });
         expect(result.transactions[1]).toHaveTransaction({
             success: true,
             op: Opcodes.verify_untrusted_validators,
         });
 
-        // result = await lightClient.sendVerifySigs(user.getSender(), commit, {
-        //     value: toNano('0.5'),
-        // });
-        // expect(result.transactions[1]).toHaveTransaction({
-        //     success: true,
-        //     op: Opcodes.verify_sigs,
-        // });
+        result = await lightClient.sendVerifySigs(user.getSender(), commit, {
+            value: toNano('0.5'),
+        });
+        expect(result.transactions[1]).toHaveTransaction({
+            success: true,
+            op: Opcodes.verify_sigs,
+        });
 
-        // result = await lightClient.sendVerifySigs(user.getSender(), commit, {
-        //     value: toNano('0.5'),
-        // });
-        // expect(result.transactions[1]).toHaveTransaction({
-        //     success: true,
-        //     op: Opcodes.verify_sigs,
-        // });
+        result = await lightClient.sendVerifySigs(user.getSender(), commit, {
+            value: toNano('0.5'),
+        });
+        expect(result.transactions[1]).toHaveTransaction({
+            success: true,
+            op: Opcodes.verify_sigs,
+        });
     });
 });

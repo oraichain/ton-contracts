@@ -138,7 +138,9 @@ global cell untrusted_validator;
     }
 
     if (op == op::verify_sigs) {
-        throw_if(error::invalid_state, state != state::verify_untrusted_validators);
+        if (validator_set_changed == 0) {
+            throw_if(error::invalid_state, state != state::verify_untrusted_validators);
+        }
         slice body = in_msg_body~load_ref().begin_parse();
         slice commit = body~load_ref().begin_parse();
         int result = verify::verify_optimized_commit(
@@ -154,7 +156,6 @@ global cell untrusted_validator;
         save_data();
         return ();
     }
-
 
     if (op == op::verify_receipt) {
         save_data();
