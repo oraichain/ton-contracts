@@ -54,7 +54,6 @@ export type LightClientConfig = {
 export function lightClientConfigToCell(config: LightClientConfig): Cell {
     return beginCell()
         .storeUint(0, 1)
-        .storeUint(0, 8)
         .storeRef(
             beginCell()
                 .storeUint(config.height, 32)
@@ -68,14 +67,14 @@ export function lightClientConfigToCell(config: LightClientConfig): Cell {
                 .storeRef(
                     beginCell()
                         .storeUint(0, 256)
-                        .storeRef(beginCell().storeDict(Dictionary.empty()).endCell())
+                        .storeRef(beginCell().endCell())
                         .storeRef(beginCell().storeDict(Dictionary.empty()).endCell())
                         .endCell(),
                 )
                 .storeRef(
                     beginCell()
                         .storeUint(0, 256)
-                        .storeRef(beginCell().storeDict(Dictionary.empty()).endCell())
+                        .storeRef(beginCell().endCell())
                         .storeRef(beginCell().storeDict(Dictionary.empty()).endCell())
                         .endCell(),
                 )
@@ -141,6 +140,22 @@ export class LightClient implements Contract {
                 .storeUint(Opcodes.verify_block_hash, 32)
                 .storeUint(opts?.queryID || 0, 64)
                 .storeRef(blockProof)
+                .endCell(),
+        });
+    }
+
+    async sendVerifyReceipt(provider: ContractProvider, via: Sender, opts?: any) {
+        // const blockProof = beginCell()
+        //     .storeUint(BigInt('0x' + data.blockId.hash), 256)
+        //     .storeRef(getBlockHashCell(data.header))
+        //     .endCell();
+        await provider.internal(via, {
+            value: opts?.value || 0,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Opcodes.verify_receipt, 32)
+                .storeUint(opts?.queryID || 0, 64)
+                .storeRef(beginCell().endCell())
                 .endCell(),
         });
     }

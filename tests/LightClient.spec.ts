@@ -136,17 +136,17 @@ describe('LightClient', () => {
         result = await lightClient.sendVerifySigs(user.getSender(), commit, {
             value: toNano('0.5'),
         });
-        // expect(result.transactions[1]).toHaveTransaction({
-        //     success: true,
-        //     op: Opcodes.verify_sigs,
-        // });
+        expect(result.transactions[1]).toHaveTransaction({
+            success: true,
+            op: Opcodes.verify_sigs,
+        });
 
         result = await lightClient.sendVerifySigs(user.getSender(), commit, {
             value: toNano('0.5'),
         });
-        // expect(result.transactions[1]).toHaveTransaction({
-        //     success: true,
-        //     op: Opcodes.verify_sigs,
-        // });
+        expect(result.transactions[1]).toHaveTransaction({
+            success: true,
+            op: Opcodes.verify_sigs,
+        });
     });
 });
