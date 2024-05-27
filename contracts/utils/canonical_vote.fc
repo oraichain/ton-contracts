@@ -93,6 +93,5 @@ builder canonical_vote::encode_builder(
         .store_uint(slice_bits(chain_id) >> 3, 8)
         .store_slice(chain_id);
 
-    
     return inner_cell;
 }

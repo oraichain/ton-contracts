@@ -164,8 +164,7 @@ int verify::verify_optimized_commit_builder(
     int untrusted_voting_power = untrusted_validator~load_uint(256) * 2 / 3;
     slice untrusted_validators_data = untrusted_validator~load_ref().begin_parse();
     cell untrusted_validators_dict = untrusted_validator~load_ref();
-    ;; ~dump(trusted_voting_power);
-    ;; ~dump(untrusted_voting_power);
+    int count = 0;
 
 
     if (untrusted_voting_power == 0) {
@@ -193,14 +192,13 @@ int verify::verify_optimized_commit_builder(
                 
                 throw_if(VERIFY_ERROR_UNKNOWN_BLOCKID_FLAG, is_commit + is_nil + is_absent == 0);
             
-                if (sign_bytes.builder_bits() == 0) {  
-                    builder encoded =  canonical_vote::encode_builder(PrecommitType, height, round, block_id, timestamp, chain_id);
-                    sign_bytes =  varbuffer::encode_builder(encoded);
-                } else {
-                    ;; change timestamp only, at 696 + 8(buffer length) = timestamp index
-                    sign_bytes~replace_builder(time::encode_builder(timestamp), 704);    
-                }      
-                
+                ;; if (sign_bytes.builder_bits() == 0) {  
+                builder encoded =  canonical_vote::encode_builder(PrecommitType, height, round, block_id, timestamp, chain_id);
+                sign_bytes =  varbuffer::encode_builder(encoded);
+                ;; } else {
+                ;;     ;; change timestamp only, at 696 + 8(buffer length) = timestamp index
+                ;;     sign_bytes~replace_builder(time::encode_builder(timestamp), 704);    
+                ;; }      
                 builder temp = sign_bytes; ;; store sign_bytes builders before end_cell
                 slice sign_bytes_slice = sign_bytes.end_cell().begin_parse();
                 sign_bytes = temp;       
@@ -212,7 +210,10 @@ int verify::verify_optimized_commit_builder(
                         int verify_pubkey = pubkey~load_uint(256);
                     
                         int is_valid = check_data_signature(sign_bytes_slice, sigs, verify_pubkey);
+                      
                         if(is_valid){
+                            count += 1;
+                            ~dump(count);
                             trusted_committed_voting_power += validator~load_uint(32);
                         }
                     }
@@ -226,17 +227,16 @@ int verify::verify_optimized_commit_builder(
                         slice pubkey = validator~load_ref().begin_parse();
                         int verify_pubkey = pubkey~load_uint(256);
                         int is_valid = check_data_signature(sign_bytes_slice, sigs, verify_pubkey);
-                        ~dump(is_valid);
+                      
                         if(is_valid){
                             untrusted_committed_voting_power += validator~load_uint(32);
-                        }
-
+                        } 
                     }
                 }
 
                 is_satisfy_untrusted = untrusted_committed_voting_power > untrusted_voting_power;
+                
                 if (is_satisfy_trusted & is_satisfy_untrusted) {
-                    
                     return -1;
                 }
             }
@@ -386,7 +386,6 @@ int verify::verify_validators(slice validators, slice validator_hash_set) {
     }
     return validator_hash_set~load_uint(256) == hash_from_tree_slice(validator_tuple);
 }
-
 
 int verify::verify_tx(slice ds) {
     slice proofs = ds~load_ref().begin_parse();
