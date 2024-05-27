@@ -25,7 +25,7 @@ describe('LightClient', () => {
         blockchain = await Blockchain.create();
         blockchain.verbosity = {
             ...blockchain.verbosity,
-            // vmLogs: 'vm_logs_gas',
+            vmLogs: 'vm_logs_gas',
         };
         lightClient = blockchain.openContract(
             LightClient.createFromConfig(

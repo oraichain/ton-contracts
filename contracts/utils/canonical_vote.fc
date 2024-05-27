@@ -51,13 +51,11 @@ slice canonical_vote::encode(
     return inner_cell.end_cell().begin_parse();
 }
 
-builder canonical_vote::encode_builder(
+builder canonical_vote::encode_pre_builder(
     int vote_type, 
     int height, 
     int round, 
-    slice block_id,
-    slice timestamp,
-    slice chain_id
+    slice block_id
 ){
     builder inner_cell = begin_cell();
     
@@ -81,17 +79,23 @@ builder canonical_vote::encode_builder(
             .store_uint(blockid::encode_length(block_id), 8)
             .store_builder(blockid::encode_builder(block_id));          
     }
+    return inner_cell;
+}
 
+builder canonical_vote::encode_builder(
+    builder pre_encode,
+    slice timestamp,
+    slice chain_id
+){
     ;; time field
-    inner_cell = inner_cell.store_uint(0x2a, 8)
+    pre_encode = pre_encode.store_uint(0x2a, 8)
         .store_uint(time::encode_length(timestamp), 8)
         .store_builder(time::encode_builder(timestamp));   
-   
 
     ;; chain_id field    
-    inner_cell = inner_cell.store_uint(0x32, 8)
+    pre_encode = pre_encode.store_uint(0x32, 8)
         .store_uint(slice_bits(chain_id) >> 3, 8)
         .store_slice(chain_id);
 
-    return inner_cell;
+    return pre_encode;
 }

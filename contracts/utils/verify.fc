@@ -174,7 +174,7 @@ int verify::verify_optimized_commit_builder(
     int is_satisfy_trusted = -1;
     int is_satisfy_untrusted = -1;
     
-    builder sign_bytes = begin_cell();
+    builder pre_build_sign_bytes = begin_cell();
     int i = 0;
     while(signatures.slice_refs_empty?() != -1){
         slice next_ref = signatures~load_ref().begin_parse();
@@ -192,17 +192,14 @@ int verify::verify_optimized_commit_builder(
                 
                 throw_if(VERIFY_ERROR_UNKNOWN_BLOCKID_FLAG, is_commit + is_nil + is_absent == 0);
             
-                ;; if (sign_bytes.builder_bits() == 0) {  
-                builder encoded =  canonical_vote::encode_builder(PrecommitType, height, round, block_id, timestamp, chain_id);
-                sign_bytes =  varbuffer::encode_builder(encoded);
-                ;; } else {
-                ;;     ;; change timestamp only, at 696 + 8(buffer length) = timestamp index
-                ;;     sign_bytes~replace_builder(time::encode_builder(timestamp), 704);    
-                ;; }      
-                builder temp = sign_bytes; ;; store sign_bytes builders before end_cell
-                slice sign_bytes_slice = sign_bytes.end_cell().begin_parse();
-                sign_bytes = temp;       
-                      
+                if (pre_build_sign_bytes.builder_bits() == 0) {  
+                    pre_build_sign_bytes =  canonical_vote::encode_pre_builder(PrecommitType, height, round, block_id);
+                }
+                
+                var encoded = canonical_vote::encode_builder(pre_build_sign_bytes, timestamp, chain_id);
+                
+                slice sign_bytes_slice =  varbuffer::encode_builder(encoded).end_cell().begin_parse();
+                
                 if (trusted_voting_power != 0) {
                     (slice validator, int is_exist) = trusted_validators_dict.udict_get?(160, validator_address);
                     if(is_exist == -1){
