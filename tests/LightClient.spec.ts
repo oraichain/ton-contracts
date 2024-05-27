@@ -25,7 +25,7 @@ describe('LightClient', () => {
         blockchain = await Blockchain.create();
         blockchain.verbosity = {
             ...blockchain.verbosity,
-            vmLogs: 'vm_logs_gas',
+            // vmLogs: 'vm_logs_gas',
         };
         lightClient = blockchain.openContract(
             LightClient.createFromConfig(
@@ -52,78 +52,28 @@ describe('LightClient', () => {
         });
     });
 
-    xit('test light client verify block hash', async () => {
-        const { header, block_id } = blockData;
-        const user = await blockchain.treasury('user');
-        const result = await lightClient.sendVerifyBlockHash(
-            user.getSender(),
-            {
-                header: {
-                    appHash: header.app_hash,
-                    chainId: header.chain_id,
-                    consensusHash: header.consensus_hash,
-                    dataHash: header.data_hash,
-                    evidenceHash: header.evidence_hash,
-                    height: BigInt(header.height),
-                    lastBlockId: header.last_block_id,
-                    lastCommitHash: header.last_commit_hash,
-                    lastResultsHash: header.last_results_hash,
-                    validatorHash: header.validators_hash,
-                    nextValidatorHash: header.next_validators_hash,
-                    proposerAddress: header.proposer_address,
-                    time: header.time,
-                    version: header.version,
-                },
-                blockId: block_id,
-            },
-            { value: toNano('0.5') },
-        );
-        expect(result.transactions[1]).toHaveTransaction({
-            success: true,
-            op: Opcodes.verify_block_hash,
-        });
-        expect(await lightClient.getHeight()).toBe(parseInt(header.height));
-        expect(await lightClient.getChainId()).toBe(header.chain_id);
-        expect((await lightClient.getDataHash()).toString('hex')).toBe(header.data_hash.toLowerCase());
-        expect((await lightClient.getValidatorHash()).toString('hex')).toBe(header.validators_hash.toLowerCase());
-    });
-
-    xit('test light client store untrusted validators', async () => {
-        const { validators } = blockData;
-        const user = await blockchain.treasury('user');
-        const result = await lightClient.sendStoreUntrustedValidators(user.getSender(), validators, {
-            value: toNano('0.5'),
-        });
-        expect(result.transactions[1]).toHaveTransaction({
-            success: true,
-            op: Opcodes.store_untrusted_validators,
-        });
-    });
-
     it('test light client verify receipt', async () => {
         const { header, commit, validators, block_id } = blockData;
         const user = await blockchain.treasury('user');
         let result = await lightClient.sendVerifyBlockHash(
             user.getSender(),
             {
-                header: {
-                    appHash: header.app_hash,
-                    chainId: header.chain_id,
-                    consensusHash: header.consensus_hash,
-                    dataHash: header.data_hash,
-                    evidenceHash: header.evidence_hash,
-                    height: BigInt(header.height),
-                    lastBlockId: header.last_block_id,
-                    lastCommitHash: header.last_commit_hash,
-                    lastResultsHash: header.last_results_hash,
-                    validatorHash: header.validators_hash,
-                    nextValidatorHash: header.next_validators_hash,
-                    proposerAddress: header.proposer_address,
-                    time: header.time,
-                    version: header.version,
-                },
-                blockId: block_id,
+                appHash: header.app_hash,
+                chainId: header.chain_id,
+                consensusHash: header.consensus_hash,
+                dataHash: header.data_hash,
+                evidenceHash: header.evidence_hash,
+                height: BigInt(header.height),
+                lastBlockId: header.last_block_id,
+                lastCommitHash: header.last_commit_hash,
+                lastResultsHash: header.last_results_hash,
+                validatorHash: header.validators_hash,
+                nextValidatorHash: header.next_validators_hash,
+                proposerAddress: header.proposer_address,
+                time: header.time,
+                version: header.version,
             },
+            validators,
             { value: toNano('0.5') },
         );
         console.log(`blockhash:`, Opcodes.verify_block_hash);
@@ -131,18 +81,9 @@ describe('LightClient', () => {
             success: true,
             op: Opcodes.verify_block_hash,
         });
-        result = await lightClient.sendStoreUntrustedValidators(user.getSender(), validators, {
-            value: toNano('0.5'),
-        });
-        console.log('store_untrusted_validators', Opcodes.store_untrusted_validators);
-        expect(result.transactions[1]).toHaveTransaction({
-            success: true,
-            op: Opcodes.store_untrusted_validators,
-        });
         result = await lightClient.sendVerifyUntrustedValidators(user.getSender(), {
             value: toNano('1'),
         });
-
         console.log(Opcodes.verify_untrusted_validators);
         expect(result.transactions[1]).toHaveTransaction({
             success: true,
