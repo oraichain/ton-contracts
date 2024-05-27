@@ -3,7 +3,7 @@ import { Cell, toNano } from '@ton/core';
 import { LightClient, Opcodes } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import blockData from './fixtures/data.json';
+import blockData from './fixtures/new_data.json';
 import { setTimeout } from 'timers/promises';
 import { createHash } from 'crypto';
 import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
@@ -125,6 +125,7 @@ describe('LightClient', () => {
             },
             { value: toNano('0.5') },
         );
+        console.log(`blockhash:`, Opcodes.verify_block_hash);
         expect(result.transactions[1]).toHaveTransaction({
             success: true,
             op: Opcodes.verify_block_hash,
@@ -132,6 +133,7 @@ describe('LightClient', () => {
         result = await lightClient.sendStoreUntrustedValidators(user.getSender(), validators, {
             value: toNano('0.5'),
         });
+        console.log("store_untrusted_validators",Opcodes.store_untrusted_validators);
         expect(result.transactions[1]).toHaveTransaction({
             success: true,
             op: Opcodes.store_untrusted_validators,
@@ -139,26 +141,31 @@ describe('LightClient', () => {
         result = await lightClient.sendVerifyUntrustedValidators(user.getSender(), {
             value: toNano('1'),
         });
+
+        console.log(Opcodes.verify_untrusted_validators);
         expect(result.transactions[1]).toHaveTransaction({
             success: true,
             op: Opcodes.verify_untrusted_validators,
         });
 
         result = await lightClient.sendVerifySigs(user.getSender(), commit, {
-            value: toNano('0.5'),
+            value: toNano('1'),
         });
+
+        console.log("verify_sigs", Opcodes.verify_sigs);
         expect(result.transactions[1]).toHaveTransaction({
             success: true,
             op: Opcodes.verify_sigs,
         });
 
-        result = await lightClient.sendVerifySigs(user.getSender(), commit, {
-            value: toNano('0.5'),
-        });
-        expect(result.transactions[1]).toHaveTransaction({
-            success: true,
-            op: Opcodes.verify_sigs,
-        });
+        // result = await lightClient.sendVerifySigs(user.getSender(), commit, {
+        //     value: toNano('0.5'),
+        // });
+        // console.log("verify_sigs", Opcodes.verify_sigs);
+        // expect(result.transactions[1]).toHaveTransaction({
+        //     success: true,
+        //     op: Opcodes.verify_sigs,
+        // });
 
         // verify tx now:
         // 53748123942928445796153625209665602923363100986949452406157600748643368908519

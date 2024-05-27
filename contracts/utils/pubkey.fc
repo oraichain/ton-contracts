@@ -17,3 +17,12 @@ slice pubkey::encode(slice pub) {
             .end_cell()
             .begin_parse();
 }
+
+;; notice: only receive pubkey value
+builder pubkey::encode_builder(slice pub) {
+    int len = pub.slice_bits() >> 3;
+    return begin_cell()
+            .store_uint(0x0a, 8)
+            .store_uint(len, 8)
+            .store_slice(pub);
+}

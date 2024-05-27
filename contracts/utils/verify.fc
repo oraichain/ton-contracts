@@ -36,6 +36,7 @@ int verify::verify_validators_set(slice validator_hash_set, slice untrusted_vali
         validators_tuple~tpush(new_slice);
         validators = next_ref;
     }
+   
     return validator_hash_set~load_uint(256) == hash_from_tree_slice(validators_tuple);
 }
 
@@ -77,8 +78,8 @@ int verify::verify_optimized_commit(
     int i = 0;
     while(signatures.slice_refs_empty?() != -1){
         slice next_ref = signatures~load_ref().begin_parse();
-            slice cs = signatures~load_ref().begin_parse();
-            int cs_bits_len = slice_bits(cs);
+        slice cs = signatures~load_ref().begin_parse();
+        int cs_bits_len = slice_bits(cs);
             if(cs_bits_len >= 8 + 160 + 512) {
                 int block_id_flag = cs~load_uint(8);
                 int validator_address = cs~load_uint(160);

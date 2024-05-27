@@ -34,6 +34,24 @@ slice varint::encode(int signed, int n) {
     return inner_cell.end_cell().begin_parse();
 }
 
+builder varint::encode_builder(int signed, int n) {
+    int length = varint::encode_length(signed, n);
+    ;; create a new empty builder
+    builder inner_cell = begin_cell(); 
+    ;; amino signed varint is multiplied by 2 ¯\_(ツ)_/¯
+    if (signed) {
+        n *= 2;
+    }
+    
+    while (n >= 0x80) {
+        inner_cell = inner_cell.store_uint(n & 0xff | 0x80, 8);
+        n >>= 7;
+    }
+    inner_cell = inner_cell.store_uint(n & 0xff,8);   
+    return inner_cell;
+}
+
+
 
 int varuint::encode_length(int n) inline_ref {
     return varint::encode_length(0, n);

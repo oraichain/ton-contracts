@@ -13,15 +13,14 @@
 (slice) validator_hash_input::encode(slice data) {
     builder inner_cell = begin_cell();
     data~skip_bits(160);
-    ;; ~dump(data);
     slice pubkey = data~load_ref().begin_parse();
-    slice pubkey_encode = pubkey::encode(pubkey);
+    builder pubkey_encode = pubkey::encode_builder(pubkey);
     int pubkey_length = pubkey::encode_length(pubkey);
     inner_cell = inner_cell.store_uint(0x0a, 8);
     inner_cell = inner_cell.store_uint(pubkey_length, 8);
-    inner_cell = inner_cell.store_slice(pubkey_encode);
+    inner_cell = inner_cell.store_builder(pubkey_encode);
     int voting_power = data~load_uint(32);
-    slice voting_power_encode = varint::encode(0, voting_power);
-    inner_cell = inner_cell.store_uint(0x10, 8).store_slice(voting_power_encode);
+    builder voting_power_encode = varint::encode_builder(0, voting_power);
+    inner_cell = inner_cell.store_uint(0x10, 8).store_builder(voting_power_encode);
     return inner_cell.end_cell().begin_parse();
 }
