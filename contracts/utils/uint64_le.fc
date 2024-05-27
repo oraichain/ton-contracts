@@ -45,6 +45,30 @@ slice uint64le::encode(int value){
     return uint53::write_int64_le(value); ;;8 bytes
 }
 
+builder reverse_buffer_slice_int_builder(int number){
+    builder inner_cell = begin_cell();
+    slice buffer = begin_cell().store_uint(number, 32).end_cell().begin_parse();
+    while(buffer.slice_empty?() != -1){
+        slice last_byte = buffer.slice_last(8);
+        inner_cell = inner_cell.store_slice(last_byte);
+        buffer~skip_last_bits(8);
+    }
+
+    return inner_cell;
+}
+
+
+builder uint53::write_int64_le_builder(int number) {
+    (int high, int low) = number.uint_high_low();
+    return begin_cell()
+            .store_builder(reverse_buffer_slice_int_builder(low))
+            .store_builder(reverse_buffer_slice_int_builder(high));
+}
+
+builder uint64le::encode_builder(int value){
+    return uint53::write_int64_le_builder(value); ;;8 bytes
+}
+
 int uint64le::encode_length() inline_ref {
     return 8;
 }

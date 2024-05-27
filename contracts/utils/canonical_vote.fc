@@ -50,3 +50,49 @@ slice canonical_vote::encode(
     
     return inner_cell.end_cell().begin_parse();
 }
+
+builder canonical_vote::encode_builder(
+    int vote_type, 
+    int height, 
+    int round, 
+    slice block_id,
+    slice timestamp,
+    slice chain_id
+){
+    builder inner_cell = begin_cell();
+    
+    if(vote_type != 0){
+        inner_cell = inner_cell.store_uint(prefix::number, 8)
+            .store_uint(vote_type, 8);
+    }
+    
+    if(height > 0){
+        inner_cell = inner_cell.store_uint(0x11,8)
+            .store_builder(uint64le::encode_builder(height));       
+    }
+
+    if(round > 0){
+        inner_cell = inner_cell.store_uint(0x19, 8)
+            .store_builder(uint64le::encode_builder(round));       
+    }
+
+    if(block_id.slice_empty?() != -1){        
+        inner_cell = inner_cell.store_uint(0x22, 8)          
+            .store_uint(blockid::encode_length(block_id), 8)
+            .store_builder(blockid::encode_builder(block_id));          
+    }
+
+    ;; time field
+    inner_cell = inner_cell.store_uint(0x2a, 8)
+        .store_uint(time::encode_length(timestamp), 8)
+        .store_builder(time::encode_builder(timestamp));   
+   
+
+    ;; chain_id field    
+    inner_cell = inner_cell.store_uint(0x32, 8)
+        .store_uint(slice_bits(chain_id) >> 3, 8)
+        .store_slice(chain_id);
+
+    
+    return inner_cell;
+}

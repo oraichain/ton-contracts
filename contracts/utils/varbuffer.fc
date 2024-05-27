@@ -13,3 +13,11 @@ slice varbuffer::encode(slice value) {
     vb_cell = vb_cell.store_slice(value);
     return vb_cell.end_cell().begin_parse();    
 }
+
+builder varbuffer::encode_builder(builder value) {    
+    int length = value.builder_bits() >> 3;
+    builder buffer = varint::encode_builder(0, length);    
+    builder vb_cell = begin_cell().store_builder(buffer);
+    vb_cell = vb_cell.store_builder(value);
+    return vb_cell;    
+}

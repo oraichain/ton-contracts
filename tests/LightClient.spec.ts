@@ -3,6 +3,7 @@ import { Cell, toNano } from '@ton/core';
 import { LightClient, Opcodes } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
+// import blockData from './fixtures/data.json';
 import blockData from './fixtures/new_data.json';
 import { setTimeout } from 'timers/promises';
 import { createHash } from 'crypto';

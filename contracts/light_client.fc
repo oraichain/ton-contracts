@@ -144,13 +144,14 @@ global cell untrusted_validator;
         }
         slice body = in_msg_body~load_ref().begin_parse();
         slice commit = body~load_ref().begin_parse();
-        int result = verify::verify_optimized_commit(
+        int result = verify::verify_optimized_commit_builder(
             validator_set_changed,
             height,
             chain_id,
             commit,
             trusted_validator.begin_parse(),
             untrusted_validator.begin_parse());
+   
         throw_if(error::invalid_verify_sigs, result != -1);
         trusted_validator = untrusted_validator;
         state = state::initial;
