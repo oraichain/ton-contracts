@@ -86,6 +86,7 @@ global cell untrusted_validator;
     load_data(); ;; here we populate the storage variables
 
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
+    ~dump(op);
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
     if (op == op::verify_block_hash) {
         slice block_proof = in_msg_body~load_ref().begin_parse();
@@ -158,6 +159,20 @@ global cell untrusted_validator;
     }
 
     if (op == op::verify_receipt) {
+        slice body = in_msg_body~load_ref().begin_parse();
+        ~dump(body);
+        slice proofs = body~load_ref().begin_parse();
+        slice positions =  body~load_ref().begin_parse();
+        slice tx_raw = body~load_ref().begin_parse();
+        int tx_hash = begin_cell()
+                    .store_uint(prefix::leaf, 8)
+                    .store_uint(calculate_tx_hash(tx_raw), 256)
+                    .end_cell()
+                    .begin_parse()
+                    .string_hash();
+        int calculate_data_hash = hash_from_tree_proof_ref(proofs, tx_hash, positions);
+        ~dump(calculate_data_hash);
+        throw_if(error::invalid_verify_receipt, data_hash~load_uint(256) != calculate_data_hash);
         save_data();
         return ();
     }

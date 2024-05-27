@@ -323,7 +323,6 @@ int signer_info_encode_length(slice ds) method_id {
 }
 
 ;; ;; 
-
 tuple auth_info_encode(slice sign_infos, slice fee, slice tip) method_id {
     (int length, tuple data) = auth_info::encode(sign_infos, fee, tip);
     return data;

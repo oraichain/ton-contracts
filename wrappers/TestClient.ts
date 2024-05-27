@@ -1328,7 +1328,7 @@ export class TestClient implements Contract {
     }
 }
 
-function getAuthInfoInput(data: AuthInfo) {
+export function getAuthInfoInput(data: AuthInfo) {
     let finalSignInfosCell;
     for (let i = data.signerInfos.length - 1; i >= 0; i--) {
         let innerCell = getSignInfoCell(data.signerInfos[i]);

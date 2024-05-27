@@ -12,10 +12,14 @@ import {
 import {
     BlockId,
     Commit,
+    getAuthInfoInput,
     getBlockSlice,
+    getMerkleProofs,
     getTimeSlice,
     getVersionSlice,
     Header,
+    txBodyWasmToRef,
+    TxWasm,
     Validators,
     Version,
 } from './TestClient';
@@ -146,18 +150,56 @@ export class LightClient implements Contract {
         });
     }
 
-    async sendVerifyReceipt(provider: ContractProvider, via: Sender, opts?: any) {
-        // const blockProof = beginCell()
-        //     .storeUint(BigInt('0x' + data.blockId.hash), 256)
-        //     .storeRef(getBlockHashCell(data.header))
-        //     .endCell();
+    async sendVerifyReceipt(
+        provider: ContractProvider,
+        via: Sender,
+        tx: TxWasm,
+        leaves: Buffer[],
+        leafData: Buffer,
+        opts?: any,
+    ) {
+        const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
+        const authInfo = beginCell()
+            .storeRef(signInfos || beginCell().endCell())
+            .storeRef(fee)
+            .storeRef(tip)
+            .endCell();
+
+        const txBody = txBodyWasmToRef(tx.body);
+        let signatureCell: Cell | undefined;
+
+        for (let i = tx.signatures.length - 1; i >= 0; i--) {
+            let signature = tx.signatures[i];
+            let cell = beginCell()
+                .storeRef(beginCell().storeBuffer(Buffer.from(signature)).endCell())
+                .endCell();
+            if (!signatureCell) {
+                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+            } else {
+                signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
+            }
+        }
+        const txRaw = beginCell()
+            .storeRef(authInfo)
+            .storeRef(txBody)
+            .storeRef(signatureCell || beginCell().endCell())
+            .endCell();
+
+        const { branch: proofs, positions } = getMerkleProofs(leaves, leafData);
+
         await provider.internal(via, {
             value: opts?.value || 0,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
                 .storeUint(Opcodes.verify_receipt, 32)
                 .storeUint(opts?.queryID || 0, 64)
-                .storeRef(beginCell().endCell())
+                .storeRef(
+                    beginCell()
+                        .storeRef(proofs || beginCell().endCell())
+                        .storeRef(positions)
+                        .storeRef(txRaw)
+                        .endCell(),
+                )
                 .endCell(),
         });
     }
