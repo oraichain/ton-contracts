@@ -28,14 +28,12 @@ slice verify::get_vote_sign_bytes(slice vote){
 
 int verify::verify_validators_set(slice validator_hash_set, slice untrusted_validators) {
     tuple validators_tuple = empty_tuple();
-    int index = 0;
     slice validators = untrusted_validators~load_ref().begin_parse();
     slice temp_validators = validators;
     while(validators.slice_refs_empty?() != -1){
         slice next_ref = validators~load_ref().begin_parse();
         slice new_slice = validator_hash_input::encode(validators~load_ref().begin_parse());
         validators_tuple~tpush(new_slice);
-        index += 1;
         validators = next_ref;
     }
     return validator_hash_set~load_uint(256) == hash_from_tree_slice(validators_tuple);
