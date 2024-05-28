@@ -7,6 +7,7 @@
 #include "static/state.fc";
 #include "utils/validator_hash_input.fc";
 #include "utils/merkleize.fc";
+#include "utils/tx_raw.fc";
 
 ;; storage variables
 ;; 0: false, 1: true
@@ -86,7 +87,6 @@ global cell untrusted_validator;
     load_data(); ;; here we populate the storage variables
 
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
-    ~dump(op);
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
     if (op == op::verify_block_hash) {
         ;; store block data
@@ -177,12 +177,15 @@ global cell untrusted_validator;
 
     if (op == op::verify_receipt) {
         slice body = in_msg_body~load_ref().begin_parse();
+        int receipt_height = body~load_int(32);
+        slice tx_raw = body~load_ref().begin_parse();
         slice proofs = body~load_ref().begin_parse();
         slice positions =  body~load_ref().begin_parse();
-        slice tx_raw = body~load_ref().begin_parse();
+        throw_if(error::invalid_height, receipt_height != height);
+        (tuple encode_tx_raw, slice memo) = tx_raw::encode(tx_raw);
         int tx_hash = begin_cell()
                     .store_uint(prefix::leaf, 8)
-                    .store_uint(calculate_tx_hash(tx_raw), 256)
+                    .store_uint(digest_hash(encode_tx_raw), 256)
                     .end_cell()
                     .begin_parse()
                     .string_hash();

@@ -15,7 +15,7 @@ const not_msg_execute_error = 0x03;
 ;;   writer.uint32(26).bytes(v!);
 ;; }
 ;; return writer;
-tuple tx_raw::encode(slice ds) impure {
+(tuple, slice) tx_raw::encode(slice ds) impure {
     tuple return_tuple = empty_tuple();
     ;; load_data
     slice auth_info = ds~load_ref().begin_parse();
@@ -81,8 +81,8 @@ tuple tx_raw::encode(slice ds) impure {
                     .store_ref(non_critical_ext_opts)
                     .end_cell().begin_parse();
 
-    (int len, tuple tx_body_tuple) = tx_body::encode(tx_body);
-   
+    (int len, tuple tx_body_tuple, slice memo) = tx_body::encode(tx_body);
+    ~dump(memo);
     
     slice tx_body_prefix_len = begin_cell()
                                 .store_slice(varuint::encode(10))
@@ -131,5 +131,5 @@ tuple tx_raw::encode(slice ds) impure {
     }
     slice chunk_signatures = signature_builder.end_cell().begin_parse();
     return_tuple~tpush(chunk_signatures);
-    return return_tuple;
+    return (return_tuple, memo);
 }

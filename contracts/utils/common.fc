@@ -68,7 +68,8 @@ tuple slice_list(tuple list, int start, int end) {
 }
 
 int calculate_tx_hash(slice tx_raw) method_id {
-    return digest_hash(tx_raw::encode(tx_raw));
+    (tuple data, _) = tx_raw::encode(tx_raw);
+    return digest_hash(data);
 }
 
 (slice, ()) ~replace(slice t, slice value, int ind) {

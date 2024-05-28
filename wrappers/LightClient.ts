@@ -154,6 +154,7 @@ export class LightClient implements Contract {
     async sendVerifyReceipt(
         provider: ContractProvider,
         via: Sender,
+        height: string,
         tx: TxWasm,
         leaves: Buffer[],
         leafData: Buffer,
@@ -196,9 +197,10 @@ export class LightClient implements Contract {
                 .storeUint(opts?.queryID || 0, 64)
                 .storeRef(
                     beginCell()
+                        .storeUint(BigInt(height), 32)
+                        .storeRef(txRaw)
                         .storeRef(proofs || beginCell().endCell())
                         .storeRef(positions)
-                        .storeRef(txRaw)
                         .endCell(),
                 )
                 .endCell(),

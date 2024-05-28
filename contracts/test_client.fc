@@ -279,7 +279,7 @@ tuple any_encode(slice ds) method_id {
 }
 
 tuple tx_body_encode(slice ds ) method_id {
-    (_, tuple return_tuple) = tx_body::encode(ds);
+    (_, tuple return_tuple, _) = tx_body::encode(ds);
     return return_tuple;
 }
 
@@ -342,11 +342,13 @@ slice msg_execute_contract_encode(slice ds) method_id {
 
 ;; tx_raw
 tuple tx_raw_encode(slice ds) method_id {
-    return tx_raw::encode(ds);
+    (tuple data, _) = tx_raw::encode(ds);
+    return data;
 }
 
 int tx_hash(slice ds) method_id {
-    return digest_hash(tx_raw::encode(ds));
+    (tuple data, _) = tx_raw::encode(ds);
+    return digest_hash(data);
 }
 
 int verify_tx(slice ds) method_id {

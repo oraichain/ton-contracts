@@ -3,13 +3,13 @@
 ;; #include "helper.fc";
 
 ;; return encode_len and tuple
-(int, tuple) tx_body::encode(slice ds)
+(int, tuple, slice) tx_body::encode(slice ds)
 {       
     slice messages = ds~load_ref().begin_parse();
     slice memo_and_timeout_height = ds~load_ref().begin_parse();
+    slice memo = begin_cell().end_cell().begin_parse();
     slice ext_opts = ds~load_ref().begin_parse();
     slice non_critical_ext_opts = ds~load_ref().begin_parse();
-
 
     tuple return_tuple = empty_tuple();
     int tx_body_len = 0;
@@ -42,12 +42,11 @@
     builder memo_and_timeout_height_builder = begin_cell();
 
     if(memo_and_timeout_height.slice_empty?() != -1){
-        slice memo = memo_and_timeout_height~load_ref().begin_parse();
+        memo = memo_and_timeout_height~load_ref().begin_parse();
         int timeout_height = memo_and_timeout_height~load_uint(8 * 64); ;;64 bytes
        
         if(memo.slice_empty?() != -1){
             memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(varuint::encode(18)).store_slice(memo);
-           
         }
 
         if(memo.slice_empty?() != -1){
@@ -120,5 +119,5 @@
         non_critical_ext_opts = next_ref;
     }
 
-    return (tx_body_len, return_tuple);
+    return (tx_body_len, return_tuple, memo);
 }
