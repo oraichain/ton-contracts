@@ -6,4 +6,4 @@ const op::verify_untrusted_validators = "op::verify_untrusted_validators"c;
 const op::verify_sigs = "op::verify_sigs"c; 
 const op::verify_receipt = "op::verify_receipt"c; 
 
-
+const cosmos = "src::cosmos"c;
