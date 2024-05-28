@@ -89,11 +89,9 @@ global cell untrusted_validator;
     ~dump(op);
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
     if (op == op::verify_block_hash) {
-        slice block_proof = in_msg_body~load_ref().begin_parse();
-        int block_hash = block_proof~load_uint(256);
-        slice header = block_proof~load_ref().begin_parse();
-        int result = verify::verify_block_hash(header, block_hash);
-        throw_if(error::invalid_block_header, result != -1);
+        ;; store block data
+        slice ds = in_msg_body~load_ref().begin_parse();
+        slice header = ds~load_ref().begin_parse();
         (int temp_height, slice temp_chain_id, slice temp_data_hash, slice temp_validator_hash_set) = get_data_from_header(header);
         height = temp_height;
         chain_id = temp_chain_id;
@@ -104,6 +102,24 @@ global cell untrusted_validator;
         }
         data_hash = temp_data_hash;
         validator_hash_set = temp_validator_hash_set;
+
+        ;; store validator data
+        cell validator_cs = ds~load_ref();
+        builder inner_cell = begin_cell().store_ref(validator_cs);
+        slice validators = validator_cs.begin_parse();
+        cell validators_by_address = new_dict();
+        int total_voting_power = 0;
+        while(validators.slice_refs_empty?() != -1){
+            slice next_ref = validators~load_ref().begin_parse();
+            slice validator_i =  validators~load_ref().begin_parse();
+            int address = validator_i~load_uint(160);
+            validators_by_address~udict_set(160, address, validator_i);
+            int voting_power = validator_i~load_uint(32);
+            total_voting_power += voting_power;
+            validators = next_ref;
+        }
+        untrusted_validator = inner_cell.store_uint(total_voting_power, 256).store_ref(validators_by_address).end_cell();
+
         state = state::initial;
         save_data();
         return ();
@@ -144,13 +160,14 @@ global cell untrusted_validator;
         }
         slice body = in_msg_body~load_ref().begin_parse();
         slice commit = body~load_ref().begin_parse();
-        int result = verify::verify_optimized_commit(
+        int result = verify::verify_optimized_commit_builder(
             validator_set_changed,
             height,
             chain_id,
             commit,
             trusted_validator.begin_parse(),
             untrusted_validator.begin_parse());
+   
         throw_if(error::invalid_verify_sigs, result != -1);
         trusted_validator = untrusted_validator;
         state = state::initial;
@@ -160,7 +177,6 @@ global cell untrusted_validator;
 
     if (op == op::verify_receipt) {
         slice body = in_msg_body~load_ref().begin_parse();
-        ~dump(body);
         slice proofs = body~load_ref().begin_parse();
         slice positions =  body~load_ref().begin_parse();
         slice tx_raw = body~load_ref().begin_parse();
@@ -171,7 +187,6 @@ global cell untrusted_validator;
                     .begin_parse()
                     .string_hash();
         int calculate_data_hash = hash_from_tree_proof_ref(proofs, tx_hash, positions);
-        ~dump(calculate_data_hash);
         throw_if(error::invalid_verify_receipt, data_hash~load_uint(256) != calculate_data_hash);
         save_data();
         return ();

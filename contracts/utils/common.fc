@@ -76,3 +76,10 @@ int calculate_tx_hash(slice tx_raw) method_id {
     t~skip_bits(value.slice_bits());    
     return (temp_slice.store_slice(t).end_cell().begin_parse(), ());
 }
+
+(builder, ()) ~replace_builder(builder t, builder value, int ind) {
+    slice t_slice = t.end_cell().begin_parse();
+    builder temp_slice = begin_cell().store_slice(t_slice~load_bits(ind)).store_builder(value);
+    t_slice~skip_bits(value.builder_bits());    
+    return (temp_slice.store_slice(t_slice), ());
+}

@@ -1,4 +1,3 @@
-import { Registry, decodeTxRaw } from '@cosmjs/proto-signing';
 import { defaultRegistryTypes } from '@cosmjs/stargate';
 import { compile } from '@ton/blueprint';
 import { Cell, toNano } from '@ton/core';
@@ -7,6 +6,7 @@ import '@ton/test-utils';
 import { Tx } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 import { TestClient } from '../wrappers/TestClient';
+import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
 
 const NOT_MSG_EXECUTE_ERROR = 3;
 
