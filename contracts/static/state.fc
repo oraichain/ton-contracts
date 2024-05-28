@@ -1,2 +1,6 @@
 const state::initial = 0;
 const state::verify_untrusted_validators = 11;
+
+;; brideg
+const src::cosmos = "src::cosmos"c;
+const src::ton = "src::ton"c;

@@ -506,8 +506,8 @@ export const msgExecuteContractToCell = (msg: MsgExecuteContract) => {
 
     return beginCell()
         .storeRef(sender_contract)
-        .storeRef(msgToTuple ? msgToTuple : beginCell().endCell())
-        .storeRef(fundCell ? fundCell : beginCell().endCell())
+        .storeRef(msgToTuple ?? beginCell().endCell())
+        .storeRef(fundCell ?? beginCell().endCell())
         .endCell();
 };
 
