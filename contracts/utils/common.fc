@@ -84,3 +84,25 @@ int calculate_tx_hash(slice tx_raw) method_id {
     t_slice~skip_bits(value.builder_bits());    
     return (temp_slice.store_slice(t_slice), ());
 }
+
+int index_of(slice haystack, slice search) {        
+    int loop = (haystack.slice_bits() >> 3) - (search.slice_bits() >> 3);            
+    int search_char = search~load_uint(8);
+    int ind = -1;
+    
+    if(loop > -1) {
+        while (ind < loop) {        
+            if (search_char == haystack~load_uint(8)){
+                ;; stop searching
+                loop = -1;                                           
+            }   
+            ind += 1;                           
+        }           
+
+        if(~ loop | ~ search.equal_slices(haystack~load_bits(search.slice_bits()))) {
+            ind = -1;        
+        }
+    }
+
+    return ind;
+}
