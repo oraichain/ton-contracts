@@ -67,7 +67,7 @@ global slice light_client; ;; TODO: dynamic calculate based on blockId
     cell proofs = in_msg_body~load_ref();
     slice tx_raw = in_msg_body~load_ref().begin_parse();
     ;; basic validate
-    throw_unless(error::empty_tx,tx_raw.slice_empty?() != 0 & tx_raw.slice_refs_empty?() != 0);
+    throw_unless(error::empty_tx, tx_raw.slice_empty?() != 0 & tx_raw.slice_refs_empty?() != 0);
 
     slice auth_info = tx_raw~load_ref().begin_parse();
     slice tx_body = tx_raw~load_ref().begin_parse();
@@ -94,7 +94,7 @@ global slice light_client; ;; TODO: dynamic calculate based on blockId
         throw_unless(error::unsupported_wasm_message, msgType == transfer);
         messages = next_ref;
     }
-    
+
     ;; send_raw_message
     slice body = begin_cell()
         .store_uint(op::verify_receipt, 32)
@@ -134,6 +134,6 @@ global slice light_client; ;; TODO: dynamic calculate based on blockId
                         .store_coins(amount)
                         .end_cell();
 
-        send_simple_message(0,bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
+        send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
     }
 }

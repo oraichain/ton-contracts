@@ -5,31 +5,81 @@ import {
     Contract,
     contractAddress,
     ContractProvider,
-    Dictionary,
     Sender,
     SendMode,
 } from '@ton/core';
 import {
-    BlockId,
-    Commit,
-    getAuthInfoInput,
-    getBlockSlice,
-    getMerkleProofs,
-    getTimeSlice,
-    getVersionSlice,
-    Header,
     TxBodyWasm,
     txBodyWasmToRef,
-    TxWasm,
-    Validators,
-    Version,
 } from './TestClient';
 import { crc32 } from '../crc32';
+import { buffer } from 'stream/consumers';
 
 export type BridgeAdapterConfig = {
    bridge_wasm_smart_contract:string;
    light_client: Address;
 };
+
+export function jsonToSliceRef(value:Object, isLast: boolean):Cell{
+    if (typeof value === 'string') {
+        let returnValue = isLast ? '"' + value + '"}':'"' + value + '"';
+        return beginCell().storeBuffer(Buffer.from(returnValue)).endCell();
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+        let returnValue =  isLast ? String(value)+'}' : String(value);
+        return beginCell().storeBuffer(Buffer.from(returnValue)).endCell();
+    }
+
+    if (typeof value === 'undefined' || typeof value === 'function' || typeof value === 'symbol') {
+        // JSON.stringify ignores undefined, functions, and symbols when they are values in an object or array.
+        return beginCell().endCell();
+    }
+
+    // TODO: Handle array
+    // if (Array.isArray(value)) {
+    //     const arrValues = value.map((item) => {
+    //         const strValue = jsonToSliceRef(item);
+    //         return strValue !== undefined ? strValue : 'null';
+    //     });
+    //     return '[' + arrValues.join(',') + ']';
+    // }
+
+    // Handle objects
+    if (typeof value === 'object') {
+        let cell:Cell | undefined;
+        const reverseEntries = Object.entries(value).reverse();
+        const len = reverseEntries.length;
+        for (let [i, [key, value]] of reverseEntries.entries()) {
+            console.log([key, value]);
+            let keyValue;
+            if (value) {
+                 keyValue = jsonToSliceRef(value, !cell);
+            }
+            if(!cell){
+                cell = beginCell()
+                        .storeRef(beginCell().endCell())
+                        .storeRef(beginCell().storeBuffer(Buffer.from('"' + key + '":')).endCell())
+                        .storeRef(keyValue ?? beginCell().endCell())
+                        .endCell();
+            } else if(cell && i === len - 1){
+                cell = beginCell()
+                            .storeRef(cell)
+                            .storeRef(beginCell().storeBuffer(Buffer.from('{"' + key + '":')).endCell())
+                            .storeRef(keyValue ?? beginCell().endCell())
+                        .endCell();
+            } else {
+                cell = beginCell()
+                            .storeRef(cell)
+                            .storeRef(beginCell().storeBuffer(Buffer.from('"' + key + '":')).endCell())
+                            .storeRef(keyValue ?? beginCell().endCell())
+                        .endCell();
+            }
+        }
+        return cell ?? beginCell().endCell();
+    }
+    throw new Error('Invalid JSON');
+}
 
 export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
     return beginCell()
