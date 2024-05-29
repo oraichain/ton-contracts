@@ -190,7 +190,8 @@ global cell untrusted_validator;
                     .begin_parse()
                     .string_hash();
         int calculate_data_hash = hash_from_tree_proof_ref(proofs, tx_hash, positions);
-        throw_if(error::invalid_verify_receipt, data_hash~load_uint(256) != calculate_data_hash);
+        (_, int value) = data_hash.load_uint(256);
+        throw_if(error::invalid_verify_receipt, value != calculate_data_hash);
         save_data();
         return ();
     }
