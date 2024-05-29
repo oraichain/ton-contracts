@@ -51,27 +51,21 @@ export function jsonToSliceRef(value:Object, isLast: boolean):Cell{
         const reverseEntries = Object.entries(value).reverse();
         const len = reverseEntries.length;
         for (let [i, [key, value]] of reverseEntries.entries()) {
-            console.log([key, value]);
             let keyValue;
             if (value) {
-                 keyValue = jsonToSliceRef(value, !cell);
+                 keyValue = jsonToSliceRef(value, i === len - 1);
             }
+            let finalKey = i === len - 1 ? '{"' + key + '":' : '"' + key + '":'
             if(!cell){
                 cell = beginCell()
                         .storeRef(beginCell().endCell())
-                        .storeRef(beginCell().storeBuffer(Buffer.from('"' + key + '":')).endCell())
+                        .storeRef(beginCell().storeBuffer(Buffer.from(finalKey)).endCell())
                         .storeRef(keyValue ?? beginCell().endCell())
-                        .endCell();
-            } else if(cell && i === len - 1){
-                cell = beginCell()
-                            .storeRef(cell)
-                            .storeRef(beginCell().storeBuffer(Buffer.from('{"' + key + '":')).endCell())
-                            .storeRef(keyValue ?? beginCell().endCell())
                         .endCell();
             } else {
                 cell = beginCell()
                             .storeRef(cell)
-                            .storeRef(beginCell().storeBuffer(Buffer.from('"' + key + '":')).endCell())
+                            .storeRef(beginCell().storeBuffer(Buffer.from(finalKey)).endCell())
                             .storeRef(keyValue ?? beginCell().endCell())
                         .endCell();
             }

@@ -11,18 +11,18 @@ describe("jsonToSliceRef", ()=>{
                         }
                     },
                     "amount":"1000000000"
-                    },    
+                    },
                 "ton_info":{
-                    to: "toTON",
-                    denom: "denom",
-                    amount: "amount",
-                    src: "Oraichain",
-                    jetton_code: "JettonCode",
-                    from: "oraiFrom"
-                }          
+                    "to": "toTON",
+                    "denom": "denom",
+                    "amount": "amount",
+                    "src": "Oraichain",
+                    "jetton_code": "JettonCode",
+                    "from": "oraiFrom"
+                 }          
                 }
-            }
-        let cell = jsonToSliceRef(msg, false);
+        }
+        let cell = jsonToSliceRef(msg, true);
     
         while(cell.beginParse().remainingRefs > 0){
             let slice = cell.beginParse();
@@ -30,7 +30,6 @@ describe("jsonToSliceRef", ()=>{
             const key = slice.loadRef();
             const value = slice.loadRef();
             console.log(key);
-            console.log(value);
             cell = nextRef;
         }
     })
