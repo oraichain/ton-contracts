@@ -99,7 +99,7 @@ int index_of(slice haystack, slice search) {
             ind += 1;                           
         }           
 
-        if(~ loop | ~ search.equal_slices(haystack~load_bits(search.slice_bits()))) {
+        ifnot(loop & search.equal_slices(haystack~load_bits(search.slice_bits()))) {
             ind = -1;        
         }
     }
