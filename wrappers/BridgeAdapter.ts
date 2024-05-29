@@ -1,90 +1,68 @@
-import {
-    Address,
-    beginCell,
-    Cell,
-    Contract,
-    contractAddress,
-    ContractProvider,
-    Sender,
-    SendMode,
-} from '@ton/core';
-import {
-    TxBodyWasm,
-    txBodyWasmToRef,
-} from './TestClient';
+import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
+import { TxBodyWasm, txBodyWasmToRef } from './TestClient';
 import { crc32 } from '../crc32';
 import { buffer } from 'stream/consumers';
 
 export type BridgeAdapterConfig = {
-   bridge_wasm_smart_contract:string;
-   light_client: Address;
+    bridge_wasm_smart_contract: string;
+    light_client: Address;
 };
 
-export function jsonToSliceRef(value:Object, isLast: boolean):Cell{
-    if (typeof value === 'string') {
-        let returnValue = isLast ? '"' + value + '"}':'"' + value + '"';
-        return beginCell().storeBuffer(Buffer.from(returnValue)).endCell();
-    }
-
-    if (typeof value === 'number' || typeof value === 'boolean') {
-        let returnValue =  isLast ? String(value)+'}' : String(value);
-        return beginCell().storeBuffer(Buffer.from(returnValue)).endCell();
-    }
-
-    if (typeof value === 'undefined' || typeof value === 'function' || typeof value === 'symbol') {
-        // JSON.stringify ignores undefined, functions, and symbols when they are values in an object or array.
-        return beginCell().endCell();
-    }
-
-    // TODO: Handle array
-    // if (Array.isArray(value)) {
-    //     const arrValues = value.map((item) => {
-    //         const strValue = jsonToSliceRef(item);
-    //         return strValue !== undefined ? strValue : 'null';
-    //     });
-    //     return '[' + arrValues.join(',') + ']';
-    // }
-
-    // Handle objects
-    if (typeof value === 'object') {
-        let cell:Cell | undefined;
-        const reverseEntries = Object.entries(value).reverse();
-        const len = reverseEntries.length;
-        for (let [i, [key, value]] of reverseEntries.entries()) {
-            let keyValue;
-            if (value) {
-                 keyValue = jsonToSliceRef(value, i === len - 1);
-            }
-            let finalKey = i === len - 1 ? '{"' + key + '":' : '"' + key + '":'
-            if(!cell){
+export function jsonToSliceRef(value: Object): Cell {
+    switch (typeof value) {
+        case 'undefined':
+        case 'function':
+        case 'symbol':
+            return beginCell().endCell();
+        case 'string':
+        case 'number':
+        case 'boolean':
+            return beginCell().storeBuffer(Buffer.from(value.toString())).endCell();
+        case 'object':
+            let cell = beginCell().endCell();
+            const reverseEntries = Object.entries(value).reverse();
+            for (const [key, value] of reverseEntries) {
                 cell = beginCell()
-                        .storeRef(beginCell().endCell())
-                        .storeRef(beginCell().storeBuffer(Buffer.from(finalKey)).endCell())
-                        .storeRef(keyValue ?? beginCell().endCell())
-                        .endCell();
-            } else {
-                cell = beginCell()
-                            .storeRef(cell)
-                            .storeRef(beginCell().storeBuffer(Buffer.from(finalKey)).endCell())
-                            .storeRef(keyValue ?? beginCell().endCell())
-                        .endCell();
+                    .storeRef(cell)
+                    .storeRef(beginCell().storeBuffer(Buffer.from(key)).endCell())
+                    .storeRef(jsonToSliceRef(value))
+                    .endCell();
             }
-        }
-        return cell ?? beginCell().endCell();
+            return cell;
+        default:
+            throw new Error('Invalid JSON');
     }
-    throw new Error('Invalid JSON');
+}
+
+export function sliceRefToJson(cell: Cell): Object {
+    let innerCell = cell.beginParse();
+    if (innerCell.remainingRefs !== 3) {
+        return innerCell.loadStringTail();
+    }
+    let json: { [key: string]: Object } = {};
+
+    while (innerCell.remainingRefs) {
+        const nextProps = innerCell.loadRef();
+        const key = innerCell.loadRef();
+        const value = innerCell.loadRef();
+        // return value;
+        json[key.asSlice().loadStringTail()] = sliceRefToJson(value);
+        innerCell = nextProps.beginParse();
+    }
+
+    return json;
 }
 
 export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
     return beginCell()
-            .storeAddress(config.light_client)
-            .storeRef(beginCell().storeBuffer(Buffer.from(config.bridge_wasm_smart_contract)).endCell())
-            .endCell()
+        .storeAddress(config.light_client)
+        .storeRef(beginCell().storeBuffer(Buffer.from(config.bridge_wasm_smart_contract)).endCell())
+        .endCell();
 }
 
 export const Opcodes = {
-    sendTx: crc32("op::send_tx"),
-    confirmTx: crc32("op::confirm_tx"),
+    sendTx: crc32('op::send_tx'),
+    confirmTx: crc32('op::confirm_tx'),
 };
 
 export class BridgeAdapter implements Contract {
@@ -111,17 +89,12 @@ export class BridgeAdapter implements Contract {
         });
     }
 
-    async sendTx(provider: ContractProvider, via: Sender, txWasm: TxBodyWasm, value: bigint){
+    async sendTx(provider: ContractProvider, via: Sender, txWasm: TxBodyWasm, value: bigint) {
         const txBody = txBodyWasmToRef(txWasm);
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Opcodes.sendTx, 32)
-                .storeUint(0, 64)
-                .storeRef(txBody)
-                .endCell()
-        })
+            body: beginCell().storeUint(Opcodes.sendTx, 32).storeUint(0, 64).storeRef(txBody).endCell(),
+        });
     }
-
 }
