@@ -24,6 +24,7 @@
 #include "utils/msg_execute_contract.fc";
 #include "utils/tx_raw.fc";
 #include "static/op_codes.fc";
+#include "utils/helper.fc";
 
 ;; storage variables
 
@@ -353,4 +354,8 @@ int tx_hash(slice ds) method_id {
 
 int verify_tx(slice ds) method_id {
     return verify::verify_tx(ds);
+}
+
+slice get_hex_to_str(slice ds) method_id {
+    return hex_to_str(ds);
 }

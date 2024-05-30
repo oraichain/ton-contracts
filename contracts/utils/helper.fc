@@ -26,3 +26,17 @@ slice get_validator_hash(slice header) inline_ref {
 int equal_slice? (slice a, slice b) {
     return a.slice_hash() == b.slice_hash();
 }
+
+slice hex_to_str(slice ds) {
+    int length = ds.slice_bits() >> 3;
+    int i = 0;
+    builder inner_cell = begin_cell();
+    while (i < length) {
+        int number = ds~load_uint(8);
+        int quotient = number / 16;
+        int remainder = number - quotient * 16;
+        inner_cell = inner_cell.store_uint(quotient + 48, 8).store_uint(remainder + 48, 8);
+        i += 1;
+    }
+    return inner_cell.end_cell().begin_parse();
+}

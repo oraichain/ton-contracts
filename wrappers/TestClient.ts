@@ -1326,6 +1326,19 @@ export class TestClient implements Contract {
 
         return result.stack.readBigNumber();
     }
+
+    async getHexToStr(provider: ContractProvider, data: string) {
+        const hex = Buffer.from(data, 'hex');
+
+        const result = await provider.get('get_hex_to_str', [
+            {
+                type: 'slice',
+                cell: beginCell().storeBuffer(hex).endCell(),
+            },
+        ]);
+
+        return result.stack.readBuffer().toString('hex');
+    }
 }
 
 export function getAuthInfoInput(data: AuthInfo) {
