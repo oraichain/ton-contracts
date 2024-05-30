@@ -5,6 +5,7 @@ import { crc32 } from '../crc32';
 export type BridgeAdapterConfig = {
     bridge_wasm_smart_contract: string;
     light_client: Address;
+    jetton_wallet_code: Cell;
 };
 
 export function jsonToSliceRef(value: Object): Cell {

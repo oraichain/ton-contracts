@@ -92,9 +92,6 @@ global slice jetton_wallet_code;
         sender_contract~load_ref(); ;; skip sender
         slice contract = sender_contract~load_ref().begin_parse();
         throw_unless(error::invalid_contract_address, contract == bridge_wasm_smart_contract);
-        slice msg = value~load_ref().begin_parse();
-        slice msgType = msg~load_bits(64); ;;8 * 8 character = 64
-        throw_unless(error::unsupported_wasm_message, msgType == transfer);
         messages = next_ref;
     }
 

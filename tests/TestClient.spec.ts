@@ -197,6 +197,7 @@ describe('TestClient', () => {
             .storeBuffer(Buffer.from('memo'))
             .endCell()
             .beginParse();
+        console.log(memo.asCell().bits.toString().length);
         const buffer  = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
         const res = await lightClient.getMemo(buffer);
     });
