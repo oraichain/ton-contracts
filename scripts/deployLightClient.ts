@@ -16,8 +16,8 @@ export async function run(provider: NetworkProvider) {
         ),
     );
 
-    await lightClient.sendDeploy(provider.sender(), toNano('0.05'));
+    await lightClient.sendDeploy(provider.sender(), toNano('1'));
 
-    await provider.waitForDeploy(lightClient.address);
+    await provider.waitForDeploy(lightClient.address, 1, 5000);
     console.log(lightClient);
 }
