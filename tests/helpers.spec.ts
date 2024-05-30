@@ -26,11 +26,12 @@ describe('jsonToSliceRef', () => {
         let cell = jsonToSliceRef(msg);
         let json = sliceRefToJson(cell);
         const memo = beginCell()
-                        .storeAddress(Address.parseFriendly("EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9").address)
-                        .storeAddress(Address.parseFriendly("UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN").address)
-                        .storeCoins(10)
-                        .storeBuffer(Buffer.from('memo'))
-                        .endCell().beginParse();
+            .storeAddress(Address.parse('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9'))
+            .storeAddress(Address.parse('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN'))
+            .storeCoins(10)
+            .storeBuffer(Buffer.from('memo'))
+            .endCell()
+            .beginParse();
         console.log(memo.asCell().bits);
         console.log(memo.loadAddress());
         console.log(memo.loadAddress());
