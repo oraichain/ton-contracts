@@ -1,21 +1,23 @@
 import { toNano } from '@ton/core';
-import { TestClient } from '../wrappers/TestClient';
 import { compile, NetworkProvider } from '@ton/blueprint';
+import { LightClient } from '../wrappers/LightClient';
 
 export async function run(provider: NetworkProvider) {
     const lightClient = provider.open(
-        TestClient.createFromConfig(
+        LightClient.createFromConfig(
             {
-                id: Math.floor(Math.random() * 10000),
-                counter: 0,
+                chainId: 'Oraichain',
+                dataHash: '',
+                height: 0,
+                nextValidatorHashSet: '',
+                validatorHashSet: '',
             },
-            await compile('TestClient'),
+            await compile('LightClient'),
         ),
     );
 
-    await lightClient.sendDeploy(provider.sender(), toNano('0.05'));
+    await lightClient.sendDeploy(provider.sender(), toNano('1'));
 
-    await provider.waitForDeploy(lightClient.address);
-
-    console.log('ID', await lightClient.getID());
+    await provider.waitForDeploy(lightClient.address, 1, 5000);
+    console.log(lightClient);
 }
