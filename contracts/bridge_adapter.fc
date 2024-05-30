@@ -10,11 +10,13 @@
 ;; storage variables
 global slice bridge_wasm_smart_contract;
 global slice light_client; ;; TODO: dynamic calculate based on blockId
+global slice jetton_wallet_code;
 
 ;; load_data populates storage variables using stored data
 () load_data() impure {
     slice ds = get_data().begin_parse();
     bridge_wasm_smart_contract = ds~load_ref();
+    jetton_wallet_code = ds~load_ref();
     light_client = ds~load_msg_addr();
     ds.end_parse();
 }
@@ -25,6 +27,7 @@ global slice light_client; ;; TODO: dynamic calculate based on blockId
         begin_cell()
         .store_slice(light_client)
         .store_ref(bridge_wasm_smart_contract)
+        .store_ref(jetton_wallet_code)
         .end_cell()
     );
 }
@@ -108,10 +111,7 @@ global slice light_client; ;; TODO: dynamic calculate based on blockId
 } 
 
 () confirm_tx(slice in_msg_body, int query_id){
-    (slice to, slice jetton_master, int amount) = (in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_coins());
-    slice from = in_msg_body~load_ref().begin_parse();
-    slice src = in_msg_body~load_ref().begin_parse();
-    slice jetton_wallet_code = in_msg_body~load_ref().begin_parse();
+    (slice to, slice jetton_master, int amount, slice src) = (in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_coins(), in_msg_body);
 
     if(src == src::cosmos){
         slice body = begin_cell()
@@ -126,7 +126,6 @@ global slice light_client; ;; TODO: dynamic calculate based on blockId
 
     if(src == src::ton){
         slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master_address, jetton_wallet_code);
-        
         slice body = begin_cell()
                         .store_uint(op::transfer(),32)
                         .store_uint(query_id,64)

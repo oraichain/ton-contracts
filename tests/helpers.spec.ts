@@ -1,3 +1,4 @@
+import { Address, beginCell } from '@ton/core';
 import { jsonToSliceRef, sliceRefToJson } from '../wrappers/BridgeAdapter';
 
 describe('jsonToSliceRef', () => {
@@ -24,6 +25,17 @@ describe('jsonToSliceRef', () => {
         };
         let cell = jsonToSliceRef(msg);
         let json = sliceRefToJson(cell);
-        console.dir(json, { depth: null });
+        const memo = beginCell()
+                        .storeAddress(Address.parseFriendly("EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9").address)
+                        .storeAddress(Address.parseFriendly("UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN").address)
+                        .storeCoins(10)
+                        .storeBuffer(Buffer.from('memo'))
+                        .endCell().beginParse();
+        console.log(memo.asCell().bits);
+        console.log(memo.loadAddress());
+        console.log(memo.loadAddress());
+        console.log(memo.loadCoins());
+        console.log(memo.loadStringTail());
+        // console.dir(json, { depth: null });
     });
 });

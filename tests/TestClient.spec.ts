@@ -1,5 +1,5 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import { Cell, toNano } from '@ton/core';
+import { Address, beginCell, Cell, toNano } from '@ton/core';
 import { BlockId, TestClient, getMerkleProofs, leafHash } from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
@@ -187,6 +187,18 @@ describe('TestClient', () => {
         const ret = await lightClient.getDigestHash(tx);
         console.log(createHash('sha256').update(tx).digest('hex'), ret.toString(16));
     });
+    
+    it('memo', async () => {
+        console.log(Address.parse("EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9").toStringBuffer().length)
+        const memo = beginCell()
+            .storeAddress(Address.parseFriendly("EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9").address)
+            .storeAddress(Address.parseFriendly("UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN").address)
+            .storeCoins(10)
+            .storeBuffer(Buffer.from('memo'))
+            .endCell()
+            .beginParse();
+        const buffer  = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
+        const res = await lightClient.getMemo(buffer);
+    });
 });
-
 // 67617629344630198485329716378486052286880133911024727032624263529111772997478n

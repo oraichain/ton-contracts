@@ -1,7 +1,6 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
 import { TxBodyWasm, txBodyWasmToRef } from './TestClient';
 import { crc32 } from '../crc32';
-import { buffer } from 'stream/consumers';
 
 export type BridgeAdapterConfig = {
     bridge_wasm_smart_contract: string;
@@ -18,7 +17,7 @@ export function jsonToSliceRef(value: Object): Cell {
         case 'number':
         case 'boolean':
             return beginCell().storeBuffer(Buffer.from(value.toString())).endCell();
-        case 'object':
+        case 'object':{
             let cell = beginCell().endCell();
             const reverseEntries = Object.entries(value).reverse();
             for (const [key, value] of reverseEntries) {
@@ -29,6 +28,7 @@ export function jsonToSliceRef(value: Object): Cell {
                     .endCell();
             }
             return cell;
+        }
         default:
             throw new Error('Invalid JSON');
     }

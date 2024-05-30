@@ -1326,6 +1326,17 @@ export class TestClient implements Contract {
 
         return result.stack.readBigNumber();
     }
+
+    async getMemo(provider: ContractProvider, memo: Cell) {
+        const result = await provider.get('memo_parse', [
+            {
+                type: 'slice',
+                cell: memo,
+            },
+        ]);
+
+        return result.stack.readBigNumber();
+    }
 }
 
 export function getAuthInfoInput(data: AuthInfo) {

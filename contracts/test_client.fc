@@ -352,3 +352,11 @@ int tx_hash(slice ds) method_id {
 int verify_tx(slice ds) method_id {
     return verify::verify_tx(ds);
 }
+
+int memo_parse(slice ds) method_id {
+    ~dump(ds~load_msg_addr());
+    ~dump(ds~load_msg_addr());
+    ~dump(ds~load_coins());
+    ~dump(ds);
+    return 1;
+}
