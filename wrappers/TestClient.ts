@@ -370,9 +370,7 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
     let memo_timeout_height_builder = beginCell();
 
     if (txBodyWasm.memo) {
-        memo_timeout_height_builder.storeRef(beginCell()
-        .storeBuffer(Buffer.from(txBodyWasm.memo, 'hex'))
-        .endCell());
+        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo, 'hex')).endCell());
     }
 
     if (txBodyWasm.timeoutHeight > 0n) {
@@ -437,7 +435,8 @@ export const txBodyToSliceRef = (txBodyWasm: TxBody) => {
 
     let memo_timeout_height_builder = beginCell();
     if (txBodyWasm.memo) {
-        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo)).endCell());
+        let memoBuilder = beginCell().storeBuffer(Buffer.from(txBodyWasm.memo, 'hex'));
+        memo_timeout_height_builder.storeRef(memoBuilder.endCell());
     }
 
     if (txBodyWasm.timeoutHeight > 0n) {

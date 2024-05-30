@@ -358,7 +358,7 @@ int verify_tx(slice ds) method_id {
 int memo_parse(slice ds) method_id {
     ~dump(ds~load_msg_addr());
     ~dump(ds~load_msg_addr());
-    ~dump(ds~load_coins());
+    ~dump(ds~load_uint(128));
     ~dump(ds~load_uint(32));
     return 1;
 }

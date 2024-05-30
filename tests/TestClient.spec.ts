@@ -188,19 +188,21 @@ describe('TestClient', () => {
         const ret = await lightClient.getDigestHash(tx);
         console.log(createHash('sha256').update(tx).digest('hex'), ret.toString(16));
     });
-    
-    it('memo', async () => {
-        console.log(Address.parse("EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9").toStringBuffer().length)
+
+    it('memo unique', async () => {
+        console.log(Address.parse('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').toStringBuffer().length);
+        console.log(Src.COSMOS);
         const memo = beginCell()
-            .storeAddress(Address.parseFriendly("EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9").address)
-            .storeAddress(Address.parseFriendly("UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN").address)
-            .storeCoins(10)
+            .storeAddress(Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address)
+            .storeAddress(Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address)
+            .storeUint(BigInt('10000000000000000'), 128)
             .storeUint(Src.COSMOS, 32)
-            .storeStringTail("_")
+            // .storeStringTail('_')
             .endCell()
             .beginParse();
-        const buffer  = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
+        console.log(Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase());
+        const buffer = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
         const res = await lightClient.getMemo(buffer);
-        console.log(Src.COSMOS)
+        console.log(Src.COSMOS);
     });
 });
