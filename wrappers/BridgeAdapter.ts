@@ -98,4 +98,9 @@ export class BridgeAdapter implements Contract {
             body: beginCell().storeUint(Opcodes.sendTx, 32).storeUint(0, 64).storeRef(txBody).endCell(),
         });
     }
+
+    async getBridgeData(provider: ContractProvider) {
+        const result = await provider.get('get_bridge_data', []);
+        return result.stack.readTuple();
+    }
 }

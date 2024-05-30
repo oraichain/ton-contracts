@@ -634,3 +634,5 @@ builder store_builder(builder to, builder from) asm "STBR";
 int log2(int x) asm "UBITSIZE DEC";
 
 int tlen(tuple data) asm "TLEN";
+
+int workchain() asm "0 PUSHINT";
