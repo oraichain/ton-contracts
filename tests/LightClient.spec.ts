@@ -117,7 +117,6 @@ describe('LightClient', () => {
                     value: registry.decode(msg),
                 };
             });
-
             const decodedTxWithRawMsg: any = {
                 ...decodedTx,
                 body: {
@@ -139,6 +138,7 @@ describe('LightClient', () => {
                     value: toNano('0.5'),
                 },
             );
+            
             expect(result.transactions[1]).toHaveTransaction({
                 success: true,
                 op: Opcodes.verify_receipt,

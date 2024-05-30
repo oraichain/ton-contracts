@@ -359,6 +359,6 @@ int memo_parse(slice ds) method_id {
     ~dump(ds~load_msg_addr());
     ~dump(ds~load_msg_addr());
     ~dump(ds~load_coins());
-    ~dump(ds);
+    ~dump(ds~load_uint(32));
     return 1;
 }

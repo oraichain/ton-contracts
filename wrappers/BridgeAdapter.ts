@@ -1,5 +1,5 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
-import { TxBodyWasm, txBodyWasmToRef } from './TestClient';
+import { getAuthInfoInput, TxBodyWasm, txBodyWasmToRef, TxWasm } from './TestClient';
 import { crc32 } from '../crc32';
 
 export type BridgeAdapterConfig = {
@@ -58,6 +58,7 @@ export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
     return beginCell()
         .storeAddress(config.light_client)
         .storeRef(beginCell().storeBuffer(Buffer.from(config.bridge_wasm_smart_contract)).endCell())
+        .storeRef(config.jetton_wallet_code)
         .endCell();
 }
 
@@ -66,11 +67,54 @@ export const Opcodes = {
     confirmTx: crc32('op::confirm_tx'),
 };
 
+export const Src = {
+    COSMOS: crc32('src::cosmos'),
+    TON: crc32('src::ton'),
+};
+
 export class BridgeAdapter implements Contract {
     constructor(
         readonly address: Address,
         readonly init?: { code: Cell; data: Cell },
     ) {}
+
+    static buildBridgeAdapterSendTxBody(height:bigint, tx: TxWasm, proofs: Cell | undefined, positions: Cell) {
+        const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
+        const authInfo = beginCell()
+            .storeRef(signInfos || beginCell().endCell())
+            .storeRef(fee)
+            .storeRef(tip)
+            .endCell();
+
+        const txBody = txBodyWasmToRef(tx.body);
+        let signatureCell: Cell | undefined;
+
+        for (let i = tx.signatures.length - 1; i >= 0; i--) {
+            let signature = tx.signatures[i];
+            let cell = beginCell()
+                .storeRef(beginCell().storeBuffer(Buffer.from(signature)).endCell())
+                .endCell();
+            if (!signatureCell) {
+                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+            } else {
+                signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
+            }
+        }
+        const txRaw = beginCell()
+            .storeRef(authInfo)
+            .storeRef(txBody)
+            .storeRef(signatureCell || beginCell().endCell())
+            .endCell();
+
+        return beginCell()
+            .storeUint(Opcodes.sendTx, 32)
+            .storeUint(0, 64)
+            .storeUint(height, 64)
+            .storeRef(txRaw)
+            .storeRef(proofs ?? beginCell().endCell())
+            .storeRef(positions)
+            .endCell();
+    }
 
     static createFromAddress(address: Address) {
         return new BridgeAdapter(address);
@@ -90,17 +134,27 @@ export class BridgeAdapter implements Contract {
         });
     }
 
-    async sendTx(provider: ContractProvider, via: Sender, txWasm: TxBodyWasm, value: bigint) {
-        const txBody = txBodyWasmToRef(txWasm);
+    async sendTx(
+        provider: ContractProvider, 
+        via: Sender, 
+        height: bigint,
+        txWasm: TxWasm, 
+        proofs: Cell | undefined,
+        positions: Cell,
+        value: bigint) {
+
+        const sendTxBody = BridgeAdapter.buildBridgeAdapterSendTxBody(height, txWasm, proofs, positions);
+
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(Opcodes.sendTx, 32).storeUint(0, 64).storeRef(txBody).endCell(),
+            body: sendTxBody,
         });
     }
 
     async getBridgeData(provider: ContractProvider) {
         const result = await provider.get('get_bridge_data', []);
-        return result.stack.readTuple();
+        return result.stack;
     }
 }
+

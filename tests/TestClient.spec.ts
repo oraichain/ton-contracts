@@ -6,6 +6,7 @@ import { compile } from '@ton/blueprint';
 import { result as blockData } from './fixtures/block.json';
 import { result as validators } from './fixtures/validators.json';
 import { createHash } from 'crypto';
+import { Src } from '../wrappers/BridgeAdapter';
 
 const validatorMap = Object.fromEntries(validators.validators.map((v) => [v.address, v]));
 
@@ -194,12 +195,12 @@ describe('TestClient', () => {
             .storeAddress(Address.parseFriendly("EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9").address)
             .storeAddress(Address.parseFriendly("UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN").address)
             .storeCoins(10)
-            .storeBuffer(Buffer.from('memo'))
+            .storeUint(Src.COSMOS, 32)
+            .storeStringTail("_")
             .endCell()
             .beginParse();
-        console.log(memo.asCell().bits.toString().length);
         const buffer  = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
         const res = await lightClient.getMemo(buffer);
+        console.log(Src.COSMOS)
     });
 });
-// 67617629344630198485329716378486052286880133911024727032624263529111772997478n

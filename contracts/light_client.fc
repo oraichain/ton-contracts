@@ -8,6 +8,8 @@
 #include "utils/validator_hash_input.fc";
 #include "utils/merkleize.fc";
 #include "utils/tx_raw.fc";
+#include "common/messages.fc";
+
 
 ;; storage variables
 ;; 0: false, 1: true
@@ -86,8 +88,10 @@ global cell untrusted_validator;
 
     load_data(); ;; here we populate the storage variables
 
+    slice sender_address = cs~load_msg_addr();
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
+    
     if (op == op::verify_block_hash) {
         ;; store block data
         slice ds = in_msg_body~load_ref().begin_parse();
@@ -177,7 +181,7 @@ global cell untrusted_validator;
 
     if (op == op::verify_receipt) {
         slice body = in_msg_body~load_ref().begin_parse();
-        int receipt_height = body~load_int(32);
+        int receipt_height = body~load_int(64);
         slice tx_raw = body~load_ref().begin_parse();
         slice proofs = body~load_ref().begin_parse();
         slice positions =  body~load_ref().begin_parse();
@@ -192,7 +196,14 @@ global cell untrusted_validator;
         int calculate_data_hash = hash_from_tree_proof_ref(proofs, tx_hash, positions);
         (_, int value) = data_hash.load_uint(256);
         throw_if(error::invalid_verify_receipt, value != calculate_data_hash);
-        save_data();
+        
+        cell body = begin_cell()
+                        .store_uint(op::confirm_tx, 32)
+                        .store_uint(query_id, 64)
+                        .store_slice(memo)
+                    .end_cell();
+
+        send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);
         return ();
     }
 
