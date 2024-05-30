@@ -68,11 +68,41 @@ tuple slice_list(tuple list, int start, int end) {
 }
 
 int calculate_tx_hash(slice tx_raw) method_id {
-    return digest_hash(tx_raw::encode(tx_raw));
+    (tuple data, _) = tx_raw::encode(tx_raw);
+    return digest_hash(data);
 }
 
 (slice, ()) ~replace(slice t, slice value, int ind) {
     var temp_slice = begin_cell().store_slice(t~load_bits(ind)).store_slice(value);
     t~skip_bits(value.slice_bits());    
     return (temp_slice.store_slice(t).end_cell().begin_parse(), ());
+}
+
+(builder, ()) ~replace_builder(builder t, builder value, int ind) {
+    slice t_slice = t.end_cell().begin_parse();
+    builder temp_slice = begin_cell().store_slice(t_slice~load_bits(ind)).store_builder(value);
+    t_slice~skip_bits(value.builder_bits());    
+    return (temp_slice.store_slice(t_slice), ());
+}
+
+int index_of(slice haystack, slice search) {        
+    int loop = (haystack.slice_bits() >> 3) - (search.slice_bits() >> 3);            
+    int search_char = search~load_uint(8);
+    int ind = -1;
+    
+    if(loop > -1) {
+        while (ind < loop) {        
+            if (search_char == haystack~load_uint(8)){
+                ;; stop searching
+                loop = -1;                                           
+            }   
+            ind += 1;                           
+        }           
+
+        ifnot(loop & search.equal_slices(haystack~load_bits(search.slice_bits()))) {
+            ind = -1;        
+        }
+    }
+
+    return ind;
 }

@@ -42,11 +42,6 @@ export type BlockHeader = {
     evidenceHash: string;
 };
 
-export type VerifyBlockHashParams = {
-    header: BlockHeader;
-    blockId: BlockId;
-};
-
 export type LightClientConfig = {
     height: number;
     chainId: string;
@@ -134,10 +129,16 @@ export class LightClient implements Contract {
         });
     }
 
-    async sendVerifyBlockHash(provider: ContractProvider, via: Sender, data: VerifyBlockHashParams, opts?: any) {
-        const blockProof = beginCell()
-            .storeUint(BigInt('0x' + data.blockId.hash), 256)
-            .storeRef(getBlockHashCell(data.header))
+    async sendVerifyBlockHash(
+        provider: ContractProvider,
+        via: Sender,
+        header: BlockHeader,
+        validators: Validators[],
+        opts?: any,
+    ) {
+        const data = beginCell()
+            .storeRef(getBlockHashCell(header))
+            .storeRef(getValidatorsCell(validators) as Cell)
             .endCell();
         await provider.internal(via, {
             value: opts?.value || 0,
@@ -145,7 +146,7 @@ export class LightClient implements Contract {
             body: beginCell()
                 .storeUint(Opcodes.verify_block_hash, 32)
                 .storeUint(opts?.queryID || 0, 64)
-                .storeRef(blockProof)
+                .storeRef(data)
                 .endCell(),
         });
     }
@@ -153,6 +154,7 @@ export class LightClient implements Contract {
     async sendVerifyReceipt(
         provider: ContractProvider,
         via: Sender,
+        height: string,
         tx: TxWasm,
         leaves: Buffer[],
         leafData: Buffer,
@@ -195,9 +197,10 @@ export class LightClient implements Contract {
                 .storeUint(opts?.queryID || 0, 64)
                 .storeRef(
                     beginCell()
+                        .storeUint(BigInt(height), 32)
+                        .storeRef(txRaw)
                         .storeRef(proofs || beginCell().endCell())
                         .storeRef(positions)
-                        .storeRef(txRaw)
                         .endCell(),
                 )
                 .endCell(),

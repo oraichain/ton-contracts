@@ -24,3 +24,4 @@ int op::burn_notification() asm "0x7bdd97de PUSHINT";
 
 ;; Minter
 int op::mint() asm "21 PUSHINT";
+const cosmos = "src::cosmos"c;

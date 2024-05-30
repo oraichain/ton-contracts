@@ -46,3 +46,12 @@ slice blockid::encode(slice ds) {
 
     return inner_cell.end_cell().begin_parse();
 }
+
+builder blockid::encode_builder(slice ds) {
+    int hash_slice = ds~load_uint(256);    
+    int parts_slice = ds~load_uint(256);    
+    int total = ds~load_uint(8);                
+
+    return blockid::inner_encode(hash_slice, parts_slice, total);
+}
+    

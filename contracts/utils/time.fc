@@ -59,3 +59,26 @@ slice time::encode(slice ds){
     return inner_cell.end_cell().begin_parse();
 }
 
+builder time::encode_builder(slice ds){
+    builder inner_cell = begin_cell();    
+  
+    if(ds.slice_empty?() != -1){
+        int seconds = ds~load_uint(32);
+        if (seconds != 0) {
+            inner_cell~store_uint(prefix::first, 8);
+            var encode_seconds = varint::encode_builder(0, seconds);
+            inner_cell = inner_cell.store_builder(encode_seconds);
+        }
+    }
+
+    if(ds.slice_empty?() != -1){
+        int nanoseconds = ds~load_uint(32);
+        if (nanoseconds != 0) {
+            inner_cell~store_uint(prefix::second, 8);
+            var encode_nanoseconds = varint::encode_builder(0, nanoseconds);
+            inner_cell = inner_cell.store_builder(encode_nanoseconds);
+        }
+    }
+
+    return inner_cell;
+}
