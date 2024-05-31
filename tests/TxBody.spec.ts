@@ -113,7 +113,7 @@ describe('TxBodyProtobuf', () => {
             ),
         );
         const result = await TxBodyProtobufEncode.getTxBody(decodedTx.body);
-
+        console.log(decodedTx.body.memo);
         let buffer = Buffer.alloc(0);
 
         while (result.remaining > 0) {

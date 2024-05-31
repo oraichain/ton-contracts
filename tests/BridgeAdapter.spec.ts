@@ -176,19 +176,13 @@ describe('BridgeAdapter', () => {
     })
 
     it("should persistent when creating memo to test", async()=>{
-        // const memo = beginCell()
-        // .storeAddress(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))
-        // .storeAddress(Address.parse("EQD9O9id4nq0zFUOVXdsEMC_GBTv--GBfz8HcEFHGJY6L8u3"))
-        // .storeCoins(toNano(1000))
-        // .storeUint(Src.COSMOS, 32)
-        // .storeStringTail("0")
-        // .endCell().bits.toString();
-        // console.log({memo});
-        // const slice = beginCell().storeBuffer(Buffer.from(memo, 'hex')).endCell().beginParse();
-        // expect(slice.loadAddress().equals(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))).toBeTruthy();
-        // expect(slice.loadAddress().equals(jettonMinter.address)).toBeTruthy();
-        // expect(slice.loadCoins()).toBe(toNano(1000));
-        // expect(slice.loadUint(32)).toBe(Src.COSMOS);
+        const memo = beginCell()
+        .storeAddress(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))
+        .storeAddress(jettonMinter.address)
+        .storeUint(toNano(10), 128)
+        .storeUint(Src.COSMOS, 32)
+        .endCell().bits.toString();
+        console.log({memo: Buffer.from(memo, 'hex').toString('hex').toUpperCase()});
     })
 
     it("successfully mint token to the user", async() => {
@@ -196,7 +190,7 @@ describe('BridgeAdapter', () => {
         await updateBlock(blockData, relayer);
         const {header, txs} = blockData;
         const height = header.height;
-        const chosenIndex = 1; // hardcode the txs with custom memo
+        const chosenIndex = 0; // hardcode the txs with custom memo
         const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
         const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
       
@@ -209,30 +203,16 @@ describe('BridgeAdapter', () => {
             };
         });
 
-        const memo = beginCell()
-        .storeAddress(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))
-        .storeAddress(jettonMinter.address)
-        .storeCoins(toNano(1000))
-        .storeUint(Src.COSMOS, 32)
-        .storeStringTail("0")
-        .endCell().bits.toString();
-
         const decodedTxWithRawMsg: any = {
             ...decodedTx,
             body: {
                 messages: rawMsg,
-                memo: memo,
+                memo: decodedTx.body.memo,
                 timeoutHeight: decodedTx.body.timeoutHeight,
                 extensionOptions: decodedTx.body.extensionOptions,
                 nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
             },
         };
-
-        // const slice = beginCell().storeBuffer(Buffer.from(decodedTx.body.memo, 'hex')).endCell().beginParse();
-        // expect(slice.loadAddress().equals(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))).toBeTruthy();
-        // expect(slice.loadAddress().equals(jettonMinter.address)).toBeTruthy();
-        // expect(slice.loadCoins()).toBe(toNano(1000));
-        // expect(slice.loadUint(32)).toBe(Src.COSMOS);
 
         const userJettonWallet = await jettonMinter.getWalletAddress(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"));
         const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
@@ -256,7 +236,7 @@ describe('BridgeAdapter', () => {
             success:true
         })
 
-        expect((await wallet.getBalance()).amount).toBe(toNano(1000));
+        expect((await wallet.getBalance()).amount).toBe(toNano(10));
     })
     
 });

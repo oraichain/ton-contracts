@@ -39,8 +39,8 @@ global cell jetton_wallet_code;
 
 () confirm_tx (slice in_msg_body) impure {
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
-    (slice to, slice jetton_master, int amount, int src) = (in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_coins(), in_msg_body~load_uint(32));
-
+    (slice to, slice jetton_master, int amount, int src) = (in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_uint(128), in_msg_body~load_uint(32));
+  
     if(src == src::cosmos){
         cell mint_msg = begin_cell()
                     .store_uint(op::internal_transfer(), 32)
@@ -142,7 +142,7 @@ global cell jetton_wallet_code;
                      .store_ref(positions)
                      .end_cell()
         );
-               
+
         cell body = bodyBuilder.end_cell();
       
         send_simple_message(0, light_client, body, CARRY_REMAINING_GAS);

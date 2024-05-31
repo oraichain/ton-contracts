@@ -202,7 +202,7 @@ global cell untrusted_validator;
         cell body = begin_cell()
                         .store_uint(op::confirm_tx, 32)
                         .store_uint(query_id, 64)
-                        .store_slice(memo_and_timeout_height)
+                        .store_slice(memo)
                     .end_cell();
 
         send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);

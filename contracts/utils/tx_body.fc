@@ -43,10 +43,11 @@
     builder first_memo = begin_cell();
     builder second_memo = begin_cell();
     builder suffix = begin_cell();
+    slice return_memo = null();
 
     if(memo_and_timeout_height.slice_empty?() != -1){
         slice memo = memo_and_timeout_height~load_ref().begin_parse();
-        ~dump(memo_and_timeout_height);
+        return_memo = memo;
         if (memo_and_timeout_height.slice_empty?() != -1) {
             int timeout_height = memo_and_timeout_height~load_uint(64); ;;64 bit
             suffix = suffix.store_slice(varuint::encode(24));
@@ -97,8 +98,6 @@
         }
     }
 
-    ;; slice memo_and_timeout_height_slice = memo_and_timeout_height_builder.end_cell().begin_parse();
-
     slice prefix_slice = prefix.end_cell().begin_parse();
     slice first_memo_slice = first_memo.end_cell().begin_parse();
     slice second_memo_slice = second_memo.end_cell().begin_parse();
@@ -106,11 +105,13 @@
 
     if(prefix_slice.slice_empty?() != -1){
         int memo_len = (slice_bits(first_memo_slice) + slice_bits(second_memo_slice)) >> 3;
+        slice memo_encoded = varuint::encode(memo_len);
         return_tuple~tpush(prefix_slice);
-        return_tuple~tpush(varuint::encode(memo_len));
+        return_tuple~tpush(memo_encoded);
         return_tuple~tpush(first_memo_slice);
         return_tuple~tpush(second_memo_slice);
         return_tuple~tpush(suffix_slice);
+        tx_body_len += memo_encoded.slice_bits() >> 3;
         tx_body_len += (slice_bits(prefix_slice) + slice_bits(first_memo_slice) + slice_bits(second_memo_slice) + slice_bits(suffix_slice)) >> 3;
     }
     
@@ -168,5 +169,5 @@
         non_critical_ext_opts = next_ref;
     }
 
-    return (tx_body_len, return_tuple, begin_cell().end_cell().begin_parse());
+    return (tx_body_len, return_tuple, return_memo);
 }
