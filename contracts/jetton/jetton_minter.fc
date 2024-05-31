@@ -35,9 +35,9 @@
 () mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
   cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
   slice to_wallet_address = calculate_jetton_wallet_address(state_init);
-  ~dump(null());
-  ~dump(null());
-  ~dump(begin_cell().store_slice(to_wallet_address).end_cell().cell_hash());
+  slice msg = master_msg.begin_parse();
+  int op = msg~load_uint(32);
+
   var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(to_wallet_address)

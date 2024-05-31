@@ -49,6 +49,8 @@ global cell jetton_master_code;
                     .store_coins(amount)
                     .store_uint(0, 2)
                     .store_slice(my_address())
+                    .store_coins(0)
+                    .store_maybe_ref(null())
                     .end_cell();
       
         cell body = begin_cell()

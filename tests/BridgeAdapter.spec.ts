@@ -155,6 +155,16 @@ describe('BridgeAdapter', () => {
             deploy: true,
             success: true
         })
+
+        await deployer.getSender().send({
+            to: bridgeAdapter.address,
+            value: toNano('1000'),
+        })
+
+        await deployer.getSender().send({
+            to: jettonMinter.address,
+            value: toNano('1000'),
+        })
     });
 
     it("successfully deploy BridgeAdapter contract", async () => {
@@ -240,8 +250,13 @@ describe('BridgeAdapter', () => {
             positions,
             toNano('6')
         );
-        // console.log(await wallet.getBalance());
-        console.log(result.transactions[4]);
+
+        expect(result.transactions).toHaveTransaction({
+            op: Opcodes.verify_receipt,
+            success:true
+        })
+
+        expect((await wallet.getBalance()).amount).toBe(toNano(1000));
     })
     
 });
