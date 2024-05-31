@@ -35,6 +35,48 @@ global cell jetton_wallet_code;
     );
 }
 
+
+
+() confirm_tx (slice in_msg_body) impure {
+    int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
+    (slice to, slice jetton_master, int amount, int src) = (in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_coins(), in_msg_body~load_uint(32));
+
+    if(src == src::cosmos){
+        cell mint_msg = begin_cell()
+                    .store_uint(op::internal_transfer(), 32)
+                    .store_uint(query_id, 64)
+                    .store_coins(amount)
+                    .store_uint(0, 2)
+                    .store_slice(my_address())
+                    .store_coins(0)
+                    .store_maybe_ref(null())
+                    .end_cell();
+      
+        cell body = begin_cell()
+                    .store_uint(op::mint(),32)
+                    .store_uint(query_id,64)
+                    .store_slice(to)
+                    .store_coins(amount)
+                    .store_ref(mint_msg)
+                    .end_cell();
+        
+        send_simple_message(0, jetton_master, body, CARRY_REMAINING_GAS);
+    }
+
+    if(src == src::ton){
+        slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
+        cell body = begin_cell()
+                        .store_uint(op::transfer(),32)
+                        .store_uint(query_id,64)
+                        .store_slice(to)
+                        .store_coins(amount)
+                        .end_cell();
+
+        send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
+    }
+}
+
+
 ;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) { ;; ignore all empty messages        
@@ -52,16 +94,64 @@ global cell jetton_wallet_code;
     
     slice sender_address = cs~load_msg_addr();
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
-    int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
-   
+
     if (op == op::send_tx) {
-        send_tx(in_msg_body, query_id);
+        int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
+        int height = in_msg_body~load_uint(64);
+        cell tx_raw_cell = in_msg_body~load_ref();
+        cell proofs = in_msg_body~load_ref();
+        cell positions = in_msg_body~load_ref();
+        slice tx_raw = tx_raw_cell.begin_parse();
+
+        ;; basic validate
+        throw_unless(error::empty_tx, tx_raw.slice_refs_empty?() == 0);
+
+        slice auth_info = tx_raw~load_ref().begin_parse();
+        slice tx_body = tx_raw~load_ref().begin_parse();
+        slice signatures = tx_raw~load_ref().begin_parse();
+
+        throw_unless(error::empty_auth_info, auth_info.slice_refs_empty?() == 0);
+        throw_unless(error::empty_tx_body, tx_body.slice_refs_empty?() == 0);
+        throw_unless(error::empty_tx_signatures, signatures.slice_refs_empty?() == 0);
+      
+        slice messages = tx_body~load_ref().begin_parse();
+       
+        while(messages.slice_refs_empty?() != -1) {
+            slice next_ref = messages~load_ref().begin_parse();
+            slice message = messages~load_ref().begin_parse();
+            slice typeUrl = message~load_ref().begin_parse();
+            throw_unless(error::unsupported_type_url, typeUrl.slice_hash() == msg_execute_contract::typeUrl.slice_hash());
+            slice value = message~load_ref().begin_parse();
+            slice sender_contract = value~load_ref().begin_parse();
+            sender_contract~load_ref(); ;; skip sender
+            slice contract = sender_contract~load_ref().begin_parse();
+            throw_unless(error::invalid_contract_address, contract.slice_hash() == bridge_wasm_smart_contract.slice_hash());
+            messages = next_ref;
+        }
+     
+        ;; send_raw_message
+        builder bodyBuilder = begin_cell();
+        bodyBuilder = bodyBuilder 
+                .store_uint(op::verify_receipt, 32)
+                .store_uint(query_id, 64)
+                .store_ref(
+            begin_cell()
+                     .store_uint(height, 64)
+                     .store_ref(tx_raw_cell)
+                     .store_ref(proofs)
+                     .store_ref(positions)
+                     .end_cell()
+        );
+               
+        cell body = bodyBuilder.end_cell();
+      
+        send_simple_message(0, light_client, body, CARRY_REMAINING_GAS);
         return ();
     } 
     
     if(op == op::confirm_tx){   
         throw_unless(error::invalid_sender, sender_address.slice_hash() == light_client.slice_hash()); ;; only light client can confirm tx
-        confirm_tx(in_msg_body, query_id);
+        confirm_tx(in_msg_body); 
         return ();
     }
 
@@ -69,81 +159,6 @@ global cell jetton_wallet_code;
 }
 
 
-() send_tx(slice in_msg_body, int query_id) impure {
-    int height = in_msg_body~load_uint(64);
-    cell proofs = in_msg_body~load_ref();
-    cell positions = in_msg_body~load_ref();
-    cell tx_raw_cell = in_msg_body~load_ref();
-    slice tx_raw = tx_raw_cell.begin_parse();
-    ;; basic validate
-    throw_unless(error::empty_tx, tx_raw.slice_refs_empty?() != 0);
-
-    slice auth_info = tx_raw~load_ref().begin_parse();
-    slice tx_body = tx_raw~load_ref().begin_parse();
-    slice signatures = tx_raw~load_ref().begin_parse();
-
-    throw_unless(error::empty_auth_info, auth_info.slice_empty?() != 0);
-    throw_unless(error::empty_tx_body, tx_body.slice_empty?() != 0);
-    throw_unless(error::empty_tx_signatures, signatures.slice_empty?() != 0);
-
-    slice messages = tx_body~load_ref().begin_parse();
-
-    while(messages.slice_refs_empty?() != -1) {
-        slice next_ref = messages~load_ref().begin_parse();
-        slice message = messages~load_ref().begin_parse();
-        slice typeUrl = message~load_ref().begin_parse();
-        throw_unless(error::unsupported_type_url, typeUrl.slice_hash() == msg_execute_contract::typeUrl.slice_hash());
-        slice value = message~load_ref().begin_parse();
-        slice sender_contract = value~load_ref().begin_parse();
-        sender_contract~load_ref(); ;; skip sender
-        slice contract = sender_contract~load_ref().begin_parse();
-        throw_unless(error::invalid_contract_address, contract.slice_hash() == bridge_wasm_smart_contract.slice_hash());
-        messages = next_ref;
-    }
-
-    ;; send_raw_message
-    builder bodyBuilder = begin_cell();
-    bodyBuilder = bodyBuilder 
-                .store_uint(op::verify_receipt, 32)
-                .store_uint(query_id, 64)
-                .store_builder(begin_cell()
-                     .store_uint(height, 64)
-                     .store_ref(tx_raw_cell)
-                     .store_ref(proofs)
-                     .store_ref(positions)
-    );
-               
-    cell body = bodyBuilder.end_cell();
-
-    send_simple_message(0, light_client, body, CARRY_REMAINING_GAS);
-} 
-
-() confirm_tx(slice in_msg_body, int query_id) impure {
-    (slice to, slice jetton_master, int amount, int src) = (in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_coins(), in_msg_body~load_uint(32));
-
-    if(src == src::cosmos){
-        cell body = begin_cell()
-                    .store_uint(op::mint(),32)
-                    .store_uint(query_id,64)
-                    .store_slice(to)
-                    .store_coins(amount)
-                    .end_cell();
-
-        send_simple_message(0, jetton_master, body, CARRY_REMAINING_GAS);
-    }
-
-    if(src == src::ton){
-        slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
-        cell body = begin_cell()
-                        .store_uint(op::transfer(),32)
-                        .store_uint(query_id,64)
-                        .store_slice(to)
-                        .store_coins(amount)
-                        .end_cell();
-
-        send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
-    }
-}
 
 (slice, slice ,cell) get_bridge_data() method_id {
     load_data();

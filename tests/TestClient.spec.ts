@@ -197,7 +197,6 @@ describe('TestClient', () => {
             .storeAddress(Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address)
             .storeUint(BigInt('10000000000000000'), 128)
             .storeUint(Src.COSMOS, 32)
-            // .storeStringTail('_')
             .endCell()
             .beginParse();
         console.log(Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase());
