@@ -105,13 +105,14 @@
 
     if(prefix_slice.slice_empty?() != -1){
         int memo_len = (slice_bits(first_memo_slice) + slice_bits(second_memo_slice)) >> 3;
-        slice encoded_memo_len = varuint::encode(memo_len);
+        slice memo_encoded = varuint::encode(memo_len);
         return_tuple~tpush(prefix_slice);
-        return_tuple~tpush(encoded_memo_len);
+        return_tuple~tpush(memo_encoded);
         return_tuple~tpush(first_memo_slice);
         return_tuple~tpush(second_memo_slice);
         return_tuple~tpush(suffix_slice);
-        tx_body_len += (slice_bits(encoded_memo_len) + slice_bits(prefix_slice) + slice_bits(first_memo_slice) + slice_bits(second_memo_slice) + slice_bits(suffix_slice)) >> 3;
+        tx_body_len += memo_encoded.slice_bits() >> 3;
+        tx_body_len += (slice_bits(prefix_slice) + slice_bits(first_memo_slice) + slice_bits(second_memo_slice) + slice_bits(suffix_slice)) >> 3;
     }
     
     while(ext_opts.slice_refs_empty?() != -1){
