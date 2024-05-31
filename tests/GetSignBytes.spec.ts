@@ -40,6 +40,8 @@ describe('GetSignBytes', () => {
         });
     });
 
+
+
     it('test encode', async () => {
         for (const fixture of Object.values(voteFixtures)) {
             if (fixture.value !== undefined && fixture.encoding !== undefined) {
