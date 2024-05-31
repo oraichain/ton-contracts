@@ -194,9 +194,9 @@ describe('TestClient', () => {
         const memo = beginCell()
             .storeAddress(Address.parseFriendly("EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9").address)
             .storeAddress(Address.parseFriendly("UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN").address)
-            .storeCoins(10)
+            .storeCoins(toNano(10000000000))
             .storeUint(Src.COSMOS, 32)
-            .storeStringTail("_")
+            .storeStringTail("0")
             .endCell()
             .beginParse();
         const buffer  = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();

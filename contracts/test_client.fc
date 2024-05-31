@@ -24,6 +24,8 @@
 #include "utils/msg_execute_contract.fc";
 #include "utils/tx_raw.fc";
 #include "static/op_codes.fc";
+#include "static/state.fc";
+
 
 ;; storage variables
 
@@ -360,5 +362,6 @@ int memo_parse(slice ds) method_id {
     ~dump(ds~load_msg_addr());
     ~dump(ds~load_coins());
     ~dump(ds~load_uint(32));
+    ~dump(src::cosmos);
     return 1;
 }

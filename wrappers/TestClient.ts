@@ -370,9 +370,8 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
     let memo_timeout_height_builder = beginCell();
 
     if (txBodyWasm.memo) {
-        memo_timeout_height_builder.storeRef(beginCell()
-        .storeBuffer(Buffer.from(txBodyWasm.memo, 'hex'))
-        .endCell());
+        memo_timeout_height_builder
+        .storeBuffer(Buffer.from(txBodyWasm.memo, 'hex'));
     }
 
     if (txBodyWasm.timeoutHeight > 0n) {

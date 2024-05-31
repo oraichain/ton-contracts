@@ -1,5 +1,5 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import { beginCell, Cell, toNano } from '@ton/core';
+import { Address, beginCell, Cell, toNano } from '@ton/core';
 import { LightClient,Opcodes} from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
@@ -130,6 +130,7 @@ describe('BridgeAdapter', () => {
         }, bridgeAdapterCode))
      
         const deployBridgeResult = await bridgeAdapter.sendDeploy(deployer.getSender(), toNano('0.05'));
+        
         expect(deployBridgeResult.transactions).toHaveTransaction({
             from: deployer.address,
             to: bridgeAdapter.address,
@@ -145,6 +146,7 @@ describe('BridgeAdapter', () => {
             },
             jettonMinterCode
         ));
+        
         const deployJettonMinterResult = await jettonMinter.sendDeploy(deployer.getSender(), toNano('0.05'));
 
         expect(deployJettonMinterResult.transactions).toHaveTransaction({
@@ -163,19 +165,31 @@ describe('BridgeAdapter', () => {
         expect(stack.readCell().toBoc()).toEqual(jettonWalletCode.toBoc());
     })
 
+    it("should persistent when creating memo to test", async()=>{
+        // const memo = beginCell()
+        // .storeAddress(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))
+        // .storeAddress(Address.parse("EQD9O9id4nq0zFUOVXdsEMC_GBTv--GBfz8HcEFHGJY6L8u3"))
+        // .storeCoins(toNano(1000))
+        // .storeUint(Src.COSMOS, 32)
+        // .storeStringTail("0")
+        // .endCell().bits.toString();
+        // console.log({memo});
+        // const slice = beginCell().storeBuffer(Buffer.from(memo, 'hex')).endCell().beginParse();
+        // expect(slice.loadAddress().equals(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))).toBeTruthy();
+        // expect(slice.loadAddress().equals(jettonMinter.address)).toBeTruthy();
+        // expect(slice.loadCoins()).toBe(toNano(1000));
+        // expect(slice.loadUint(32)).toBe(Src.COSMOS);
+    })
+
     it("successfully mint token to the user", async() => {
         const relayer = await blockchain.treasury('relayer');
         await updateBlock(blockData, relayer);
-        // const userJettonWallet = await jettonMinter.getWalletAddress(user.address);
-        // const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
-        // const wallet = blockchain.openContract(userJettonWalletBalance);
-        // const memo = beginCell().storeAddress(user.address).storeAddress(jettonMinter.address).storeCoins(toNano(100)).storeUint(Src.COSMOS, 32).endCell().bits.toString();
-        // console.log("🚀 ~ it ~ memo:", memo)
         const {header, txs} = blockData;
         const height = header.height;
-        const chosenIndex = 2; // hardcode the txs with custom memo
+        const chosenIndex = 1; // hardcode the txs with custom memo
         const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
         const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
+      
         const registry = new Registry(defaultRegistryTypes);
         registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
         const rawMsg = decodedTx.body.messages.map((msg) => {
@@ -184,44 +198,50 @@ describe('BridgeAdapter', () => {
                 value: registry.decode(msg),
             };
         });
-  
-        const slice = beginCell().storeBuffer(Buffer.from(decodedTx.body.memo,'hex')).endCell().beginParse();
-        const to = slice.loadAddress();
-        const jettonMasterAddress = slice.loadAddress();
-        const amount = slice.loadCoins();
-        console.log(amount)
-        const crc = slice.loadStringTail();
-        console.log(crc)
-        console.log(Src.COSMOS);
 
-        console.log(to);
-        console.log(jettonMasterAddress);
-        console.log("jettonMinter", jettonMinter.address); // EQD9O9id4nq0zFUOVXdsEMC_GBTv--GBfz8HcEFHGJY6L8u3
+        const memo = beginCell()
+        .storeAddress(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))
+        .storeAddress(jettonMinter.address)
+        .storeCoins(toNano(1000))
+        .storeUint(Src.COSMOS, 32)
+        .storeStringTail("0")
+        .endCell().bits.toString();
+
         const decodedTxWithRawMsg: any = {
             ...decodedTx,
             body: {
                 messages: rawMsg,
-                memo: decodedTx.body.memo,
+                memo: memo,
                 timeoutHeight: decodedTx.body.timeoutHeight,
                 extensionOptions: decodedTx.body.extensionOptions,
                 nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
             },
         };
 
+        // const slice = beginCell().storeBuffer(Buffer.from(decodedTx.body.memo, 'hex')).endCell().beginParse();
+        // expect(slice.loadAddress().equals(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))).toBeTruthy();
+        // expect(slice.loadAddress().equals(jettonMinter.address)).toBeTruthy();
+        // expect(slice.loadCoins()).toBe(toNano(1000));
+        // expect(slice.loadUint(32)).toBe(Src.COSMOS);
+
+        const userJettonWallet = await jettonMinter.getWalletAddress(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"));
+        const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
+        const wallet = blockchain.openContract(userJettonWalletBalance);
+
+        console.log(BigInt("0x" + beginCell().storeAddress(wallet.address).endCell().hash().toString('hex')));
+
         const {branch: proofs, positions} = getMerkleProofs(leaves, leaves[chosenIndex]);
-        
+
         const result = await bridgeAdapter.sendTx(
             relayer.getSender(), 
             BigInt(height), 
             decodedTxWithRawMsg, 
             proofs,
             positions,
-            toNano('1')
+            toNano('6')
         );
-
-        // console.log(result.transactions);
-        // const balance = await wallet.getBalance();
-        // console.log(balance);
+        // console.log(await wallet.getBalance());
+        console.log(result.transactions[4]);
     })
     
 });

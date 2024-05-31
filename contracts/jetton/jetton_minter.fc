@@ -11,7 +11,6 @@
 #include "../imports/params.fc";
 #include "../imports/jetton-utils.fc";
 
-
 (int, slice, cell, cell) load_data() inline {
   slice ds = get_data().begin_parse();
   return (
@@ -36,6 +35,9 @@
 () mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
   cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
   slice to_wallet_address = calculate_jetton_wallet_address(state_init);
+  ~dump(null());
+  ~dump(null());
+  ~dump(begin_cell().store_slice(to_wallet_address).end_cell().cell_hash());
   var msg = begin_cell()
     .store_uint(0x18, 6)
     .store_slice(to_wallet_address)
@@ -62,7 +64,7 @@
     int query_id = in_msg_body~load_uint(64);
 
     (int total_supply, slice admin_address, cell content, cell jetton_wallet_code) = load_data();
-
+   
     if (op == op::mint()) {
         throw_unless(73, equal_slices(sender_address, admin_address));
         slice to_address = in_msg_body~load_msg_addr();

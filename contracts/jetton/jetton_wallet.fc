@@ -204,6 +204,9 @@ int gas_consumption() asm "15000000 PUSHINT"; ;; 0.015 TON
   in_msg_body~skip_bits(32); ;; 0xFFFFFFFF
   (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
   int op = in_msg_body~load_uint(32);
+  ~dump(null());
+  ~dump(-101);
+  ~dump(op);
   throw_unless(709, (op == op::internal_transfer()) | (op == op::burn_notification()));
   int query_id = in_msg_body~load_uint(64);
   int jetton_amount = in_msg_body~load_coins();
@@ -230,13 +233,16 @@ int gas_consumption() asm "15000000 PUSHINT"; ;; 0.015 TON
   int fwd_fee = muldiv(cs~load_coins(), 3, 2); ;; we use message fwd_fee for estimation of forward_payload costs
 
   int op = in_msg_body~load_uint(32);
-
+  ~dump(op);
   if (op == op::transfer()) { ;; outgoing transfer
     send_tokens(in_msg_body, sender_address, msg_value, fwd_fee);
     return ();
   }
 
   if (op == op::internal_transfer()) { ;; incoming transfer
+    ~dump(null());
+    ~dump(-102);
+    ~dump(op);
     receive_tokens(in_msg_body, sender_address, my_balance, fwd_fee, msg_value);
     return ();
   }

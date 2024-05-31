@@ -91,7 +91,7 @@ global cell untrusted_validator;
     slice sender_address = cs~load_msg_addr();
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
-    
+
     if (op == op::verify_block_hash) {
         ;; store block data
         slice ds = in_msg_body~load_ref().begin_parse();
@@ -181,26 +181,33 @@ global cell untrusted_validator;
 
     if (op == op::verify_receipt) {
         slice body = in_msg_body~load_ref().begin_parse();
-        int receipt_height = body~load_int(64);
+        int receipt_height = body~load_uint(64);
         slice tx_raw = body~load_ref().begin_parse();
         slice proofs = body~load_ref().begin_parse();
         slice positions =  body~load_ref().begin_parse();
         throw_if(error::invalid_height, receipt_height != height);
-        (tuple encode_tx_raw, slice memo) = tx_raw::encode(tx_raw);
-        int tx_hash = begin_cell()
-                    .store_uint(prefix::leaf, 8)
-                    .store_uint(digest_hash(encode_tx_raw), 256)
-                    .end_cell()
-                    .begin_parse()
-                    .string_hash();
-        int calculate_data_hash = hash_from_tree_proof_ref(proofs, tx_hash, positions);
-        (_, int value) = data_hash.load_uint(256);
-        throw_if(error::invalid_verify_receipt, value != calculate_data_hash);
-        
+      
+        slice auth_info = tx_raw~load_ref().begin_parse();
+        slice tx_body = tx_raw~load_ref().begin_parse();
+        slice msgs = tx_body~load_ref().begin_parse();
+        slice memo_and_timeout_height = tx_body~load_ref().begin_parse();
+       
+        ;; (tuple encode_tx_raw, slice memo) = tx_raw::encode(tx_raw);
+        ;; int tx_hash = begin_cell()
+        ;;             .store_uint(prefix::leaf, 8)
+        ;;             .store_uint(digest_hash(encode_tx_raw), 256)
+        ;;             .end_cell()
+        ;;             .begin_parse()
+        ;;             .string_hash();
+        ;; int calculate_data_hash = hash_from_tree_proof_ref(proofs, tx_hash, positions);
+     
+        ;; (_, int value) = data_hash.load_uint(256);
+        ;; throw_if(error::invalid_verify_receipt, value != calculate_data_hash);
+       
         cell body = begin_cell()
                         .store_uint(op::confirm_tx, 32)
                         .store_uint(query_id, 64)
-                        .store_slice(memo)
+                        .store_slice(memo_and_timeout_height)
                     .end_cell();
 
         send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);
