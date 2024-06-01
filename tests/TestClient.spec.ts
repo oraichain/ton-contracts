@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Address, beginCell, Cell, toNano } from '@ton/core';
-import { BlockId, TestClient, getMerkleProofs, leafHash } from '../wrappers/TestClient';
+import { BlockId, TestClient, buildRecursiveSliceRef, getMerkleProofs, leafHash } from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { result as blockData } from './fixtures/block.json';
@@ -204,4 +204,25 @@ describe('TestClient', () => {
         const res = await lightClient.getMemo(buffer);
         console.log(Src.COSMOS);
     });
+
+    it("should tuple of bits equal despite of the different element size", async()=>{
+        const memo = beginCell()
+        .storeAddress(Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address)
+        .storeAddress(Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address)
+        .storeUint(BigInt('10000000000000000'), 128)
+        .storeUint(Src.COSMOS, 32)
+        .endCell()
+        .beginParse();
+        const data = Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase();
+        const buffer = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
+        const msg = {"action":{"data":data}}
+        const msgBuffer = Buffer.from(JSON.stringify(msg));
+        const msgSlice = buildRecursiveSliceRef(msgBuffer);
+        console.log(Buffer.from('{"action":{"data":').toString('hex'))
+        console.log(Buffer.from('}}').toString('hex'))
+        console.log(Buffer.from('"').toString('hex'))
+
+        await lightClient.getBuffParse(msgSlice ?? beginCell().endCell(), buffer);
+        
+    })
 });

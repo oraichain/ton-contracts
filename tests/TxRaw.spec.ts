@@ -138,6 +138,7 @@ describe('TxEncoded', () => {
                 'base64',
             ),
         );
+        console.log(decodedTx.body.messages[0].value);
         
         const registry = new Registry(defaultRegistryTypes);
         registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
@@ -182,4 +183,27 @@ describe('TxEncoded', () => {
             ).toString('hex'),
         );
     });
+
+   it('test decode', async () => {
+        const decodedTx = decodeTxRaw(
+            Buffer.from(
+                "CrYECrMECiQvY29zbXdhc20ud2FzbS52MS5Nc2dFeGVjdXRlQ29udHJhY3QSigQKK29yYWkxMnBjZXhmbmR1NDJuaGx1aGt0MmQyMzZ5Y3ZycHY1cWw5NjhnaDkSK29yYWkxMmh6anhmaDc3d2w1NzJnZHpjdDJmeHYyYXJ4Y3doNmd5a2M3cWgarQN7InNlbmQiOnsiY29udHJhY3QiOiJvcmFpMTk1MjY5YXd3bnQ1bTZjODQzcTZ3N2hwOHJ0MGs3c3lmdTlkZTRoMHd6Mzg0c2xzaHV6cHM4eTdjY20iLCJhbW91bnQiOiIxNTIwMDAwMDAiLCJtc2ciOiJleUpzYjJOaGJGOWphR0Z1Ym1Wc1gybGtJam9pWTJoaGJtNWxiQzB5T1NJc0luSmxiVzkwWlY5aFpHUnlaWE56SWpvaWIzSmhhV0l4TW5CalpYaG1ibVIxTkRKdWFHeDFhR3QwTW1ReU16WjVZM1p5Y0hZMWNXeHFiWEo1ZUhnaUxDSnlaVzF2ZEdWZlpHVnViMjBpT2lKdmNtRnBZakI0TlRWa016azRNekkyWmprNU1EVTVaa1kzTnpVME9EVXlORFk1T1Rrd01qZENNekU1TnprMU5TSXNJblJwYldWdmRYUWlPak0yTURBc0ltMWxiVzhpT2lKdmNtRnBZakI0WldJMVlUQmhORE16TWpRMlpHRXlaR1JsWmpkak1tSXpOalV3T1RJd1ptSTJNelJoTWpVMVlTSjkifX0SZgpQCkYKHy9jb3Ntb3MuY3J5cHRvLnNlY3AyNTZrMS5QdWJLZXkSIwohA9WYaaxtkm8XVXQwDUFfCmHK2G2pjN3zZ8u43KPBcD14EgQKAggBGAYSEgoMCgRvcmFpEgQ1MDg5ELSOPhpAzUfU7cvbIBHpttfEwHzvZyj98BpajqAiGvi5Iod8d5tgn+xuMEdjyRySXs5CKIJvMohyWt7iUyUHOlpb9zaxdg==",
+                'base64',
+            ),
+        );
+    
+
+        const registry = new Registry(defaultRegistryTypes);
+        registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
+
+        const rawMsg = decodedTx.body.messages.map((msg) => {
+            return {
+                typeUrl: msg.typeUrl,
+                value: registry.decode(msg),
+            };
+        });
+        console.log(Buffer.from([115,101,110,100]).toString('utf-8'));
+        console.log(rawMsg[0].value.msg);
+        console.log(new Uint8Array(Buffer.from('{}":,')));
+    }); 
 });

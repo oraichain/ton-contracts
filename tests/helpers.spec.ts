@@ -36,7 +36,6 @@ describe('jsonToSliceRef', () => {
         console.log(memo.loadAddress());
         console.log(memo.loadAddress());
         console.log(memo.loadCoins());
-        console.log(memo.loadStringTail());
-        // console.dir(json, { depth: null });
     });
+  
 });
