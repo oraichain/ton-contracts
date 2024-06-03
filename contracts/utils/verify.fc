@@ -210,7 +210,6 @@ int verify::verify_optimized_commit_builder(
                       
                         if(is_valid){
                             count += 1;
-                            ;; ~dump(count);
                             trusted_committed_voting_power += validator~load_uint(32);
                         }
                     }

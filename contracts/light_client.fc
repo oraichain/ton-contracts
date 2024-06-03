@@ -183,11 +183,13 @@ global cell untrusted_validator;
         slice body = in_msg_body~load_ref().begin_parse();
         int receipt_height = body~load_uint(64);
         slice tx_raw = body~load_ref().begin_parse();
+
         slice proofs = body~load_ref().begin_parse();
         slice positions =  body~load_ref().begin_parse();
+        slice data =  body~load_ref().begin_parse();
         throw_if(error::invalid_height, receipt_height != height);
       
-        (tuple encode_tx_raw, slice memo) = tx_raw::encode(tx_raw);
+        (tuple encode_tx_raw, _) = tx_raw::encode(tx_raw);
         int tx_hash = begin_cell()
                     .store_uint(prefix::leaf, 8)
                     .store_uint(digest_hash(encode_tx_raw), 256)
@@ -202,9 +204,9 @@ global cell untrusted_validator;
         cell body = begin_cell()
                         .store_uint(op::confirm_tx, 32)
                         .store_uint(query_id, 64)
-                        .store_slice(memo)
+                        .store_slice(data)
                     .end_cell();
-
+                    
         send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);
         return ();
     }

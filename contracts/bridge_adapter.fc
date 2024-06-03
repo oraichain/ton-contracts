@@ -6,6 +6,12 @@
 #include "utils/messages.fc";
 #include "common/messages.fc";
 #include "utils/jetton.fc";
+#include "utils/helper.fc";
+
+
+const msg_prefix = "7b227772697465223a7b2264617461223a"s;
+const end_json = "7d7d"s;
+const slice quotes = "22"s;
 
 ;; storage variables
 global slice light_client; ;; TODO: dynamic calculate based on blockId
@@ -40,7 +46,10 @@ global cell jetton_wallet_code;
 () confirm_tx (slice in_msg_body) impure {
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
     (slice to, slice jetton_master, int amount, int src) = (in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_uint(128), in_msg_body~load_uint(32));
-  
+    
+    slice custom =  begin_cell().store_uint(0,2).end_cell().begin_parse();
+    slice null_addr = custom~load_msg_addr();
+    
     if(src == src::cosmos){
         cell mint_msg = begin_cell()
                     .store_uint(op::internal_transfer(), 32)
@@ -94,58 +103,70 @@ global cell jetton_wallet_code;
     
     slice sender_address = cs~load_msg_addr();
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
-
     if (op == op::send_tx) {
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         int height = in_msg_body~load_uint(64);
         cell tx_raw_cell = in_msg_body~load_ref();
         cell proofs = in_msg_body~load_ref();
         cell positions = in_msg_body~load_ref();
+        cell data = in_msg_body~load_ref();
+        slice data_slice = data.begin_parse();
         slice tx_raw = tx_raw_cell.begin_parse();
-
         ;; basic validate
         throw_unless(error::empty_tx, tx_raw.slice_refs_empty?() == 0);
-
         slice auth_info = tx_raw~load_ref().begin_parse();
         slice tx_body = tx_raw~load_ref().begin_parse();
         slice signatures = tx_raw~load_ref().begin_parse();
-
         throw_unless(error::empty_auth_info, auth_info.slice_refs_empty?() == 0);
         throw_unless(error::empty_tx_body, tx_body.slice_refs_empty?() == 0);
         throw_unless(error::empty_tx_signatures, signatures.slice_refs_empty?() == 0);
-      
         slice messages = tx_body~load_ref().begin_parse();
-       
+
         while(messages.slice_refs_empty?() != -1) {
             slice next_ref = messages~load_ref().begin_parse();
             slice message = messages~load_ref().begin_parse();
             slice typeUrl = message~load_ref().begin_parse();
-            throw_unless(error::unsupported_type_url, typeUrl.slice_hash() == msg_execute_contract::typeUrl.slice_hash());
             slice value = message~load_ref().begin_parse();
             slice sender_contract = value~load_ref().begin_parse();
             sender_contract~load_ref(); ;; skip sender
             slice contract = sender_contract~load_ref().begin_parse();
-            throw_unless(error::invalid_contract_address, contract.slice_hash() == bridge_wasm_smart_contract.slice_hash());
+            int is_execute_msg = typeUrl.slice_hash() == msg_execute_contract::typeUrl.slice_hash();
+            int is_bridge_smart_contract = contract.slice_hash() == bridge_wasm_smart_contract.slice_hash();
+            if(is_execute_msg & is_bridge_smart_contract){
+                slice msg = value~load_ref().begin_parse();
+                tuple tuple_msg = msg.slice_ref_to_tuple();
+                tuple tuple_data = empty_tuple();
+                tuple_data~tpush(msg_prefix);
+                (slice f, slice b) = cs_hex_to_tuple_string(data_slice);
+                tuple_data~tpush(quotes);
+                tuple_data~tpush(f);
+                tuple_data~tpush(b);
+                tuple_data~tpush(quotes);
+                tuple_data~tpush(end_json);
+                int data_hash = digest_hash(tuple_data);
+                int msg_hash = digest_hash(tuple_msg);
+                if(data_hash = msg_hash){
+                    ;; send_raw_message
+                    builder bodyBuilder = begin_cell();
+                    bodyBuilder = bodyBuilder 
+                        .store_uint(op::verify_receipt, 32)
+                        .store_uint(query_id, 64)
+                        .store_ref(
+                        begin_cell()
+                            .store_uint(height, 64)
+                            .store_ref(tx_raw_cell)
+                            .store_ref(proofs)
+                            .store_ref(positions)
+                            .store_ref(data)
+                            .end_cell()
+                    );
+
+                    cell body = bodyBuilder.end_cell();
+                    send_simple_message(0, light_client, body, CARRY_REMAINING_GAS);
+                }
+            }
             messages = next_ref;
         }
-     
-        ;; send_raw_message
-        builder bodyBuilder = begin_cell();
-        bodyBuilder = bodyBuilder 
-                .store_uint(op::verify_receipt, 32)
-                .store_uint(query_id, 64)
-                .store_ref(
-            begin_cell()
-                     .store_uint(height, 64)
-                     .store_ref(tx_raw_cell)
-                     .store_ref(proofs)
-                     .store_ref(positions)
-                     .end_cell()
-        );
-
-        cell body = bodyBuilder.end_cell();
-      
-        send_simple_message(0, light_client, body, CARRY_REMAINING_GAS);
         return ();
     } 
     

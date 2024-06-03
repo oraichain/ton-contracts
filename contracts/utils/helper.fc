@@ -73,3 +73,13 @@ int equal_slice? (slice a, slice b) {
 
     return (front_slice.end_cell().begin_parse(), back_slice.end_cell().begin_parse());
 }
+
+tuple slice_ref_to_tuple(slice ds){
+    tuple tuple_msg = empty_tuple();
+    while(ds.slice_refs_empty?() != -1) {
+        slice next_ref = ds~load_ref().begin_parse();
+        tuple_msg~tpush(ds);
+        ds = next_ref;
+    }
+    return tuple_msg;
+}

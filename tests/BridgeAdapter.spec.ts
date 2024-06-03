@@ -19,7 +19,7 @@ describe('BridgeAdapter', () => {
     let jettonWalletCode: Cell;
     let jettonMinterCode: Cell;
 
-    const bridgeWasmAddress = 'orai1lus0f0rhx8s03gdllx2n6vhkmf0536dv57wfge';
+    const bridgeWasmAddress = 'orai1qmu0l3864e6rspdew0dyf34k0ujndam8u0t5w7295pzlerhq827s60sx8e';
     const updateBlock = async (blockData: any, relayer: SandboxContract<TreasuryContract>) => {
         const { header, commit, validators, txs } = blockData;
    
@@ -183,9 +183,25 @@ describe('BridgeAdapter', () => {
         .storeUint(Src.COSMOS, 32)
         .endCell().bits.toString();
         console.log({memo: Buffer.from(memo, 'hex').toString('hex').toUpperCase()});
+
+        const memoJettonSrcTON = beginCell()
+        .storeAddress(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))
+        .storeAddress(jettonMinter.address)
+        .storeUint(toNano(10), 128)
+        .storeUint(Src.TON, 32)
+        .endCell().bits.toString();
+        console.log({memo: Buffer.from(memo, 'hex').toString('hex').toUpperCase()});
+
+        const memoSrcTONNative = beginCell()
+        .storeAddress(Address.parse("EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT"))
+        .storeAddress(null)
+        .storeUint(toNano(10), 128)
+        .storeUint(Src.TON, 32)
+        .endCell().bits.toString();
+        console.log({memo: Buffer.from(memo, 'hex').toString('hex').toUpperCase()});
     })
 
-    it("successfully mint token to the user", async() => {
+    it("successfully mint token to the user if coming from src::cosmos", async() => {
         const relayer = await blockchain.treasury('relayer');
         await updateBlock(blockData, relayer);
         const {header, txs} = blockData;
@@ -228,6 +244,7 @@ describe('BridgeAdapter', () => {
             decodedTxWithRawMsg, 
             proofs,
             positions,
+            beginCell().storeBuffer(Buffer.from("80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830031065C6598ABE7B025B3EFAE39D28468689FD39F35F2AC209BC112CF0685F7768000000000000000000000009502F9000139517D2", 'hex')).endCell(),
             toNano('6')
         );
 
@@ -238,5 +255,10 @@ describe('BridgeAdapter', () => {
 
         expect((await wallet.getBalance()).amount).toBe(toNano(10));
     })
+
+    it("successfully transfer to user if coming from src::ton", async() => {
+
+    })
+
     
 });

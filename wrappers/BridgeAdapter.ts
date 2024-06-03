@@ -78,12 +78,13 @@ export class BridgeAdapter implements Contract {
         readonly init?: { code: Cell; data: Cell },
     ) {}
 
-    static buildBridgeAdapterSendTxBody(height:bigint, tx: TxWasm, proofs: Cell | undefined, positions: Cell) {
+    static buildBridgeAdapterSendTxBody(height:bigint, tx: TxWasm, proofs: Cell | undefined, positions: Cell, data: Cell) {
         const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
         const authInfo = beginCell()
             .storeRef(signInfos || beginCell().endCell())
             .storeRef(fee)
             .storeRef(tip)
+          
             .endCell();
 
         const txBody = txBodyWasmToRef(tx.body);
@@ -113,6 +114,7 @@ export class BridgeAdapter implements Contract {
             .storeRef(txRaw)
             .storeRef(proofs ?? beginCell().endCell())
             .storeRef(positions)
+            .storeRef(data)
             .endCell();
     }
 
@@ -141,9 +143,10 @@ export class BridgeAdapter implements Contract {
         txWasm: TxWasm, 
         proofs: Cell | undefined,
         positions: Cell,
+        data: Cell,
         value: bigint) {
 
-        const sendTxBody = BridgeAdapter.buildBridgeAdapterSendTxBody(height, txWasm, proofs, positions);
+        const sendTxBody = BridgeAdapter.buildBridgeAdapterSendTxBody(height, txWasm, proofs, positions, data);
 
         await provider.internal(via, {
             value,

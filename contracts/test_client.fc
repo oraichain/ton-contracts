@@ -376,7 +376,6 @@ int buffer_parse(slice msg, slice data) method_id {
     tuple tuple_msg = empty_tuple();
     while(msg.slice_refs_empty?() != -1){
         slice next_ref = msg~load_ref().begin_parse();
-        ~dump(msg);
         tuple_msg~tpush(msg);
         msg = next_ref;
     }
@@ -388,7 +387,6 @@ int buffer_parse(slice msg, slice data) method_id {
     tuple_data~tpush(b);
     tuple_data~tpush(quotes);
     tuple_data~tpush(end_slice);
-
     ~dump(digest_hash(tuple_msg));
     ~dump(digest_hash(tuple_data));
 

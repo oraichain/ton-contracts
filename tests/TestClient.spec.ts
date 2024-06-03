@@ -215,10 +215,11 @@ describe('TestClient', () => {
         .beginParse();
         const data = Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase();
         const buffer = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
+        console.log(data)
         const msg = {"action":{"data":data}}
         const msgBuffer = Buffer.from(JSON.stringify(msg));
         const msgSlice = buildRecursiveSliceRef(msgBuffer);
-        console.log(Buffer.from('{"action":{"data":').toString('hex'))
+        console.log(Buffer.from('{"write":{"data":').toString('hex'))
         console.log(Buffer.from('}}').toString('hex'))
         console.log(Buffer.from('"').toString('hex'))
 
