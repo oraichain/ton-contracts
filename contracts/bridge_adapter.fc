@@ -1,4 +1,5 @@
 #include "imports/stdlib.fc";
+#include "imports/op-codes.fc";
 #include "utils/verify.fc";
 #include "static/errors.fc";
 #include "static/op_codes.fc";
@@ -46,10 +47,6 @@ global cell jetton_wallet_code;
 () confirm_tx (slice in_msg_body) impure {
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
     (slice to, slice jetton_master, int amount, int src) = (in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_uint(128), in_msg_body~load_uint(32));
-    
-    slice custom =  begin_cell().store_uint(0,2).end_cell().begin_parse();
-    slice null_addr = custom~load_msg_addr();
-    
     if(src == src::cosmos){
         cell mint_msg = begin_cell()
                     .store_uint(op::internal_transfer(), 32)
@@ -73,15 +70,25 @@ global cell jetton_wallet_code;
     }
 
     if(src == src::ton){
-        slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
-        cell body = begin_cell()
-                        .store_uint(op::transfer(),32)
-                        .store_uint(query_id,64)
-                        .store_slice(to)
-                        .store_coins(amount)
-                        .end_cell();
+        int jetton_master_len = slice_bits(jetton_master);
+        if(jetton_master_len == 2){
+            send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
+        } 
 
-        send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
+        if(jetton_master_len == 267) {
+            slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
+            cell body = begin_cell()
+                        .store_uint(op::transfer(), 32)
+                        .store_uint(query_id, 64)
+                        .store_coins(amount)
+                        .store_slice(to)
+                        .store_slice(my_address())
+                        .store_maybe_ref(null())
+                        .store_coins(0)
+                        .store_maybe_ref(null())
+                        .end_cell();
+            send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
+        }
     }
 }
 
