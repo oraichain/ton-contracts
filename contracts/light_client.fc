@@ -106,24 +106,6 @@ global cell untrusted_validator;
         }
         data_hash = temp_data_hash;
         validator_hash_set = temp_validator_hash_set;
-
-        ;; store validator data
-        cell validator_cs = ds~load_ref();
-        builder inner_cell = begin_cell().store_ref(validator_cs);
-        slice validators = validator_cs.begin_parse();
-        cell validators_by_address = new_dict();
-        int total_voting_power = 0;
-        while(validators.slice_refs_empty?() != -1){
-            slice next_ref = validators~load_ref().begin_parse();
-            slice validator_i =  validators~load_ref().begin_parse();
-            int address = validator_i~load_uint(160);
-            validators_by_address~udict_set(160, address, validator_i);
-            int voting_power = validator_i~load_uint(32);
-            total_voting_power += voting_power;
-            validators = next_ref;
-        }
-        untrusted_validator = inner_cell.store_uint(total_voting_power, 256).store_ref(validators_by_address).end_cell();
-
         state = state::initial;
         save_data();
         return ();
@@ -206,6 +188,7 @@ global cell untrusted_validator;
                         .store_uint(query_id, 64)
                         .store_slice(data)
                     .end_cell();
+
                     
         send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);
         return ();

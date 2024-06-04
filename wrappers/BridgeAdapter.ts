@@ -18,7 +18,7 @@ export function jsonToSliceRef(value: Object): Cell {
         case 'number':
         case 'boolean':
             return beginCell().storeBuffer(Buffer.from(value.toString())).endCell();
-        case 'object':{
+        case 'object': {
             let cell = beginCell().endCell();
             const reverseEntries = Object.entries(value).reverse();
             for (const [key, value] of reverseEntries) {
@@ -78,13 +78,19 @@ export class BridgeAdapter implements Contract {
         readonly init?: { code: Cell; data: Cell },
     ) {}
 
-    static buildBridgeAdapterSendTxBody(height:bigint, tx: TxWasm, proofs: Cell | undefined, positions: Cell, data: Cell) {
+    static buildBridgeAdapterSendTxBody(
+        height: bigint,
+        tx: TxWasm,
+        proofs: Cell | undefined,
+        positions: Cell,
+        data: Cell,
+    ) {
         const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
         const authInfo = beginCell()
             .storeRef(signInfos || beginCell().endCell())
             .storeRef(fee)
             .storeRef(tip)
-          
+
             .endCell();
 
         const txBody = txBodyWasmToRef(tx.body);
@@ -137,15 +143,15 @@ export class BridgeAdapter implements Contract {
     }
 
     async sendTx(
-        provider: ContractProvider, 
-        via: Sender, 
+        provider: ContractProvider,
+        via: Sender,
         height: bigint,
-        txWasm: TxWasm, 
+        txWasm: TxWasm,
         proofs: Cell | undefined,
         positions: Cell,
         data: Cell,
-        value: bigint) {
-
+        value: bigint,
+    ) {
         const sendTxBody = BridgeAdapter.buildBridgeAdapterSendTxBody(height, txWasm, proofs, positions, data);
 
         await provider.internal(via, {
@@ -160,4 +166,3 @@ export class BridgeAdapter implements Contract {
         return result.stack;
     }
 }
-

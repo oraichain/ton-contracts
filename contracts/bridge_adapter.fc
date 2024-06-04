@@ -152,8 +152,7 @@ global cell jetton_wallet_code;
                 tuple_data~tpush(end_json);
                 int data_hash = digest_hash(tuple_data);
                 int msg_hash = digest_hash(tuple_msg);
-                if(data_hash = msg_hash){
-                    ;; send_raw_message
+                if(data_hash == msg_hash){
                     builder bodyBuilder = begin_cell();
                     bodyBuilder = bodyBuilder 
                         .store_uint(op::verify_receipt, 32)

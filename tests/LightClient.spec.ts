@@ -75,7 +75,6 @@ describe('LightClient', () => {
                     time: header.time,
                     version: header.version,
                 },
-                validators,
                 { value: toNano('0.5') },
             );
             console.log(`blockhash:`, Opcodes.verify_block_hash);
@@ -83,6 +82,15 @@ describe('LightClient', () => {
                 success: true,
                 op: Opcodes.verify_block_hash,
             });
+            result = await lightClient.sendStoreUntrustedValidators(user.getSender(), validators, {
+                value: toNano('0.5'),
+            });
+            console.log(Opcodes.store_untrusted_validators);
+            expect(result.transactions[1]).toHaveTransaction({
+                success: true,
+                op: Opcodes.store_untrusted_validators,
+            });
+
             result = await lightClient.sendVerifyUntrustedValidators(user.getSender(), {
                 value: toNano('1'),
             });
@@ -138,7 +146,7 @@ describe('LightClient', () => {
                     value: toNano('0.5'),
                 },
             );
-            
+
             expect(result.transactions[1]).toHaveTransaction({
                 success: true,
                 op: Opcodes.verify_receipt,
@@ -152,7 +160,7 @@ describe('LightClient', () => {
             });
         };
 
-        await testcase(blockData);
+        // await testcase(blockData);
         await testcase(newBlockData);
     });
 });

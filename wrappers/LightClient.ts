@@ -129,17 +129,8 @@ export class LightClient implements Contract {
         });
     }
 
-    async sendVerifyBlockHash(
-        provider: ContractProvider,
-        via: Sender,
-        header: BlockHeader,
-        validators: Validators[],
-        opts?: any,
-    ) {
-        const data = beginCell()
-            .storeRef(getBlockHashCell(header))
-            .storeRef(getValidatorsCell(validators) as Cell)
-            .endCell();
+    async sendVerifyBlockHash(provider: ContractProvider, via: Sender, header: BlockHeader, opts?: any) {
+        const data = beginCell().storeRef(getBlockHashCell(header)).endCell();
         await provider.internal(via, {
             value: opts?.value || 0,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
