@@ -15,7 +15,6 @@ import { defaultRegistryTypes } from '@cosmjs/stargate';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 import { getMerkleProofs } from '../wrappers/TestClient';
 import { JettonWallet } from '../wrappers/JettonWallet';
-import { setTimeout } from 'timers/promises';
 
 describe('BridgeAdapter', () => {
     let lightClientCode: Cell;
