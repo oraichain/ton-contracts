@@ -13,11 +13,12 @@
 const msg_prefix = "7b227772697465223a7b2264617461223a"s;
 const end_json = "7d7d"s;
 const slice quotes = "22"s;
-
 ;; storage variables
 global slice light_client; ;; TODO: dynamic calculate based on blockId
 global slice bridge_wasm_smart_contract;
 global cell jetton_wallet_code;
+
+;;TODO: on_bounce function
 
 ;; load_data populates storage variables using stored data
 () load_data() impure {
@@ -42,7 +43,11 @@ global cell jetton_wallet_code;
     );
 }
 
-
+() on_bounce(slice in_msg_body){
+    in_msg_body~skip_bits(32); ;; 0xFFFFFFFF
+    int op = in_msg_body~load_uint(32);
+    throw_unless(709, (op == op::mint()) | (op == op::transfer()));
+}
 
 () confirm_tx (slice in_msg_body) impure {
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
@@ -92,7 +97,6 @@ global cell jetton_wallet_code;
     }
 }
 
-
 ;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) { ;; ignore all empty messages        
@@ -102,10 +106,11 @@ global cell jetton_wallet_code;
    
     int flags = cs~load_uint(4);
 
-    if (flags & 1) { ;; ignore all bounced messages
+    int flags = cs~load_uint(4);
+    if (flags & 1) {
+        on_bounce(in_msg_body);
         return ();
     }
-
     load_data(); ;; here we populate the storage variables
     
     slice sender_address = cs~load_msg_addr();
@@ -184,8 +189,6 @@ global cell jetton_wallet_code;
 
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
 }
-
-
 
 (slice, slice ,cell) get_bridge_data() method_id {
     load_data();

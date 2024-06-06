@@ -473,7 +473,7 @@ describe('BridgeAdapter', () => {
             op: Opcodes.verify_receipt,
             success: true,
         });
-
+    
         console.log('userBalance', await user.getBalance());
         expect((await userWallet.getState()).balance).toBeGreaterThan(toNano(9));
         expect((await userWallet.getState()).balance).toBeLessThan(toNano(10)); // since its must pay gas
