@@ -17,6 +17,8 @@ const int error::unsupported_type_url = 3101;
 const int error::unsupported_wasm_message = 3102;
 const int error::invalid_sender = 3103;
 
+const int error::already_process_data = 3200;
+
 
 
 

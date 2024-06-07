@@ -1,4 +1,4 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
+import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Dictionary, Sender, SendMode } from '@ton/core';
 import { getAuthInfoInput, TxBodyWasm, txBodyWasmToRef, TxWasm } from './TestClient';
 import { crc32 } from '../crc32';
 
@@ -59,6 +59,7 @@ export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
         .storeAddress(config.light_client)
         .storeRef(beginCell().storeBuffer(Buffer.from(config.bridge_wasm_smart_contract)).endCell())
         .storeRef(config.jetton_wallet_code)
+        .storeRef(beginCell().storeDict(Dictionary.empty()).endCell()) // empty dict
         .endCell();
 }
 
@@ -90,7 +91,6 @@ export class BridgeAdapter implements Contract {
             .storeRef(signInfos || beginCell().endCell())
             .storeRef(fee)
             .storeRef(tip)
-
             .endCell();
 
         const txBody = txBodyWasmToRef(tx.body);

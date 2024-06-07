@@ -1,3 +1,4 @@
+
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Address, beginCell, Cell, toNano } from '@ton/core';
 import { LightClient, Opcodes } from '../wrappers/LightClient';
@@ -15,6 +16,7 @@ import { defaultRegistryTypes } from '@cosmjs/stargate';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 import { getMerkleProofs } from '../wrappers/TestClient';
 import { JettonWallet } from '../wrappers/JettonWallet';
+import { crc32 } from '../crc32';
 
 describe('BridgeAdapter', () => {
     let lightClientCode: Cell;
@@ -477,5 +479,28 @@ describe('BridgeAdapter', () => {
         console.log('userBalance', await user.getBalance());
         expect((await userWallet.getState()).balance).toBeGreaterThan(toNano(9));
         expect((await userWallet.getState()).balance).toBeLessThan(toNano(10)); // since its must pay gas
+        
+        const replayTx = await bridgeAdapter.sendTx(
+            relayer.getSender(),
+            BigInt(height),
+            decodedTxWithRawMsg,
+            proofs,
+            positions,
+            beginCell()
+                .storeBuffer(
+                    Buffer.from(
+                        '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1820000000000000000000000012A05F2006EFD5B5AC',
+                        'hex',
+                    ),
+                )
+                .endCell(),
+            toNano('6'),
+        );
+        
+        // expect prevent exitCode
+        expect(replayTx.transactions).toHaveTransaction({
+            op: crc32('op::send_tx'),
+            exitCode: 3200
+        });
     });
 });
