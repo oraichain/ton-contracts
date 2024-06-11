@@ -4,6 +4,7 @@ const int error::invalid_verify_sigs = 403;
 const int error::invalid_verify_validators_set = 404;
 const int error::invalid_verify_receipt = 405;
 const int error::invalid_height = 406;
+const int error::not_match_address = 407;
 const int error::invalid_state = 4001;
 
 ;; Bridge error 3xxx - is Bridge Error
@@ -18,6 +19,12 @@ const int error::unsupported_wasm_message = 3102;
 const int error::invalid_sender = 3103;
 
 const int error::already_process_data = 3200;
+
+;; Whitelist denom error
+const int error::same_admin_address = 5000;
+const int error::not_admin_address = 5001;
+
+
 
 
 
