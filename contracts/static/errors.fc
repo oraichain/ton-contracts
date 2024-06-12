@@ -5,6 +5,7 @@ const int error::invalid_verify_validators_set = 404;
 const int error::invalid_verify_receipt = 405;
 const int error::invalid_height = 406;
 const int error::not_match_address = 407;
+const int error::not_match_chain_id = 408;
 const int error::invalid_state = 4001;
 
 ;; Bridge error 3xxx - is Bridge Error
