@@ -55,7 +55,7 @@ describe('LightClient', () => {
 
     it('test light client verify block hash', async () => {
         const testcase = async (blockData: any) => {
-            const { header, commit, validators, txs } = blockData;
+            const { header, commit, validators } = blockData;
             const user = await blockchain.treasury('user');
             let result = await lightClient.sendVerifyBlockHash(
                 user.getSender(),
@@ -87,45 +87,9 @@ describe('LightClient', () => {
                 dataHash: (await lightClient.getDataHash()).toString('hex'),
                 validatorHash: (await lightClient.getValidatorHash()).toString('hex'),
             });
-
-            const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
-            const choosenIndex = 0;
-            const decodedTx = decodeTxRaw(Buffer.from(txs[choosenIndex], 'base64'));
-            const registry = new Registry(defaultRegistryTypes);
-            registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
-            const rawMsg = decodedTx.body.messages.map((msg) => {
-                return {
-                    typeUrl: msg.typeUrl,
-                    value: registry.decode(msg),
-                };
-            });
-            const decodedTxWithRawMsg: any = {
-                ...decodedTx,
-                body: {
-                    messages: rawMsg,
-                    memo: decodedTx.body.memo,
-                    timeoutHeight: decodedTx.body.timeoutHeight,
-                    extensionOptions: decodedTx.body.extensionOptions,
-                    nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
-                },
-            };
-            result = await lightClient.sendVerifyReceipt(
-                user.getSender(),
-                header.height,
-                decodedTxWithRawMsg,
-                leaves,
-                leaves[choosenIndex],
-                {
-                    value: toNano('1'),
-                },
-            );
-            expect(result.transactions[1]).toHaveTransaction({
-                success: true,
-                op: Opcodes.verify_receipt,
-            });
         };
 
-        // await testcase(blockData);
+        await testcase(blockData);
         await testcase(newBlockData);
     });
 });
