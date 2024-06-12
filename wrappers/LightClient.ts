@@ -129,8 +129,20 @@ export class LightClient implements Contract {
         });
     }
 
-    async sendVerifyBlockHash(provider: ContractProvider, via: Sender, header: BlockHeader, opts?: any) {
-        const data = beginCell().storeRef(getBlockHashCell(header)).endCell();
+    async sendVerifyBlockHash(
+        provider: ContractProvider,
+        via: Sender,
+        header: BlockHeader,
+        validators: Validators[],
+        commit: Commit,
+        opts?: any,
+    ) {
+        const data = beginCell()
+            .storeRef(getBlockHashCell(header))
+            .storeRef(getValidatorsCell(validators)!)
+            .storeRef(getCommitCell(commit))
+            .endCell();
+
         await provider.internal(via, {
             value: opts?.value || 0,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
@@ -188,7 +200,7 @@ export class LightClient implements Contract {
                 .storeUint(opts?.queryID || 0, 64)
                 .storeRef(
                     beginCell()
-                        .storeUint(BigInt(height), 32)
+                        .storeUint(BigInt(height), 64)
                         .storeRef(txRaw)
                         .storeRef(proofs || beginCell().endCell())
                         .storeRef(positions)
@@ -206,19 +218,6 @@ export class LightClient implements Contract {
                 .storeUint(Opcodes.verify_untrusted_validators, 32)
                 .storeUint(opts?.queryID || 0, 64)
                 .storeRef(beginCell().endCell())
-                .endCell(),
-        });
-    }
-
-    async sendStoreUntrustedValidators(provider: ContractProvider, via: Sender, validators: Validators[], opts?: any) {
-        const validatorCell = getValidatorsCell(validators);
-        await provider.internal(via, {
-            value: opts?.value || 0,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Opcodes.store_untrusted_validators, 32)
-                .storeUint(opts?.queryID || 0, 64)
-                .storeRef(validatorCell!)
                 .endCell(),
         });
     }

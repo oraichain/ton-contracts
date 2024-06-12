@@ -96,45 +96,64 @@ global cell untrusted_validator;
         ;; store block data
         slice ds = in_msg_body~load_ref().begin_parse();
         slice header = ds~load_ref().begin_parse();
+        
         (int temp_height, slice temp_chain_id, slice temp_data_hash, slice temp_validator_hash_set) = get_data_from_header(header);
+        throw_if(error::invalid_height, height > temp_height);
         height = temp_height;
+        throw_if(error::not_match_chain_id, chain_id.equal_slice?(temp_chain_id) != -1);
         chain_id = temp_chain_id;
-        if (temp_data_hash.equal_slice?(data_hash) == 0) {
-            validator_set_changed = 1; ;; mean that it is changed on validator set
-        } else {
-            validator_set_changed = 0;
-        }
         data_hash = temp_data_hash;
-        validator_hash_set = temp_validator_hash_set;
-        state = state::initial;
-        save_data();
-        return ();
-    }
+        validator_set_changed = 0;
+        if (validator_hash_set.equal_slice?(temp_validator_hash_set) != -1) {
+            validator_set_changed = 1;
+            validator_hash_set = temp_validator_hash_set;
 
-    if (op == op::store_untrusted_validators) {
-        cell validators_cell = in_msg_body~load_ref();
-        builder inner_cell = begin_cell().store_ref(validators_cell);
-        slice validators = validators_cell.begin_parse();
-        cell validators_by_address = new_dict();
-        int total_voting_power = 0;
-        while(validators.slice_refs_empty?() != -1){
-            slice next_ref = validators~load_ref().begin_parse();
-            slice validator_i =  validators~load_ref().begin_parse();
-            int address = validator_i~load_uint(160);
-            validators_by_address~udict_set(160, address, validator_i);
-            int voting_power = validator_i~load_uint(32);
-            total_voting_power += voting_power;
-            validators = next_ref;
+            ;; update untrusted validators here
+            cell validators_cell = ds~load_ref();
+            builder inner_cell = begin_cell().store_ref(validators_cell);
+            slice validators = validators_cell.begin_parse();
+            cell validators_by_address = new_dict();
+            int total_voting_power = 0;
+            while(validators.slice_refs_empty?() != -1){
+                slice next_ref = validators~load_ref().begin_parse();
+                slice validator_i =  validators~load_ref().begin_parse();
+                int address = validator_i~load_uint(160);
+                validators_by_address~udict_set(160, address, validator_i);
+                int voting_power = validator_i~load_uint(32);
+                total_voting_power += voting_power;
+                validators = next_ref;
+            }
+            untrusted_validator = inner_cell.store_uint(total_voting_power, 256).store_ref(validators_by_address).end_cell();
+
+            ;; send new message to verify untrusted validators
+            cell commit = ds~load_ref();
+            builder bodyBuilder = begin_cell();
+            bodyBuilder = bodyBuilder 
+                        .store_uint(op::verify_untrusted_validators, 32)
+                        .store_uint(query_id, 64)
+                        .store_ref(begin_cell().store_slice(sender_address).store_ref(commit).end_cell());
+            cell body = bodyBuilder.end_cell();
+            send_simple_message(0, my_address(), body, CARRY_REMAINING_GAS);
         }
-        untrusted_validator = inner_cell.store_uint(total_voting_power, 256).store_ref(validators_by_address).end_cell();
         state = state::initial;
         save_data();
         return ();
     }
 
     if (op == op::verify_untrusted_validators) {
+        throw_if(error::invalid_sender, sender_address.equal_slice?(my_address()) != -1);
         int result = verify::verify_validators_set(validator_hash_set, untrusted_validator.begin_parse());
         throw_if(error::invalid_verify_validators_set, result != -1);
+
+        ;; send verify_sigs message
+        cell wrap_commit = in_msg_body~load_ref(); ;; a cell that have ref is commit
+        builder bodyBuilder = begin_cell();
+        bodyBuilder = bodyBuilder 
+                        .store_uint(op::verify_sigs, 32)
+                        .store_uint(query_id, 64)
+                        .store_ref(wrap_commit);
+        cell body = bodyBuilder.end_cell();
+        send_simple_message(0, my_address(), body, CARRY_REMAINING_GAS);
         state = state::verify_untrusted_validators;
         save_data();
         return ();
@@ -145,6 +164,7 @@ global cell untrusted_validator;
             throw_if(error::invalid_state, state != state::verify_untrusted_validators);
         }
         slice body = in_msg_body~load_ref().begin_parse();
+        slice response_address = body~load_msg_addr();
         slice commit = body~load_ref().begin_parse();
         int result = verify::verify_optimized_commit_builder(
             validator_set_changed,
@@ -153,10 +173,10 @@ global cell untrusted_validator;
             commit,
             trusted_validator.begin_parse(),
             untrusted_validator.begin_parse());
-   
         throw_if(error::invalid_verify_sigs, result != -1);
         trusted_validator = untrusted_validator;
         state = state::initial;
+        send_empty_message(0, response_address, CARRY_REMAINING_GAS);
         save_data();
         return ();
     }
