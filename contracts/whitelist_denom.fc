@@ -1,0 +1,99 @@
+#include "imports/stdlib.fc";
+#include "static/op_codes.fc";
+#include "common/messages.fc";
+#include "common/address.fc";
+#include "static/errors.fc";
+
+
+global slice admin_address;
+;; if denom exist => return empty cell()
+;; if denom not exist => return null()
+global cell denom_store;
+
+;; load_data populates storage variables using stored data
+() load_data() impure {
+    var ds = get_data().begin_parse();
+    admin_address = ds~load_msg_addr();
+    slice dict_cs = ds~load_ref().begin_parse();
+    denom_store = dict_cs~load_dict();
+    ds.end_parse();
+}
+
+;; save_data stores storage variables as a cell into persistent storage
+() save_data() impure inline_ref {
+    set_data(
+        begin_cell()
+            .store_slice(admin_address)
+            .store_ref(begin_cell().store_dict(denom_store).end_cell())
+        .end_cell()
+    );
+}
+
+;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) { ;; ignore all empty messages        
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+   
+    int flags = cs~load_uint(4);
+
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+
+    load_data(); ;; here we populate the storage variables
+
+    slice sender_address = cs~load_msg_addr();
+    int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
+    int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
+
+    if (op == op::set_admin_address) {
+        throw_if(error::not_admin_address, compare_address(sender_address, admin_address) != -1);
+        slice ds = in_msg_body~load_ref().begin_parse();
+        slice new_address = ds~load_msg_addr();
+        throw_if(error::same_admin_address, compare_address(new_address, admin_address) != -1);
+        admin_address = new_address;
+        save_data();
+        return ();
+    }
+
+    if (op == op::set_denom) {
+        throw_if(error::not_admin_address, compare_address(sender_address, admin_address) != -1);
+        slice ds = in_msg_body~load_ref().begin_parse();
+        int permission = ds~load_uint(1);
+        slice denom_address = ds~load_msg_addr();
+        (_, int key) = denom_address.parse_std_addr();
+
+        if (permission == 0) {
+            denom_store~udict_delete?(256, key);
+        } else {
+            denom_store~udict_set(256, key, begin_cell().end_cell().begin_parse());
+        }
+        send_empty_message(0, sender_address, CARRY_REMAINING_GAS);
+        save_data();
+        return ();
+    }
+
+    if (op == op::query_denom) {
+        slice ds = in_msg_body~load_ref().begin_parse();
+        slice denom_address = ds~load_msg_addr();
+
+    }
+
+    throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
+}
+
+slice get_admin_address() method_id {
+    load_data();
+    return admin_address;
+}
+
+slice get_denom(slice ds) method_id {
+    load_data();
+    slice denom_address = ds~load_msg_addr();
+    (_, int key) = denom_address.parse_std_addr();
+    (slice data, _) = denom_store.udict_get?(256, key);
+    return data;
+}

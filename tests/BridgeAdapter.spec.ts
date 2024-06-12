@@ -1,5 +1,4 @@
-
-import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
+import { Blockchain, printTransactionFees, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Address, beginCell, Cell, toNano } from '@ton/core';
 import { LightClient, Opcodes } from '../wrappers/LightClient';
 import '@ton/test-utils';
@@ -327,6 +326,8 @@ describe('BridgeAdapter', () => {
             toNano('6'),
         );
 
+        printTransactionFees(result.transactions);
+
         expect(result.transactions).toHaveTransaction({
             op: Opcodes.verify_receipt,
             success: true,
@@ -475,11 +476,11 @@ describe('BridgeAdapter', () => {
             op: Opcodes.verify_receipt,
             success: true,
         });
-    
+
         console.log('userBalance', await user.getBalance());
         expect((await userWallet.getState()).balance).toBeGreaterThan(toNano(9));
         expect((await userWallet.getState()).balance).toBeLessThan(toNano(10)); // since its must pay gas
-        
+
         const replayTx = await bridgeAdapter.sendTx(
             relayer.getSender(),
             BigInt(height),
@@ -496,11 +497,11 @@ describe('BridgeAdapter', () => {
                 .endCell(),
             toNano('6'),
         );
-        
+
         // expect prevent exitCode
         expect(replayTx.transactions).toHaveTransaction({
             op: crc32('op::send_tx'),
-            exitCode: 3200
+            exitCode: 3200,
         });
     });
 });

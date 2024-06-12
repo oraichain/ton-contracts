@@ -14,3 +14,10 @@ const op::confirm_tx = "op::confirm_tx"c;
 ;; Minter
 int op::mint() asm "21 PUSHINT";
 const cosmos = "src::cosmos"c;
+
+;; Whitelist Denom
+const op::set_admin_address = "op::set_admin_address"c;
+const op::set_denom = "op::set_denom"c;
+const op::query_denom = "op::query_denom"c;
+
+
