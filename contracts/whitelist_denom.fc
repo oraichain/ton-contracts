@@ -71,8 +71,15 @@ global cell denom_store;
         } else {
             denom_store~udict_set(256, key, begin_cell().end_cell().begin_parse());
         }
+        send_empty_message(0, sender_address, CARRY_REMAINING_GAS);
         save_data();
         return ();
+    }
+
+    if (op == op::query_denom) {
+        slice ds = in_msg_body~load_ref().begin_parse();
+        slice denom_address = ds~load_msg_addr();
+
     }
 
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw

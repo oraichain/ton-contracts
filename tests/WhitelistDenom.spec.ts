@@ -1,4 +1,4 @@
-import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
+import { Blockchain, printTransactionFees, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
 import { WhitelistDenom } from '../wrappers/WhitelistDenom';
 import '@ton/test-utils';
@@ -57,9 +57,11 @@ describe('Version', () => {
         const denom = await blockchain.treasury('USDT');
         const beforeValue = await contract.getDenom(denom.address);
         expect(beforeValue).toBeNull();
-        await contract.sendSetDenom(deployer.getSender(), denom.address, true, {
-            value: toNano('0.1'),
+        const result = await contract.sendSetDenom(deployer.getSender(), denom.address, true, {
+            value: toNano('8'),
         });
+        printTransactionFees(result.transactions);
+        console.log((await blockchain.getContract(contract.address)).balance);
         const value = await contract.getDenom(denom.address);
         expect(value).not.toBeNull();
     });
