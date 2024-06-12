@@ -80,6 +80,21 @@ describe('LightClient', () => {
                 { value: toNano('5') },
             );
 
+            expect(result.transactions).toHaveTransaction({
+                op: Opcodes.verify_block_hash,
+                success: true,
+            });
+
+            expect(result.transactions).toHaveTransaction({
+                op: Opcodes.verify_untrusted_validators,
+                success: true,
+            });
+
+            expect(result.transactions).toHaveTransaction({
+                op: Opcodes.verify_sigs,
+                success: true,
+            });
+
             console.log(`blockhash:`, Opcodes.verify_block_hash);
             console.log('Finished: ', {
                 height: await lightClient.getHeight(),

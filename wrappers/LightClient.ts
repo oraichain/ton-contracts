@@ -85,7 +85,6 @@ export function lightClientConfigToCell(config: LightClientConfig): Cell {
 
 export const Opcodes = {
     verify_block_hash: crc32('op::verify_block_hash'),
-    store_untrusted_validators: crc32('op::store_untrusted_validators'),
     verify_sigs: crc32('op::verify_sigs'),
     verify_receipt: crc32('op::verify_receipt'),
     verify_untrusted_validators: crc32('op::verify_untrusted_validators'),
