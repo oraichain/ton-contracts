@@ -1,11 +1,12 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import { Cell, toNano } from '@ton/core';
-import { BlockId, TestClient, getMerkleProofs, leafHash } from '../wrappers/TestClient';
+import { Address, beginCell, Cell, toNano } from '@ton/core';
+import { BlockId, TestClient, buildRecursiveSliceRef, getMerkleProofs, leafHash } from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { result as blockData } from './fixtures/block.json';
 import { result as validators } from './fixtures/validators.json';
 import { createHash } from 'crypto';
+import { Src } from '../wrappers/BridgeAdapter';
 
 const validatorMap = Object.fromEntries(validators.validators.map((v) => [v.address, v]));
 
@@ -187,6 +188,42 @@ describe('TestClient', () => {
         const ret = await lightClient.getDigestHash(tx);
         console.log(createHash('sha256').update(tx).digest('hex'), ret.toString(16));
     });
-});
 
-// 67617629344630198485329716378486052286880133911024727032624263529111772997478n
+    it('memo unique', async () => {
+        console.log(Address.parse('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').toStringBuffer().length);
+        console.log(Src.COSMOS);
+        const memo = beginCell()
+            .storeAddress(Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address)
+            .storeAddress(Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address)
+            .storeUint(BigInt('10000000000000000'), 128)
+            .storeUint(Src.COSMOS, 32)
+            .endCell()
+            .beginParse();
+        console.log(Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase());
+        const buffer = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
+        const res = await lightClient.getMemo(buffer);
+        console.log(Src.COSMOS);
+    });
+
+    it("should tuple of bits equal despite of the different element size", async()=>{
+        const memo = beginCell()
+        .storeAddress(Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address)
+        .storeAddress(Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address)
+        .storeUint(BigInt('10000000000000000'), 128)
+        .storeUint(Src.COSMOS, 32)
+        .endCell()
+        .beginParse();
+        const data = Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase();
+        const buffer = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
+        console.log(data)
+        const msg = {"action":{"data":data}}
+        const msgBuffer = Buffer.from(JSON.stringify(msg));
+        const msgSlice = buildRecursiveSliceRef(msgBuffer);
+        console.log(Buffer.from('{"write":{"data":').toString('hex'))
+        console.log(Buffer.from('}}').toString('hex'))
+        console.log(Buffer.from('"').toString('hex'))
+
+        await lightClient.getBuffParse(msgSlice ?? beginCell().endCell(), buffer);
+        
+    })
+});

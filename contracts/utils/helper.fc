@@ -27,6 +27,63 @@ int equal_slice? (slice a, slice b) {
     return a.slice_hash() == b.slice_hash();
 }
 
+(slice, slice) cs_hex_to_tuple_string(slice hex){
+    builder front_slice = begin_cell();
+    builder back_slice = begin_cell();
+
+    int len = (hex.slice_bits() >> 3) / 2;
+            
+    int i = 0;
+    while (i < len) {
+        int number = hex~load_uint(8);
+        int quotient = number / 16;
+        int remainder = number - quotient * 16;
+
+        if (quotient >= 10) {
+            quotient += 55;
+        } else {
+            quotient += 48;
+        }
+        if (remainder >= 10) {
+            remainder += 55;
+        } else {
+            remainder += 48;
+        }
+        front_slice = front_slice.store_uint(quotient, 8).store_uint(remainder, 8);
+        i += 1;
+    }
+
+    while (hex.slice_empty?() != -1) {
+        int number = hex~load_uint(8);
+        int quotient = number / 16;
+        int remainder = number - quotient * 16;
+
+        if (quotient >= 10) {
+            quotient += 55;
+        } else {
+            quotient += 48;
+        }
+        if (remainder >= 10) {
+            remainder += 55;
+        } else {
+            remainder += 48;
+        }
+        back_slice = back_slice.store_uint(quotient, 8).store_uint(remainder, 8);
+    }
+
+    return (front_slice.end_cell().begin_parse(), back_slice.end_cell().begin_parse());
+}
+
+tuple slice_ref_to_tuple(slice ds){
+    tuple tuple_msg = empty_tuple();
+    while(ds.slice_refs_empty?() != -1) {
+        slice next_ref = ds~load_ref().begin_parse();
+        tuple_msg~tpush(ds);
+        ds = next_ref;
+    }
+    return tuple_msg;
+}
+
 slice hex_to_str(slice ds) {
     int length = ds.slice_bits() >> 3;
     int i = 0;

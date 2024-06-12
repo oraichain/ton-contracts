@@ -7,7 +7,6 @@
 {       
     slice messages = ds~load_ref().begin_parse();
     slice memo_and_timeout_height = ds~load_ref().begin_parse();
-    slice memo = begin_cell().end_cell().begin_parse();
     slice ext_opts = ds~load_ref().begin_parse();
     slice non_critical_ext_opts = ds~load_ref().begin_parse();
 
@@ -39,31 +38,83 @@
         messages = next_ref;
     }
     
-    builder memo_and_timeout_height_builder = begin_cell();
+    ;; builder memo_and_timeout_height_builder = begin_cell();
+    builder prefix = begin_cell();
+    builder first_memo = begin_cell();
+    builder second_memo = begin_cell();
+    builder suffix = begin_cell();
+    slice return_memo = null();
 
     if(memo_and_timeout_height.slice_empty?() != -1){
-        memo = memo_and_timeout_height~load_ref().begin_parse();
-        int timeout_height = memo_and_timeout_height~load_uint(8 * 64); ;;64 bytes
+        slice memo = memo_and_timeout_height~load_ref().begin_parse();
+        return_memo = memo;
+        if (memo_and_timeout_height.slice_empty?() != -1) {
+            int timeout_height = memo_and_timeout_height~load_uint(64); ;;64 bit
+            suffix = suffix.store_slice(varuint::encode(24));
+            suffix = suffix.store_slice(uvarint_64::encode(timeout_height));
+        }
        
         if(memo.slice_empty?() != -1){
-            memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(varuint::encode(18)).store_slice(memo);
-        }
+            prefix = prefix.store_slice(varuint::encode(18));
+            int len = (memo.slice_bits() >> 3) / 2;
+            
+            int i = 0;
+            while (i < len) {
+                int number = memo~load_uint(8);
+                int quotient = number / 16;
+                int remainder = number - quotient * 16;
 
-        if(memo.slice_empty?() != -1){
-            memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(varuint::encode(24));
-            memo_and_timeout_height_builder = memo_and_timeout_height_builder.store_slice(uvarint_64::encode(timeout_height));
-        }
+                if (quotient >= 10) {
+                    quotient += 55;
+                } else {
+                    quotient += 48;
+                }
+                if (remainder >= 10) {
+                    remainder += 55;
+                } else {
+                    remainder += 48;
+                }
+                first_memo = first_memo.store_uint(quotient, 8).store_uint(remainder, 8);
+                i += 1;
+            }
 
+            while (memo.slice_empty?() != -1) {
+                int number = memo~load_uint(8);
+                int quotient = number / 16;
+                int remainder = number - quotient * 16;
+
+                if (quotient >= 10) {
+                    quotient += 55;
+                } else {
+                    quotient += 48;
+                }
+                if (remainder >= 10) {
+                    remainder += 55;
+                } else {
+                    remainder += 48;
+                }
+                second_memo = second_memo.store_uint(quotient, 8).store_uint(remainder, 8);
+            }
+        }
     }
 
-    slice memo_and_timeout_height_slice = memo_and_timeout_height_builder.end_cell().begin_parse();
+    slice prefix_slice = prefix.end_cell().begin_parse();
+    slice first_memo_slice = first_memo.end_cell().begin_parse();
+    slice second_memo_slice = second_memo.end_cell().begin_parse();
+    slice suffix_slice = suffix.end_cell().begin_parse();
 
-    if(memo_and_timeout_height_slice.slice_empty?() != -1){
-        return_tuple~tpush(memo_and_timeout_height_slice);
-        tx_body_len += slice_bits(memo_and_timeout_height_slice) >> 3;
+    if(prefix_slice.slice_empty?() != -1){
+        int memo_len = (slice_bits(first_memo_slice) + slice_bits(second_memo_slice)) >> 3;
+        slice memo_encoded = varuint::encode(memo_len);
+        return_tuple~tpush(prefix_slice);
+        return_tuple~tpush(memo_encoded);
+        return_tuple~tpush(first_memo_slice);
+        return_tuple~tpush(second_memo_slice);
+        return_tuple~tpush(suffix_slice);
+        tx_body_len += memo_encoded.slice_bits() >> 3;
+        tx_body_len += (slice_bits(prefix_slice) + slice_bits(first_memo_slice) + slice_bits(second_memo_slice) + slice_bits(suffix_slice)) >> 3;
     }
     
-
     while(ext_opts.slice_refs_empty?() != -1){
         slice next_ref = ext_opts~load_ref().begin_parse();
         slice msg = ext_opts~load_ref().begin_parse();
@@ -88,7 +139,6 @@
         tx_body_len += any_len;
         ext_opts = next_ref;
     }
-
 
     while(non_critical_ext_opts.slice_refs_empty?() != -1){
         slice next_ref = non_critical_ext_opts~load_ref().begin_parse();
@@ -119,5 +169,5 @@
         non_critical_ext_opts = next_ref;
     }
 
-    return (tx_body_len, return_tuple, memo);
+    return (tx_body_len, return_tuple, return_memo);
 }

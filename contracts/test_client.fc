@@ -24,7 +24,14 @@
 #include "utils/msg_execute_contract.fc";
 #include "utils/tx_raw.fc";
 #include "static/op_codes.fc";
+<<<<<<< HEAD
+#include "static/state.fc";
 #include "utils/helper.fc";
+
+
+=======
+#include "utils/helper.fc";
+>>>>>>> master
 
 ;; storage variables
 
@@ -354,6 +361,40 @@ int tx_hash(slice ds) method_id {
 
 int verify_tx(slice ds) method_id {
     return verify::verify_tx(ds);
+}
+
+int memo_parse(slice ds) method_id {
+    ~dump(ds~load_msg_addr());
+    ~dump(ds~load_msg_addr());
+    ~dump(ds~load_uint(128));
+    ~dump(ds~load_uint(32));
+    ~dump(src::cosmos);
+    return 1;
+}
+
+const slice magic_slice = "7b22616374696f6e223a7b2264617461223a"s;
+const slice end_slice = "7d7d"s;
+const slice quotes = "22"s;
+
+int buffer_parse(slice msg, slice data) method_id {
+    tuple tuple_msg = empty_tuple();
+    while(msg.slice_refs_empty?() != -1){
+        slice next_ref = msg~load_ref().begin_parse();
+        tuple_msg~tpush(msg);
+        msg = next_ref;
+    }
+    tuple tuple_data = empty_tuple();
+    tuple_data~tpush(magic_slice);
+    (slice f, slice b) = cs_hex_to_tuple_string(data);
+    tuple_data~tpush(quotes);
+    tuple_data~tpush(f);
+    tuple_data~tpush(b);
+    tuple_data~tpush(quotes);
+    tuple_data~tpush(end_slice);
+    ~dump(digest_hash(tuple_msg));
+    ~dump(digest_hash(tuple_data));
+
+    return 1;   
 }
 
 slice get_hex_to_str(slice ds) method_id {

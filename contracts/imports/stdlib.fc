@@ -11,6 +11,12 @@
   and vise versa.
 -}
 
+;; functions from func stdlib (not presented on mainnet)
+() raw_reserve(int amount, int mode) impure asm "RAWRESERVE";
+int get_storage_fee(int workchain, int seconds, int bits, int cells) asm(cells bits seconds workchain) "GETSTORAGEFEE";
+int my_storage_due() asm "DUEPAYMENT";
+
+
 {-
   # Lisp-style lists
 
@@ -634,3 +640,5 @@ builder store_builder(builder to, builder from) asm "STBR";
 int log2(int x) asm "UBITSIZE DEC";
 
 int tlen(tuple data) asm "TLEN";
+
+int workchain() asm "0 PUSHINT";

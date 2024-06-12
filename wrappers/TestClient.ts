@@ -370,7 +370,7 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
     let memo_timeout_height_builder = beginCell();
 
     if (txBodyWasm.memo) {
-        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo)).endCell());
+        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo, 'hex')).endCell());
     }
 
     if (txBodyWasm.timeoutHeight > 0n) {
@@ -435,7 +435,8 @@ export const txBodyToSliceRef = (txBodyWasm: TxBody) => {
 
     let memo_timeout_height_builder = beginCell();
     if (txBodyWasm.memo) {
-        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo)).endCell());
+        let memoBuilder = beginCell().storeBuffer(Buffer.from(txBodyWasm.memo, 'hex'));
+        memo_timeout_height_builder.storeRef(memoBuilder.endCell());
     }
 
     if (txBodyWasm.timeoutHeight > 0n) {
@@ -506,8 +507,8 @@ export const msgExecuteContractToCell = (msg: MsgExecuteContract) => {
 
     return beginCell()
         .storeRef(sender_contract)
-        .storeRef(msgToTuple ? msgToTuple : beginCell().endCell())
-        .storeRef(fundCell ? fundCell : beginCell().endCell())
+        .storeRef(msgToTuple ?? beginCell().endCell())
+        .storeRef(fundCell ?? beginCell().endCell())
         .endCell();
 };
 
@@ -1321,6 +1322,31 @@ export class TestClient implements Contract {
                     .storeRef(txBody)
                     .storeRef(signatureCell || beginCell().endCell())
                     .endCell(),
+            },
+        ]);
+
+        return result.stack.readBigNumber();
+    }
+
+    async getMemo(provider: ContractProvider, memo: Cell) {
+        const result = await provider.get('memo_parse', [
+            {
+                type: 'slice',
+                cell: memo,
+            },
+        ]);
+
+        return result.stack.readBigNumber();
+    }
+    async getBuffParse(provider: ContractProvider, msg: Cell, data: Cel) {
+        const result = await provider.get('buffer_parse', [
+            {
+                type: 'slice',
+                cell: msg,
+            },
+            {
+                type: 'slice',
+                cell: data,
             },
         ]);
 

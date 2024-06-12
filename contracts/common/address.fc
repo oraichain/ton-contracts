@@ -1,0 +1,6 @@
+;; -1: if same address
+int compare_address(slice first, slice second) {
+    (_, int int_first) = first.parse_std_addr();
+    (_, int int_second) = first.parse_std_addr();
+    return int_first == int_second;
+}

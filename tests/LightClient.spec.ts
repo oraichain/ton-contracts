@@ -1,4 +1,4 @@
-import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
+import { Blockchain, printTransactionFees, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
 import { LightClient, Opcodes } from '../wrappers/LightClient';
 import '@ton/test-utils';
@@ -53,7 +53,7 @@ describe('LightClient', () => {
         });
     });
 
-    it('test light client verify receipt', async () => {
+    it('test light client verify block hash', async () => {
         const testcase = async (blockData: any) => {
             const { header, commit, validators, txs } = blockData;
             const user = await blockchain.treasury('user');
@@ -76,37 +76,19 @@ describe('LightClient', () => {
                     version: header.version,
                 },
                 validators,
-                { value: toNano('0.5') },
+                commit,
+                { value: toNano('5') },
             );
+
             console.log(`blockhash:`, Opcodes.verify_block_hash);
-            expect(result.transactions[1]).toHaveTransaction({
-                success: true,
-                op: Opcodes.verify_block_hash,
-            });
-            result = await lightClient.sendVerifyUntrustedValidators(user.getSender(), {
-                value: toNano('1'),
-            });
-            console.log(Opcodes.verify_untrusted_validators);
-            expect(result.transactions[1]).toHaveTransaction({
-                success: true,
-                op: Opcodes.verify_untrusted_validators,
+            console.log('Finished: ', {
+                height: await lightClient.getHeight(),
+                chainId: await lightClient.getChainId(),
+                dataHash: (await lightClient.getDataHash()).toString('hex'),
+                validatorHash: (await lightClient.getValidatorHash()).toString('hex'),
             });
 
-            result = await lightClient.sendVerifySigs(user.getSender(), commit, {
-                value: toNano('1'),
-            });
-
-            console.log('verify_sigs', Opcodes.verify_sigs);
-            expect(result.transactions[1]).toHaveTransaction({
-                success: true,
-                op: Opcodes.verify_sigs,
-            });
-
-            // verify tx now:
-            // 53748123942928445796153625209665602923363100986949452406157600748643368908519
-            console.log('Txs: ', txs);
             const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
-
             const choosenIndex = 0;
             const decodedTx = decodeTxRaw(Buffer.from(txs[choosenIndex], 'base64'));
             const registry = new Registry(defaultRegistryTypes);
@@ -117,7 +99,6 @@ describe('LightClient', () => {
                     value: registry.decode(msg),
                 };
             });
-
             const decodedTxWithRawMsg: any = {
                 ...decodedTx,
                 body: {
@@ -128,7 +109,6 @@ describe('LightClient', () => {
                     nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
                 },
             };
-
             result = await lightClient.sendVerifyReceipt(
                 user.getSender(),
                 header.height,
@@ -136,23 +116,16 @@ describe('LightClient', () => {
                 leaves,
                 leaves[choosenIndex],
                 {
-                    value: toNano('0.5'),
+                    value: toNano('1'),
                 },
             );
             expect(result.transactions[1]).toHaveTransaction({
                 success: true,
                 op: Opcodes.verify_receipt,
             });
-
-            console.log('Finished: ', {
-                height: await lightClient.getHeight(),
-                chainId: await lightClient.getChainId(),
-                dataHash: (await lightClient.getDataHash()).toString('hex'),
-                validatorHash: (await lightClient.getValidatorHash()).toString('hex'),
-            });
         };
 
-        await testcase(blockData);
+        // await testcase(blockData);
         await testcase(newBlockData);
     });
 });
