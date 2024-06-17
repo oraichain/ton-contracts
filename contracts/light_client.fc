@@ -29,10 +29,8 @@ global slice validator_hash_set;
 global cell trusted_validator;
 global cell untrusted_validator;
 
-;; load_data populates storage variables using stored data
-() load_data() impure {
-    var ds = get_data().begin_parse();
 
+() preload_data(slice ds) impure {
     int validator_set_changed = ds~load_uint(1);
     int state = ds~load_uint(8);
     slice header_cell = ds~load_ref().begin_parse();
@@ -49,8 +47,13 @@ global cell untrusted_validator;
     ds.end_parse();
 }
 
-;; save_data stores storage variables as a cell into persistent storage
-() save_data() impure inline_ref {
+;; load_data populates storage variables using stored data
+() load_data() impure {
+    var ds = get_data().begin_parse();
+    preload_data(ds);
+}
+
+(cell) presave_data() {
     cell header_ref = begin_cell()
                         .store_uint(height, 32)
                         .store_ref(begin_cell().store_slice(chain_id).end_cell())
@@ -62,13 +65,19 @@ global cell untrusted_validator;
                             .store_ref(trusted_validator)
                             .store_ref(untrusted_validator)
                             .end_cell();
-    set_data(
-        begin_cell()
+    
+    return begin_cell()
             .store_uint(validator_set_changed, 1)
             .store_uint(state, 8)
             .store_ref(header_ref)
             .store_ref(validator_ref)
-        .end_cell()
+        .end_cell();
+}
+
+;; save_data stores storage variables as a cell into persistent storage
+() save_data() impure inline_ref {
+    set_data(
+        presave_data()
     );
 }
 
@@ -132,52 +141,55 @@ global cell untrusted_validator;
             bodyBuilder = bodyBuilder 
                         .store_uint(op::verify_untrusted_validators, 32)
                         .store_uint(query_id, 64)
-                        .store_ref(begin_cell().store_slice(sender_address).store_ref(commit).end_cell());
+                        .store_ref(begin_cell().store_slice(sender_address).store_ref(commit).store_ref(presave_data()).end_cell());
         } else {
             ds~load_ref();
             cell commit = ds~load_ref();
             bodyBuilder = bodyBuilder 
                         .store_uint(op::verify_sigs, 32)
                         .store_uint(query_id, 64)
-                        .store_ref(begin_cell().store_slice(sender_address).store_ref(commit).end_cell());
+                        .store_ref(begin_cell().store_slice(sender_address).store_ref(commit).store_ref(presave_data()).end_cell());
         }
+        state = state::initial;
         cell body = bodyBuilder.end_cell();
         send_simple_message(0, my_address(), body, CARRY_REMAINING_GAS);
-
-        state = state::initial;
-        save_data();
         return ();
     }
 
     if (op == op::verify_untrusted_validators) {
         throw_if(error::invalid_sender, sender_address.equal_slice?(my_address()) != -1);
+        slice body = in_msg_body~load_ref().begin_parse(); ;; a cell that have ref is commit
+        slice sender_address = body~load_msg_addr();
+        cell commit = body~load_ref();
+        cell unsave_state = body~load_ref();
+        preload_data(unsave_state.begin_parse());
+
         int result = verify::verify_validators_set(validator_hash_set, untrusted_validator.begin_parse());
         throw_if(error::invalid_verify_validators_set, result != -1);
 
+        state = state::verify_untrusted_validators;
         ;; send verify_sigs message
-        cell wrap_commit = in_msg_body~load_ref(); ;; a cell that have ref is commit
         builder bodyBuilder = begin_cell();
         bodyBuilder = bodyBuilder 
                         .store_uint(op::verify_sigs, 32)
                         .store_uint(query_id, 64)
-                        .store_ref(wrap_commit);
+                        .store_ref(begin_cell().store_slice(sender_address).store_ref(commit).store_ref(presave_data()).end_cell());
         cell body = bodyBuilder.end_cell();
         send_simple_message(0, my_address(), body, CARRY_REMAINING_GAS);
-        state = state::verify_untrusted_validators;
-        save_data();
         return ();
     }
 
     if (op == op::verify_sigs) {
         throw_if(error::invalid_sender, sender_address.equal_slice?(my_address()) != -1);
+        slice body = in_msg_body~load_ref().begin_parse();
+        slice response_address = body~load_msg_addr();
+        slice commit = body~load_ref().begin_parse();
+        slice unsave_state = body~load_ref().begin_parse();
+        preload_data(unsave_state);
         if (validator_set_changed != 0) {
             ;; if validator set changed => it have to finish verify_untrusted_validator state
             throw_if(error::invalid_state, state != state::verify_untrusted_validators);
         }
-
-        slice body = in_msg_body~load_ref().begin_parse();
-        slice response_address = body~load_msg_addr();
-        slice commit = body~load_ref().begin_parse();
         int result = 0;
 
         result = verify::verify_optimized_commit_builder(
