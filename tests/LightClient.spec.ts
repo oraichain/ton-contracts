@@ -77,15 +77,15 @@ describe('LightClient', () => {
 
             printTransactionFees(result.transactions);
 
-            // expect(result.transactions).toHaveTransaction({
-            //     op: Opcodes.verify_block_hash,
-            //     success: true,
-            // });
+            expect(result.transactions).toHaveTransaction({
+                op: Opcodes.verify_block_hash,
+                success: true,
+            });
 
-            // expect(result.transactions).toHaveTransaction({
-            //     op: Opcodes.verify_sigs,
-            //     success: true,
-            // });
+            expect(result.transactions).toHaveTransaction({
+                op: Opcodes.verify_sigs,
+                success: true,
+            });
 
             console.log(`blockhash:`, Opcodes.verify_block_hash);
             console.log('Finished: ', {
