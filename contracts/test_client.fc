@@ -24,14 +24,10 @@
 #include "utils/msg_execute_contract.fc";
 #include "utils/tx_raw.fc";
 #include "static/op_codes.fc";
-<<<<<<< HEAD
 #include "static/state.fc";
 #include "utils/helper.fc";
 
 
-=======
-#include "utils/helper.fc";
->>>>>>> master
 
 ;; storage variables
 
