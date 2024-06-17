@@ -166,7 +166,6 @@ int verify::verify_optimized_commit_builder(
     cell untrusted_validators_dict = untrusted_validator~load_ref();
     int count = 0;
 
-
     if (untrusted_voting_power == 0) {
         return 0;
     }
@@ -217,7 +216,7 @@ int verify::verify_optimized_commit_builder(
                     is_satisfy_trusted = trusted_committed_voting_power > trusted_voting_power;
                 }
             
-                if (validator_set_changed) {
+                if (validator_set_changed != 0) {
                     (slice validator, int is_exist) = untrusted_validators_dict.udict_get?(160, validator_address);
                     if(is_exist == -1){
                         slice pubkey = validator~load_ref().begin_parse();
@@ -228,10 +227,10 @@ int verify::verify_optimized_commit_builder(
                             untrusted_committed_voting_power += validator~load_uint(32);
                         } 
                     }
+
+                    is_satisfy_untrusted = untrusted_committed_voting_power > untrusted_voting_power;
                 }
 
-                is_satisfy_untrusted = untrusted_committed_voting_power > untrusted_voting_power;
-                
                 if (is_satisfy_trusted & is_satisfy_untrusted) {
                     return -1;
                 }

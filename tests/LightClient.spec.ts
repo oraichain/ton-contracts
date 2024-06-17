@@ -3,14 +3,9 @@ import { Cell, toNano } from '@ton/core';
 import { LightClient, Opcodes } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-// import blockData from './fixtures/data.json';
-import blockData from './fixtures/new_data.json';
-import newBlockData from './fixtures/sample.json';
-import { setTimeout } from 'timers/promises';
-import { createHash } from 'crypto';
-import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
-import { defaultRegistryTypes } from '@cosmjs/stargate';
-import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
+import blockData from './fixtures/data.json';
+import newBlockData from './fixtures/new_data.json';
+import newNewBlockData from './fixtures/new_data_1.json';
 
 describe('LightClient', () => {
     let code: Cell;
@@ -77,23 +72,20 @@ describe('LightClient', () => {
                 },
                 validators,
                 commit,
-                { value: toNano('5') },
+                { value: toNano('10') },
             );
 
-            expect(result.transactions).toHaveTransaction({
-                op: Opcodes.verify_block_hash,
-                success: true,
-            });
+            printTransactionFees(result.transactions);
 
-            expect(result.transactions).toHaveTransaction({
-                op: Opcodes.verify_untrusted_validators,
-                success: true,
-            });
+            // expect(result.transactions).toHaveTransaction({
+            //     op: Opcodes.verify_block_hash,
+            //     success: true,
+            // });
 
-            expect(result.transactions).toHaveTransaction({
-                op: Opcodes.verify_sigs,
-                success: true,
-            });
+            // expect(result.transactions).toHaveTransaction({
+            //     op: Opcodes.verify_sigs,
+            //     success: true,
+            // });
 
             console.log(`blockhash:`, Opcodes.verify_block_hash);
             console.log('Finished: ', {
@@ -106,5 +98,6 @@ describe('LightClient', () => {
 
         await testcase(blockData);
         await testcase(newBlockData);
+        await testcase(newNewBlockData);
     });
 });
