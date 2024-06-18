@@ -208,6 +208,7 @@ global cell processed_txs;
         slice from_address = in_msg_body~load_msg_addr();
         slice either_forward_payload = in_msg_body;
         slice jetton_master_address = either_forward_payload~load_ref().begin_parse();
+        cell memo = either_forward_payload~load_ref();
         slice calculate_sender = calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code);
 
         ;; validate jetton_master_address is valid
@@ -217,7 +218,11 @@ global cell processed_txs;
         bodyBuilder = bodyBuilder 
                         .store_uint(op::query_denom, 32)
                         .store_uint(query_id, 64)
-                        .store_ref(begin_cell().store_slice(jetton_master_address).store_coins(jetton_amount).end_cell());
+                        .store_ref(begin_cell()
+                            .store_slice(jetton_master_address)
+                            .store_coins(jetton_amount)
+                            .store_ref(memo)
+                        .end_cell());
         cell body = bodyBuilder.end_cell();
         send_simple_message(0, whitelist_denom, body, CARRY_REMAINING_GAS);
         return ();
@@ -231,6 +236,7 @@ global cell processed_txs;
         throw_if(error::unsupport_this_denom, existed != -1);
         int is_root_from_ton = ds~load_int(8);
         slice jetton_master_address = ds~load_msg_addr();
+        slice memo = ds~load_ref().begin_parse();
         int amount = ds~load_coins();
 
         ;; execute burn if not from ton

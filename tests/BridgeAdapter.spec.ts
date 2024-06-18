@@ -566,6 +566,9 @@ describe('BridgeAdapter', () => {
             jettonAmount: toNano(333),
             jettonMaster: usdtMinterContract.address,
             toAddress: bridgeAdapter.address,
+            memo: beginCell()
+                .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
+                .endCell(),
             value: toNano(2),
             queryId: 0,
         });
@@ -680,6 +683,9 @@ describe('BridgeAdapter', () => {
             jettonAmount: toNano(5),
             jettonMaster: jettonMinterSrcCosmos.address,
             toAddress: bridgeAdapter.address,
+            memo: beginCell()
+                .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
+                .endCell(),
             value: toNano(2),
             queryId: 0,
         });
