@@ -1338,7 +1338,7 @@ export class TestClient implements Contract {
 
         return result.stack.readBigNumber();
     }
-    async getBuffParse(provider: ContractProvider, msg: Cell, data: Cel) {
+    async getBuffParse(provider: ContractProvider, msg: Cell, data: Cell) {
         const result = await provider.get('buffer_parse', [
             {
                 type: 'slice',
