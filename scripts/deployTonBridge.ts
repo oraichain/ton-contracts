@@ -1,6 +1,7 @@
 import { compile } from '@ton/blueprint';
 import { LightClient } from '../wrappers/LightClient';
 import { createTonWallet, waitSeqno } from './utils';
+import { BridgeAdapter } from '../wrappers/BridgeAdapter';
 import { toNano } from '@ton/core';
 
 async function deploy() {
@@ -21,9 +22,19 @@ async function deploy() {
             await compile('LightClient'),
         ),
     );
-    await lightClient.sendDeploy(walletContract.sender(key.secretKey), toNano('1'));
-    await waitSeqno(walletContract, await walletContract.getSeqno());
-    console.log('Success deploy light client at address: ', lightClient.address);
+    console.log({ lightClient: lightClient.address.toString() });
+    const tonBridge = BridgeAdapter.createFromConfig(
+        {
+            light_client: lightClient.address,
+            jetton_wallet_code: await compile('JettonWallet'),
+            bridge_wasm_smart_contract: 'orai16ka659l0t90dua6du8yq02ytgdh222ga3qcxaqxp86r78p6tl0usze57ve',
+        },
+        await compile('BridgeAdapter'),
+    );
+    const tonBridgeContract = client.open(tonBridge);
+    // await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), toNano('0.5'));
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
+    console.log(tonBridge.address.toString());
 }
 
 deploy()
