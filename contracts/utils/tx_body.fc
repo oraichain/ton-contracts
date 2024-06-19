@@ -39,80 +39,39 @@
     }
     
     ;; builder memo_and_timeout_height_builder = begin_cell();
-    builder prefix = begin_cell();
-    builder first_memo = begin_cell();
-    builder second_memo = begin_cell();
-    builder suffix = begin_cell();
+    builder encode_memo = begin_cell();
+    builder encode_timeout = begin_cell();
     slice return_memo = null();
 
     if(memo_and_timeout_height.slice_empty?() != -1){
         slice memo = memo_and_timeout_height~load_ref().begin_parse();
         return_memo = memo;
+
         if (memo_and_timeout_height.slice_empty?() != -1) {
             int timeout_height = memo_and_timeout_height~load_uint(64); ;;64 bit
-            suffix = suffix.store_slice(varuint::encode(24));
-            suffix = suffix.store_slice(uvarint_64::encode(timeout_height));
+            encode_timeout = encode_timeout.store_slice(varuint::encode(24));
+            encode_timeout = encode_timeout.store_slice(uvarint_64::encode(timeout_height));
         }
        
         if(memo.slice_empty?() != -1){
-            prefix = prefix.store_slice(varuint::encode(18));
-            int len = (memo.slice_bits() >> 3) / 2;
-            
-            int i = 0;
-            while (i < len) {
-                int number = memo~load_uint(8);
-                int quotient = number / 16;
-                int remainder = number - quotient * 16;
-
-                if (quotient >= 10) {
-                    quotient += 55;
-                } else {
-                    quotient += 48;
-                }
-                if (remainder >= 10) {
-                    remainder += 55;
-                } else {
-                    remainder += 48;
-                }
-                first_memo = first_memo.store_uint(quotient, 8).store_uint(remainder, 8);
-                i += 1;
-            }
-
-            while (memo.slice_empty?() != -1) {
-                int number = memo~load_uint(8);
-                int quotient = number / 16;
-                int remainder = number - quotient * 16;
-
-                if (quotient >= 10) {
-                    quotient += 55;
-                } else {
-                    quotient += 48;
-                }
-                if (remainder >= 10) {
-                    remainder += 55;
-                } else {
-                    remainder += 48;
-                }
-                second_memo = second_memo.store_uint(quotient, 8).store_uint(remainder, 8);
-            }
+            encode_memo = encode_memo.store_slice(varuint::encode(18));
+            int len = (memo.slice_bits() >> 3);
+            encode_memo = encode_memo.store_slice(varuint::encode(len));
+            encode_memo = encode_memo.store_slice(memo);
         }
     }
 
-    slice prefix_slice = prefix.end_cell().begin_parse();
-    slice first_memo_slice = first_memo.end_cell().begin_parse();
-    slice second_memo_slice = second_memo.end_cell().begin_parse();
-    slice suffix_slice = suffix.end_cell().begin_parse();
+    slice encode_memo_slice = encode_memo.end_cell().begin_parse();
+    slice encode_timeout_slice = encode_timeout.end_cell().begin_parse();
 
-    if(prefix_slice.slice_empty?() != -1){
-        int memo_len = (slice_bits(first_memo_slice) + slice_bits(second_memo_slice)) >> 3;
-        slice memo_encoded = varuint::encode(memo_len);
-        return_tuple~tpush(prefix_slice);
-        return_tuple~tpush(memo_encoded);
-        return_tuple~tpush(first_memo_slice);
-        return_tuple~tpush(second_memo_slice);
-        return_tuple~tpush(suffix_slice);
-        tx_body_len += memo_encoded.slice_bits() >> 3;
-        tx_body_len += (slice_bits(prefix_slice) + slice_bits(first_memo_slice) + slice_bits(second_memo_slice) + slice_bits(suffix_slice)) >> 3;
+    if(encode_memo_slice.slice_empty?() != -1){
+        int memo_len = (slice_bits(encode_memo_slice)) >> 3;
+        return_tuple~tpush(encode_memo_slice);
+        if (encode_timeout_slice.slice_empty?() != -1) {
+            return_tuple~tpush(encode_timeout_slice);
+            tx_body_len += slice_bits(encode_timeout_slice) >> 3;
+        }
+        tx_body_len += slice_bits(encode_memo_slice) >> 3;
     }
     
     while(ext_opts.slice_refs_empty?() != -1){
@@ -153,7 +112,6 @@
                             .begin_parse();
 
         tx_body_len += pre_encoded.slice_bits() >> 3;
-
         return_tuple~tpush(pre_encoded);
         return_tuple~tpush(encode_type_url);
 

@@ -134,12 +134,11 @@ describe('TxEncoded', () => {
     it('test TxEncoded with memo', async () => {
         const decodedTx = decodeTxRaw(
             Buffer.from(
-                "CpQDCuABCiQvY29zbXdhc20ud2FzbS52MS5Nc2dFeGVjdXRlQ29udHJhY3QStwEKK29yYWkxbXozYWVtcjA0ZHRleG0yaGx5NjRhMjhhYzQwYXp4YzcyNzR4MzUSK29yYWkxbHVzMGYwcmh4OHMwM2dkbGx4Mm42dmhrbWYwNTM2ZHY1N3dmZ2UaW3sidHJhbnNmZXIiOnsicmVjaXBpZW50Ijoib3JhaTFqYzdzbHVjazV6aGVtemZudmVucjBneWdxZzJ2cHJ4Z2hydWZ5MiIsImFtb3VudCI6Ijk4NzI2OTIifX0SrgE4MDAwMjI1NUQ3M0UzQTVDMUE5NTg5RjBBRUNFMzFFOTdCNTRCMjYxQUMzRDdEMTZENEYxMDY4RkRGOUQ0QjRFMTgzMDAwNDE0NENBMzgyQTRERTI4NUFENTFDM0EzMUQ4ODY2RUZCNEZDMzgxQTkzMEFGMjI2QzhFM0ZDOUNCNTdEREJCNDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwOTUwMkY5MDAwMTM5NTE3RDISZQpQCkYKHy9jb3Ntb3MuY3J5cHRvLnNlY3AyNTZrMS5QdWJLZXkSIwohAzIF2JSumxOGmAyvhjCdnXkGhFAdbmguGq7CiPw+74twEgQKAgh/GGQSEQoLCgRvcmFpEgM0NTAQ8JMJGkANeGO/eo7axC1aGg7prz5d3si5lsXTlW6bW83jKsBWslUMi+Mz4jN3hr0iDeefeO2w4/9HsBbyH6ZTjPpaSi27",
+                'CtoFCskFCiQvY29zbXdhc20ud2FzbS52MS5Nc2dFeGVjdXRlQ29udHJhY3QSoAUKK29yYWkxbTczNm56aHZkMzd2bDYwZGc0MHlwN3EzMnB2Y3E3eHN1djY2bncSP29yYWkxcjdxd3RmcDd1YzBqc2VtYzhmcm5qZ3djNGdwc3B4bnVoZzdnamN2M3NsenVsMDhnZ2xkczY1dG5ycBqvBHsiYXNzaWduX2tleSI6eyJ2ZXJpZmllcl9pZCI6IjB4NmFkYjEwYzRjZTViYmFhZGMwYTIxMDUzNGQ3YTZkZmFiMDc0ZDc3YzhlOTI4MDYyODk0OWQyM2ZjYThiMWFkZiIsInZlcmlmaWVyIjoic3NvLWdvb2dsZSIsInB1Yl9rZXlzIjpbIkE0Wjl5RGJteG5lbHJlTnQ4ME9YUHJrYTVFOVROOWhkUGVoem94NzY3S1hvIiwiQTg2eVA3UEIrbFFmUFRvdm5pMTZXRjBOb3Q4Q05udi9qRFNmSTFwRGV5N3YiLCJBLzFXWTF0UDZVTkFibGRnN1dmWHhIWFJ6Q3o4eEhhNTBzdjd1MVRrVjJRNSJdLCJzaWdzIjpbIjhtOFZ0Z0Q0TlcvQnUyLzFUSlFVV1VlQWtUanp2UXdxZFloazU5WlIrMVpKUUdsTG4zbm90Zld1Ty9XK1IvbTRnL3phRlZwMXUzbkFyczRNY0w5Ym5BPT0iLCJQWEtDZFlyZlZYcTRSanFYM0tWUE8vYXdudzBuQU1WTmJ2ZUVQNWp6RUpWVkJkTzFiWE9NZktHWW9OSFdkMlA5S0djbWNIOEJEUHFkWG5USEIyc1pnQT09IiwiU1lkMi9XckNrSHpVbUZIRTllUHd5Z0N6QXFVS3RhRG1QRXZIV29oQ2R2VlA2MkNtWG5mZEp5OHFPWWE1UkVtY2JSVGhyNU51bjFlZUNRaWJLOUtFM1E9PSJdfX0SDGJhdGNoRXhlY3V0ZRJnClIKRgofL2Nvc21vcy5jcnlwdG8uc2VjcDI1NmsxLlB1YktleRIjCiEDzrI/s8H6VB89Oi+eLXpYXQ2i3wI2e/+MNJ8jWkN7Lu8SBAoCCAEYpcoEEhEKCwoEb3JhaRIDODM3EJOKMxpAlzfK9ZQnXKorhaaXR1+3m5Pd1ZZSa5RHcNsDOAvE3iVL5zrYmgtTRLV6Fj8yWYDilRFbL9N7ol4aXCOXB6ho2Q==',
                 'base64',
             ),
         );
-        console.log(decodedTx.body.messages[0].value);
-        
+
         const registry = new Registry(defaultRegistryTypes);
         registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
 
@@ -161,7 +160,6 @@ describe('TxEncoded', () => {
             },
         };
 
-        console.log({ decodedTxWithRawMsg });
         const tuple = await TxEncoded.getDecodedTxRaw(decodedTxWithRawMsg);
 
         let buffer = Buffer.alloc(0);
@@ -184,14 +182,13 @@ describe('TxEncoded', () => {
         );
     });
 
-   it('test decode', async () => {
+    it('test decode', async () => {
         const decodedTx = decodeTxRaw(
             Buffer.from(
-                "CrYECrMECiQvY29zbXdhc20ud2FzbS52MS5Nc2dFeGVjdXRlQ29udHJhY3QSigQKK29yYWkxMnBjZXhmbmR1NDJuaGx1aGt0MmQyMzZ5Y3ZycHY1cWw5NjhnaDkSK29yYWkxMmh6anhmaDc3d2w1NzJnZHpjdDJmeHYyYXJ4Y3doNmd5a2M3cWgarQN7InNlbmQiOnsiY29udHJhY3QiOiJvcmFpMTk1MjY5YXd3bnQ1bTZjODQzcTZ3N2hwOHJ0MGs3c3lmdTlkZTRoMHd6Mzg0c2xzaHV6cHM4eTdjY20iLCJhbW91bnQiOiIxNTIwMDAwMDAiLCJtc2ciOiJleUpzYjJOaGJGOWphR0Z1Ym1Wc1gybGtJam9pWTJoaGJtNWxiQzB5T1NJc0luSmxiVzkwWlY5aFpHUnlaWE56SWpvaWIzSmhhV0l4TW5CalpYaG1ibVIxTkRKdWFHeDFhR3QwTW1ReU16WjVZM1p5Y0hZMWNXeHFiWEo1ZUhnaUxDSnlaVzF2ZEdWZlpHVnViMjBpT2lKdmNtRnBZakI0TlRWa016azRNekkyWmprNU1EVTVaa1kzTnpVME9EVXlORFk1T1Rrd01qZENNekU1TnprMU5TSXNJblJwYldWdmRYUWlPak0yTURBc0ltMWxiVzhpT2lKdmNtRnBZakI0WldJMVlUQmhORE16TWpRMlpHRXlaR1JsWmpkak1tSXpOalV3T1RJd1ptSTJNelJoTWpVMVlTSjkifX0SZgpQCkYKHy9jb3Ntb3MuY3J5cHRvLnNlY3AyNTZrMS5QdWJLZXkSIwohA9WYaaxtkm8XVXQwDUFfCmHK2G2pjN3zZ8u43KPBcD14EgQKAggBGAYSEgoMCgRvcmFpEgQ1MDg5ELSOPhpAzUfU7cvbIBHpttfEwHzvZyj98BpajqAiGvi5Iod8d5tgn+xuMEdjyRySXs5CKIJvMohyWt7iUyUHOlpb9zaxdg==",
+                'CuECCt4CCiQvY29zbXdhc20ud2FzbS52MS5Nc2dFeGVjdXRlQ29udHJhY3QStQIKK29yYWkxMnAweXdqd2NwYTUwMHI5ZnVmMGhseTc4enlqZWx0YWtyemt2MGMSP29yYWkxNmthNjU5bDB0OTBkdWE2ZHU4eXEwMnl0Z2RoMjIyZ2EzcWN4YXF4cDg2cjc4cDZ0bDB1c3plNTd2ZRrEAXsic3VibWl0Ijp7ImRhdGEiOiI4MDAwMjI1NUQ3M0UzQTVDMUE5NTg5RjBBRUNFMzFFOTdCNTRCMjYxQUMzRDdEMTZENEYxMDY4RkRGOUQ0QjRFMTgzMDAzRkQ5OEQyQzZBNDM5NUJCQUVBRjJDNTI2RjVBODU2M0Y3MzFGNTFFRjI5NzUzQTBGMzNCNjgzNzdEMENCQTEzNDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMEVFNkIyODAwMTM5NTE3RDIifX0SZgpRCkYKHy9jb3Ntb3MuY3J5cHRvLnNlY3AyNTZrMS5QdWJLZXkSIwohAl6cPsb7Dr2N7hLqcD9Zb8k8jGYKqkiobVKT1IxBQKBlEgQKAggBGKEZEhEKCwoEb3JhaRIDMzE5EMncCRpAyOdmVtLeSz39yTbFKxlHfoT1GripZ/07ivt2hxXdX9xtjgjbT5bOn0NDx04pCjeGA7zxdYWfEX0mSAu9WLP05w==',
                 'base64',
             ),
         );
-    
 
         const registry = new Registry(defaultRegistryTypes);
         registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
@@ -202,8 +199,8 @@ describe('TxEncoded', () => {
                 value: registry.decode(msg),
             };
         });
-        console.log(Buffer.from([115,101,110,100]).toString('utf-8'));
+        console.log(Buffer.from([115, 101, 110, 100]).toString('utf-8'));
         console.log(rawMsg[0].value.msg);
         console.log(new Uint8Array(Buffer.from('{}":,')));
-    }); 
+    });
 });
