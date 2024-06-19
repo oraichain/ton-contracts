@@ -573,6 +573,9 @@ describe('BridgeAdapter', () => {
             queryId: 0,
         });
         printTransactionFees(result.transactions);
+        console.log(result.transactions[6].children);
+        console.log(result.transactions[6].outMessages.get(0)?.body.asSlice().loadCoins());
+        console.log('Bridge adapter balance:', (await blockchain.getContract(bridgeAdapter.address)).balance);
         expect(result.transactions).toHaveTransaction({
             op: baOpcodes.callbackDenom,
             success: true,
@@ -690,6 +693,7 @@ describe('BridgeAdapter', () => {
             queryId: 0,
         });
         printTransactionFees(result.transactions);
+
         expect(result.transactions).toHaveTransaction({
             op: baOpcodes.callbackDenom,
             success: true,
