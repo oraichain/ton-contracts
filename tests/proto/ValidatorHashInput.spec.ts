@@ -1,10 +1,10 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { TestClient } from '../wrappers/TestClient';
+import { TestClient } from '../../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import * as fixtures from './fixtures/validator_hash_input.json';
-import * as blockData from './fixtures/data.json';
+import * as fixtures from '../fixtures/validator_hash_input.json';
+import * as blockData from '../fixtures/data.json';
 
 describe('Validator Hash Input', () => {
     let code: Cell;

@@ -1,26 +1,24 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { TestClient } from '../wrappers/TestClient';
+import { TestClient } from '../../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import { Tip } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
-import fixtures from './fixtures/tip.json';
+import * as voteFixtures from '../fixtures/vote.json';
 
-describe('Tip', () => {
+describe('CanonicalVote', () => {
     let code: Cell;
-
     beforeAll(async () => {
         code = await compile('TestClient');
     });
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let tip: SandboxContract<TestClient>;
+    let CanonicalVote: SandboxContract<TestClient>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
-        tip = blockchain.openContract(
+        CanonicalVote = blockchain.openContract(
             TestClient.createFromConfig(
                 {
                     id: 0,
@@ -32,30 +30,27 @@ describe('Tip', () => {
 
         deployer = await blockchain.treasury('deployer');
 
-        const deployResult = await tip.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployResult = await CanonicalVote.sendDeploy(deployer.getSender(), toNano('0.05'));
 
         expect(deployResult.transactions).toHaveTransaction({
             from: deployer.address,
-            to: tip.address,
+            to: CanonicalVote.address,
             deploy: true,
             success: true,
         });
     });
 
-    xit('test encode length', async () => {
-        for (const fixture of fixtures) {
-            if (fixture?.amount !== undefined) {
-                expect(await tip.getTipEncodeLength(fixture as any)).toBe(Tip.encode(fixture as any).len);
-            }
-        }
-    });
-
     it('test encode', async () => {
-        for (const fixture of fixtures) {
-            if (fixture?.amount !== undefined) {
-                expect((await tip.getTipEncode(fixture as any)).toString('hex')).toBe(
-                    Buffer.from(Tip.encode(fixture as any).finish()).toString('hex'),
-                );
+        for (const fixture of Object.values(voteFixtures)) {
+            if (fixture.value !== undefined && fixture.encoding !== undefined) {
+                expect(
+                    (
+                        await CanonicalVote.getCanonicalVoteEncode({
+                            ...fixture.value,
+                            chain_id: 'Oraichain',
+                        })
+                    ).toString('hex'),
+                ).toBe(fixture.encoding);
             }
         }
     });

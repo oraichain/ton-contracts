@@ -1,13 +1,12 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { TestClient } from '../wrappers/TestClient';
+import { TestClient } from '../../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { toHex } from '@cosmjs/encoding';
 import { sha256 } from '@cosmjs/crypto';
 import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
 import { TxBody } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
-import * as blockData from './fixtures/bridgeData.json';
 
 describe('TxBodyProtobuf', () => {
     let code: Cell;
