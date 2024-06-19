@@ -10,7 +10,7 @@
 #include "utils/jetton.fc";
 #include "utils/helper.fc";
 ;; prefix and suffix for json
-const msg_prefix = "7b227772697465223a7b2264617461223a"s;
+const msg_prefix = "7b227375626d6974223a7b2264617461223a"s;
 const end_json = "7d7d"s;
 const slice quotes = "22"s;
 ;; storage variables
@@ -170,7 +170,6 @@ global cell processed_txs;
                 tuple_data~tpush(end_json);
                 int data_hash = digest_hash(tuple_data);
                 int msg_hash = digest_hash(tuple_msg);
-
                 if(data_hash == msg_hash){
                     processed_txs~udict_set_builder(256, data_cell_hash, begin_cell().store_int(-1, 8)); ;; avoid reentrency
                     builder bodyBuilder = begin_cell();

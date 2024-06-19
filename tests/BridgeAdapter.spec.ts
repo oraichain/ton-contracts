@@ -82,7 +82,6 @@ describe('BridgeAdapter', () => {
     beforeAll(async () => {
         lightClientCode = await compile('LightClient');
         bridgeAdapterCode = await compile('BridgeAdapter');
-
         jettonWalletCode = await compile('JettonWallet');
         jettonMinterCode = await compile('JettonMinter');
 
@@ -281,7 +280,9 @@ describe('BridgeAdapter', () => {
     });
 
     it('successfully deploy BridgeAdapter contract', async () => {
+        console.log('bridgeAdapterCode', bridgeAdapterCode.toBoc().toString('hex'));
         console.log('successfully deploy');
+        console.log(Buffer.from('{"submit":{"data":').toString('hex'));
         const stack = await bridgeAdapter.getBridgeData();
         expect(stack.readCell().toBoc()).toEqual(beginCell().storeAddress(lightClient.address).endCell().toBoc());
         expect(stack.readCell().toBoc()).toEqual(
@@ -291,6 +292,7 @@ describe('BridgeAdapter', () => {
     });
 
     it('should persistent when creating memo to test', async () => {
+        console.log(Opcodes.verify_receipt.toString(16));
         const memo = beginCell()
             .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
             .storeAddress(jettonMinterSrcCosmos.address)

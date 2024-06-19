@@ -105,7 +105,6 @@ global cell untrusted_validator;
         ;; store block data
         slice ds = in_msg_body~load_ref().begin_parse();
         slice header = ds~load_ref().begin_parse();
-        
         (int temp_height, slice temp_chain_id, slice temp_data_hash, slice temp_validator_hash_set) = get_data_from_header(header);
         throw_if(error::invalid_height, height > temp_height);
         height = temp_height;
@@ -213,12 +212,10 @@ global cell untrusted_validator;
         slice body = in_msg_body~load_ref().begin_parse();
         int receipt_height = body~load_uint(64);
         slice tx_raw = body~load_ref().begin_parse();
-
         slice proofs = body~load_ref().begin_parse();
         slice positions =  body~load_ref().begin_parse();
         slice data =  body~load_ref().begin_parse();
         throw_if(error::invalid_height, receipt_height != height);
-      
         (tuple encode_tx_raw, _) = tx_raw::encode(tx_raw);
         int tx_hash = begin_cell()
                     .store_uint(prefix::leaf, 8)

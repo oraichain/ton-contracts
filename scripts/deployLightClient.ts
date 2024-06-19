@@ -1,23 +1,37 @@
-import { toNano } from '@ton/core';
-import { compile, NetworkProvider } from '@ton/blueprint';
+import { compile } from '@ton/blueprint';
 import { LightClient } from '../wrappers/LightClient';
+import { createTonWallet, waitSeqno } from './utils';
+import { toNano } from '@ton/core';
 
-export async function run(provider: NetworkProvider) {
-    const lightClient = provider.open(
+async function deploy() {
+    // =================== Setup TON Wallet ===================
+    var { client, walletContract, key } = await createTonWallet();
+    // =================== End Setup TON Wallet ===================
+
+    // =================== Deploy Contract ===================
+    const lightClient = client.open(
         LightClient.createFromConfig(
             {
                 chainId: 'Oraichain',
                 dataHash: '',
-                height: 0,
+                height: 10000,
                 nextValidatorHashSet: '',
                 validatorHashSet: '',
             },
             await compile('LightClient'),
         ),
     );
-
-    await lightClient.sendDeploy(provider.sender(), toNano('1'));
-
-    await provider.waitForDeploy(lightClient.address, 1, 5000);
-    console.log(lightClient);
+    await lightClient.sendDeploy(walletContract.sender(key.secretKey), toNano('1'));
+    await waitSeqno(walletContract, await walletContract.getSeqno());
+    console.log('Success deploy light client at address: ', lightClient.address);
 }
+
+deploy()
+    .catch((err) => {
+        console.error(err);
+        process.exit(1);
+    })
+    .then(() => {
+        console.log('done');
+        process.exit(0);
+    });

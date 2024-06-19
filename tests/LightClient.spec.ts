@@ -101,7 +101,6 @@ describe('LightClient', () => {
                 validatorHash: (await lightClient.getValidatorHash()).toString('hex'),
             });
         };
-
         await testcase(blockData);
         await testcase(newBlockData);
         await testcase(newNewBlockData);
