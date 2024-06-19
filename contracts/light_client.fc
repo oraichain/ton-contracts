@@ -237,7 +237,6 @@ global cell untrusted_validator;
                         .store_slice(data)
                     .end_cell();
 
-                    
         send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);
         return ();
     }
