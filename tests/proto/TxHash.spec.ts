@@ -7,7 +7,7 @@ import { Cell, toNano } from '@ton/core';
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import '@ton/test-utils';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
-import { TestClient } from '../wrappers/TestClient';
+import { TestClient } from '../../wrappers/TestClient';
 
 describe('TxHash', () => {
     let code: Cell;
