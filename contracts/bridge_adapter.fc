@@ -124,7 +124,7 @@ global cell processed_txs;
     
     slice sender_address = cs~load_msg_addr();
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
-   
+
     if (op == op::send_tx) {
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         int height = in_msg_body~load_uint(64);
@@ -207,6 +207,7 @@ global cell processed_txs;
         slice from_address = in_msg_body~load_msg_addr();
         slice either_forward_payload = in_msg_body;
         slice jetton_master_address = either_forward_payload~load_ref().begin_parse();
+        cell memo = either_forward_payload~load_ref();
         slice calculate_sender = calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code);
 
         ;; validate jetton_master_address is valid
@@ -216,7 +217,11 @@ global cell processed_txs;
         bodyBuilder = bodyBuilder 
                         .store_uint(op::query_denom, 32)
                         .store_uint(query_id, 64)
-                        .store_ref(begin_cell().store_slice(jetton_master_address).store_coins(jetton_amount).end_cell());
+                        .store_ref(begin_cell()
+                            .store_slice(jetton_master_address)
+                            .store_coins(jetton_amount)
+                            .store_ref(memo)
+                        .end_cell());
         cell body = bodyBuilder.end_cell();
         send_simple_message(0, whitelist_denom, body, CARRY_REMAINING_GAS);
         return ();
@@ -230,8 +235,10 @@ global cell processed_txs;
         throw_if(error::unsupport_this_denom, existed != -1);
         int is_root_from_ton = ds~load_int(8);
         slice jetton_master_address = ds~load_msg_addr();
+        cell memo_cell = ds~load_ref();
         int amount = ds~load_coins();
 
+        cell emit_data = begin_cell().store_ref(memo_cell).store_coins(amount).end_cell();
         ;; execute burn if not from ton
         if (is_root_from_ton == 0) {
             slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master_address, jetton_wallet_code);
@@ -244,6 +251,7 @@ global cell processed_txs;
             send_simple_message(0, bridge_jetton_wallet, msg_body, CARRY_REMAINING_GAS);
         }
 
+        emit_log_simple(my_address().slice_hash(), emit_data ,query_id);
         return ();
     }
 

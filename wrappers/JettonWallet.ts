@@ -69,6 +69,7 @@ export class JettonWallet implements Contract {
             fwdAmount: bigint;
             jettonAmount: bigint;
             jettonMaster: Address;
+            memo: Cell;
         },
     ) {
         await provider.internal(via, {
@@ -79,11 +80,12 @@ export class JettonWallet implements Contract {
                 .storeUint(opts.queryId, 64)
                 .storeCoins(opts.jettonAmount)
                 .storeAddress(opts.toAddress)
-                .storeAddress(via.address)
+                .storeAddress(via.address) // response address
                 .storeDict(Dictionary.empty())
                 .storeCoins(opts.fwdAmount)
                 .storeUint(0, 1)
                 .storeRef(beginCell().storeAddress(opts.jettonMaster).endCell())
+                .storeRef(opts.memo)
                 .endCell(),
         });
     }

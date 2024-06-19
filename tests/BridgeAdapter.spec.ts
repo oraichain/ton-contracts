@@ -568,10 +568,16 @@ describe('BridgeAdapter', () => {
             jettonAmount: toNano(333),
             jettonMaster: usdtMinterContract.address,
             toAddress: bridgeAdapter.address,
+            memo: beginCell()
+                .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
+                .endCell(),
             value: toNano(2),
             queryId: 0,
         });
         printTransactionFees(result.transactions);
+        console.log(result.transactions[6].children);
+        console.log(result.transactions[6].outMessages.get(0)?.body.asSlice().loadCoins());
+        console.log('Bridge adapter balance:', (await blockchain.getContract(bridgeAdapter.address)).balance);
         expect(result.transactions).toHaveTransaction({
             op: baOpcodes.callbackDenom,
             success: true,
@@ -682,10 +688,14 @@ describe('BridgeAdapter', () => {
             jettonAmount: toNano(5),
             jettonMaster: jettonMinterSrcCosmos.address,
             toAddress: bridgeAdapter.address,
+            memo: beginCell()
+                .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
+                .endCell(),
             value: toNano(2),
             queryId: 0,
         });
         printTransactionFees(result.transactions);
+
         expect(result.transactions).toHaveTransaction({
             op: baOpcodes.callbackDenom,
             success: true,
