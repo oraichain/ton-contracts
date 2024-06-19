@@ -57,12 +57,17 @@ describe('Version', () => {
         const denom = await blockchain.treasury('USDT');
         const beforeValue = await contract.getDenom(denom.address);
         expect(beforeValue).toBeNull();
-        const result = await contract.sendSetDenom(deployer.getSender(), denom.address, true, {
+        let result = await contract.sendSetDenom(deployer.getSender(), denom.address, true, true, {
             value: toNano('8'),
         });
         printTransactionFees(result.transactions);
-        console.log((await blockchain.getContract(contract.address)).balance);
-        const value = await contract.getDenom(denom.address);
-        expect(value).not.toBeNull();
+        let value = await contract.getDenom(denom.address);
+        expect(value?.asSlice().loadInt(8)).toBe(-1);
+
+        result = await contract.sendSetDenom(deployer.getSender(), denom.address, true, false, {
+            value: toNano('8'),
+        });
+        value = await contract.getDenom(denom.address);
+        expect(value?.asSlice().loadInt(8)).toBe(0);
     });
 });

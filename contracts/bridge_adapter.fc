@@ -6,6 +6,7 @@
 #include "static/state.fc";
 #include "utils/messages.fc";
 #include "common/messages.fc";
+#include "common/address.fc";
 #include "utils/jetton.fc";
 #include "utils/helper.fc";
 ;; prefix and suffix for json
@@ -14,6 +15,7 @@ const end_json = "7d7d"s;
 const slice quotes = "22"s;
 ;; storage variables
 global slice light_client; ;; TODO: dynamic calculate based on blockId
+global slice whitelist_denom; ;; whitelist denom contract
 global cell bridge_wasm_smart_contract;
 global cell jetton_wallet_code;
 global cell processed_txs;
@@ -23,6 +25,7 @@ global cell processed_txs;
 () load_data() impure {
     slice ds = get_data().begin_parse();
     light_client = ds~load_msg_addr();
+    whitelist_denom = ds~load_msg_addr();
     bridge_wasm_smart_contract = ds~load_ref();
     jetton_wallet_code = ds~load_ref();
     slice dict_cs = ds~load_ref().begin_parse();
@@ -35,6 +38,7 @@ global cell processed_txs;
     set_data(
         begin_cell()
         .store_slice(light_client)
+        .store_slice(whitelist_denom)
         .store_ref(bridge_wasm_smart_contract)
         .store_ref(jetton_wallet_code)
         .store_ref(begin_cell().store_dict(processed_txs).end_cell())
@@ -194,6 +198,52 @@ global cell processed_txs;
     if(op == op::confirm_tx){   
         throw_unless(error::invalid_sender, sender_address.slice_hash() == light_client.slice_hash()); ;; only light client can confirm tx
         confirm_tx(in_msg_body); 
+        return ();
+    }
+
+    if (op == op::transfer_notification()) {
+        int query_id = in_msg_body~load_uint(64);
+        int jetton_amount = in_msg_body~load_coins();
+        slice from_address = in_msg_body~load_msg_addr();
+        slice either_forward_payload = in_msg_body;
+        slice jetton_master_address = either_forward_payload~load_ref().begin_parse();
+        slice calculate_sender = calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code);
+
+        ;; validate jetton_master_address is valid
+        throw_if(error::invalid_sender, compare_address(sender_address ,calculate_sender) != -1);
+
+        builder bodyBuilder = begin_cell();
+        bodyBuilder = bodyBuilder 
+                        .store_uint(op::query_denom, 32)
+                        .store_uint(query_id, 64)
+                        .store_ref(begin_cell().store_slice(jetton_master_address).store_coins(jetton_amount).end_cell());
+        cell body = bodyBuilder.end_cell();
+        send_simple_message(0, whitelist_denom, body, CARRY_REMAINING_GAS);
+        return ();
+    }
+
+    if (op == op::callback_denom) {
+        throw_if(error::invalid_sender, compare_address(whitelist_denom ,sender_address) != -1);
+        int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
+        slice ds = in_msg_body~load_ref().begin_parse();
+        int existed = ds~load_int(8);
+        throw_if(error::unsupport_this_denom, existed != -1);
+        int is_root_from_ton = ds~load_int(8);
+        slice jetton_master_address = ds~load_msg_addr();
+        int amount = ds~load_coins();
+
+        ;; execute burn if not from ton
+        if (is_root_from_ton == 0) {
+            slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master_address, jetton_wallet_code);
+            var msg_body = begin_cell()
+                            .store_uint(op::burn(), 32)
+                            .store_uint(query_id, 64)
+                            .store_coins(amount)
+                            .store_slice(my_address())
+                            .end_cell();
+            send_simple_message(0, bridge_jetton_wallet, msg_body, CARRY_REMAINING_GAS);
+        }
+
         return ();
     }
 

@@ -64,9 +64,17 @@ export class WhitelistDenom implements Contract {
         });
     }
 
-    async sendSetDenom(provider: ContractProvider, via: Sender, denom: Address, permission: boolean, opts?: any) {
+    async sendSetDenom(
+        provider: ContractProvider,
+        via: Sender,
+        denom: Address,
+        permission: boolean,
+        isRootFromTon: boolean,
+        opts?: any,
+    ) {
         let bodyCell = beginCell()
-            .storeUint(permission ? 1 : 0, 1)
+            .storeInt(permission ? -1 : 0, 8)
+            .storeInt(isRootFromTon ? -1 : 0, 8)
             .storeAddress(denom)
             .endCell();
         await provider.internal(via, {

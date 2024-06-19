@@ -1,10 +1,21 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Dictionary, Sender, SendMode } from '@ton/core';
+import {
+    Address,
+    beginCell,
+    Cell,
+    Contract,
+    contractAddress,
+    ContractProvider,
+    Dictionary,
+    Sender,
+    SendMode,
+} from '@ton/core';
 import { getAuthInfoInput, TxBodyWasm, txBodyWasmToRef, TxWasm } from './TestClient';
 import { crc32 } from '../crc32';
 
 export type BridgeAdapterConfig = {
     bridge_wasm_smart_contract: string;
     light_client: Address;
+    whitelist_denom: Address;
     jetton_wallet_code: Cell;
 };
 
@@ -57,6 +68,7 @@ export function sliceRefToJson(cell: Cell): Object {
 export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
     return beginCell()
         .storeAddress(config.light_client)
+        .storeAddress(config.whitelist_denom)
         .storeRef(beginCell().storeBuffer(Buffer.from(config.bridge_wasm_smart_contract)).endCell())
         .storeRef(config.jetton_wallet_code)
         .storeRef(beginCell().storeDict(Dictionary.empty()).endCell()) // empty dict
@@ -66,6 +78,7 @@ export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
 export const Opcodes = {
     sendTx: crc32('op::send_tx'),
     confirmTx: crc32('op::confirm_tx'),
+    callbackDenom: crc32('op::callback_denom'),
 };
 
 export const Src = {

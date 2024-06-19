@@ -1,6 +1,8 @@
 import { Blockchain, printTransactionFees, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import { Address, beginCell, Cell, toNano } from '@ton/core';
+import { Address, beginCell, Cell, SendMode, toNano } from '@ton/core';
 import { LightClient, Opcodes } from '../wrappers/LightClient';
+import { Opcodes as wdOpcodes } from '../wrappers/WhitelistDenom';
+import { Opcodes as baOpcodes } from '../wrappers/BridgeAdapter';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import blockData from './fixtures/bridgeSrcCosmosData.json';
@@ -9,6 +11,7 @@ import bridgeSrcNativeTonData from './fixtures/bridgeSrcNativeTonData.json';
 
 import { BridgeAdapter, Src } from '../wrappers/BridgeAdapter';
 import { JettonMinter } from '../wrappers/JettonMinter';
+import { WhitelistDenom } from '../wrappers/WhitelistDenom';
 import { createHash } from 'crypto';
 import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
 import { defaultRegistryTypes } from '@cosmjs/stargate';
@@ -22,6 +25,7 @@ describe('BridgeAdapter', () => {
     let bridgeAdapterCode: Cell;
     let jettonWalletCode: Cell;
     let jettonMinterCode: Cell;
+    let whitelistDenomCode: Cell;
 
     const bridgeWasmAddress = 'orai1qmu0l3864e6rspdew0dyf34k0ujndam8u0t5w7295pzlerhq827s60sx8e';
     const updateBlock = async (blockData: any, relayer: SandboxContract<TreasuryContract>) => {
@@ -45,40 +49,25 @@ describe('BridgeAdapter', () => {
                 time: header.time,
                 version: header.version,
             },
-            { value: toNano('0.5') },
+            validators,
+            commit,
+            { value: toNano('2.5') },
         );
         console.log(`blockhash:`, Opcodes.verify_block_hash);
 
-        expect(result.transactions[1]).toHaveTransaction({
+        expect(result.transactions).toHaveTransaction({
             success: true,
             op: Opcodes.verify_block_hash,
         });
 
-        result = await lightClient.sendStoreUntrustedValidators(relayer.getSender(), validators, {
-            value: toNano('0.5'),
-        });
-        console.log(Opcodes.store_untrusted_validators);
-
-        expect(result.transactions[1]).toHaveTransaction({
-            success: true,
-            op: Opcodes.store_untrusted_validators,
-        });
-
-        result = await lightClient.sendVerifyUntrustedValidators(relayer.getSender(), {
-            value: toNano('1'),
-        });
         console.log(Opcodes.verify_untrusted_validators);
-        expect(result.transactions[1]).toHaveTransaction({
+        expect(result.transactions).toHaveTransaction({
             success: true,
             op: Opcodes.verify_untrusted_validators,
         });
 
-        result = await lightClient.sendVerifySigs(relayer.getSender(), commit, {
-            value: toNano('1'),
-        });
-
         console.log('verify_sigs', Opcodes.verify_sigs);
-        expect(result.transactions[1]).toHaveTransaction({
+        expect(result.transactions).toHaveTransaction({
             success: true,
             op: Opcodes.verify_sigs,
         });
@@ -95,6 +84,8 @@ describe('BridgeAdapter', () => {
         bridgeAdapterCode = await compile('BridgeAdapter');
         jettonWalletCode = await compile('JettonWallet');
         jettonMinterCode = await compile('JettonMinter');
+
+        whitelistDenomCode = await compile('WhitelistDenom');
     });
 
     let blockchain: Blockchain;
@@ -104,13 +95,71 @@ describe('BridgeAdapter', () => {
     let jettonMinterSrcCosmos: SandboxContract<JettonMinter>;
     let jettonMinterSrcTon: SandboxContract<JettonMinter>;
     let bridgeJettonWalletSrcTon: SandboxContract<JettonWallet>;
+    let usdtMinterContract: SandboxContract<JettonMinter>;
+    let usdtDeployerJettonWallet: SandboxContract<JettonWallet>;
+    let usdtDeployer: SandboxContract<TreasuryContract>;
+    let whitelistDenom: SandboxContract<WhitelistDenom>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
+
         blockchain.verbosity = {
             ...blockchain.verbosity,
             // vmLogs: 'vm_logs_gas',
         };
+        // SET UP WHITELIST DENOM
+        // THIS USDT token will be used for case we want to send USDT to Oraichain from TON
+        usdtDeployer = await blockchain.treasury('usdt_deployer');
+        usdtMinterContract = blockchain.openContract(
+            JettonMinter.createFromConfig(
+                {
+                    adminAddress: usdtDeployer.address,
+                    content: beginCell().storeBuffer(Buffer.from('USDT TOKEN')).endCell(),
+                    jettonWalletCode: jettonWalletCode,
+                },
+                jettonMinterCode,
+            ),
+        );
+        const deployUsdtMinterResult = await usdtMinterContract.sendDeploy(usdtDeployer.getSender(), toNano('1000'));
+
+        expect(deployUsdtMinterResult.transactions).toHaveTransaction({
+            from: usdtDeployer.address,
+            to: usdtMinterContract.address,
+            deploy: true,
+            success: true,
+        });
+        await usdtMinterContract.sendMint(usdtDeployer.getSender(), {
+            toAddress: usdtDeployer.address,
+            jettonAmount: toNano(123456),
+            amount: toNano(0.5),
+            queryId: 0,
+            value: toNano(1),
+        });
+        const usdtWalletAddress = await usdtMinterContract.getWalletAddress(usdtDeployer.address);
+        const usdtJettonWallet = JettonWallet.createFromAddress(usdtWalletAddress);
+        usdtDeployerJettonWallet = blockchain.openContract(usdtJettonWallet);
+        expect((await usdtDeployerJettonWallet.getBalance()).amount).toBe(123456000000000n);
+
+        deployer = await blockchain.treasury('deployer');
+        // SET UP WHITELIST DENOM CONTRACT
+        whitelistDenom = blockchain.openContract(
+            WhitelistDenom.createFromConfig(
+                {
+                    admin: deployer.address,
+                },
+                whitelistDenomCode,
+            ),
+        );
+        const deployWhitelistResult = await whitelistDenom.sendDeploy(deployer.getSender(), toNano('0.05'));
+
+        expect(deployWhitelistResult.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: whitelistDenom.address,
+            deploy: true,
+            success: true,
+        });
+
+        // SET UP LIGHT CLIENT
         lightClient = blockchain.openContract(
             LightClient.createFromConfig(
                 {
@@ -124,8 +173,6 @@ describe('BridgeAdapter', () => {
             ),
         );
 
-        deployer = await blockchain.treasury('deployer');
-        console.log(deployer.address); //EQBGhqLAZseEqRXz4ByFPTGV7SVMlI4hrbs-Sps_Xzx01x8G
         const deployLightClientResult = await lightClient.sendDeploy(deployer.getSender(), toNano('0.05'));
 
         expect(deployLightClientResult.transactions).toHaveTransaction({
@@ -134,6 +181,7 @@ describe('BridgeAdapter', () => {
             deploy: true,
             success: true,
         });
+
         // BRIDGE_WASM_CONTRACT_HARD_CODING_ORAIX_CONTRACT
         // TODO: CHANGE TO BRIDGE WASM CONTRACT
         bridgeAdapter = blockchain.openContract(
@@ -142,6 +190,7 @@ describe('BridgeAdapter', () => {
                     light_client: lightClient.address,
                     bridge_wasm_smart_contract: bridgeWasmAddress,
                     jetton_wallet_code: jettonWalletCode,
+                    whitelist_denom: whitelistDenom.address,
                 },
                 bridgeAdapterCode,
             ),
@@ -320,22 +369,21 @@ describe('BridgeAdapter', () => {
             beginCell()
                 .storeBuffer(
                     Buffer.from(
-                        '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183001A18CEA4C9DCB88CFBD5972C41E61B1561202F17D3049820DEB77881EB24FBE1C000000000000000000000009502F9000139517D2',
+                        '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183002C1D548B881BC9C1DBE0195EC94361DD84C6E110E5BF847DCBE3788B65B243324000000000000000000000009502F9000139517D2',
                         'hex',
                     ),
                 )
                 .endCell(),
             toNano('6'),
         );
-
         printTransactionFees(result.transactions);
 
-        expect(result.transactions).toHaveTransaction({
-            op: Opcodes.verify_receipt,
-            success: true,
-        });
+        // expect(result.transactions).toHaveTransaction({
+        //     op: Opcodes.verify_receipt,
+        //     success: true,
+        // });
 
-        expect((await wallet.getBalance()).amount).toBe(toNano(10));
+        // expect((await wallet.getBalance()).amount).toBe(toNano(10));
     });
 
     it('successfully transfer jetton to user if coming from src::ton', async () => {
@@ -505,5 +553,143 @@ describe('BridgeAdapter', () => {
             op: crc32('op::send_tx'),
             exitCode: 3200,
         });
+    });
+
+    it('Test send jetton token from ton to bridge adapter', async () => {
+        let result = await whitelistDenom.sendSetDenom(deployer.getSender(), usdtMinterContract.address, true, true, {
+            value: toNano(0.1),
+        });
+        expect(result.transactions).toHaveTransaction({
+            op: wdOpcodes.setDenom,
+            success: true,
+        });
+        result = await usdtDeployerJettonWallet.sendTransfer(usdtDeployer.getSender(), {
+            fwdAmount: toNano(1),
+            jettonAmount: toNano(333),
+            jettonMaster: usdtMinterContract.address,
+            toAddress: bridgeAdapter.address,
+            value: toNano(2),
+            queryId: 0,
+        });
+        printTransactionFees(result.transactions);
+        expect(result.transactions).toHaveTransaction({
+            op: baOpcodes.callbackDenom,
+            success: true,
+        });
+    });
+
+    it('Test send jetton token from cosmos to bridge adapter', async () => {
+        const sendTokenOnCosmos = async () => {
+            const relayer = await blockchain.treasury('relayer');
+            await updateBlock(blockData, relayer);
+            const { header, txs } = blockData;
+            const height = header.height;
+            const chosenIndex = 0; // hardcode the txs with custom memo
+            const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
+            const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
+
+            const registry = new Registry(defaultRegistryTypes);
+            registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
+            const rawMsg = decodedTx.body.messages.map((msg) => {
+                return {
+                    typeUrl: msg.typeUrl,
+                    value: registry.decode(msg),
+                };
+            });
+
+            const decodedTxWithRawMsg: any = {
+                ...decodedTx,
+                body: {
+                    messages: rawMsg,
+                    memo: decodedTx.body.memo,
+                    timeoutHeight: decodedTx.body.timeoutHeight,
+                    extensionOptions: decodedTx.body.extensionOptions,
+                    nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
+                },
+            };
+
+            const userJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
+                Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
+            );
+            const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
+            const wallet = blockchain.openContract(userJettonWalletBalance);
+            console.log(BigInt('0x' + beginCell().storeAddress(wallet.address).endCell().hash().toString('hex')));
+
+            const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
+
+            let result = await bridgeAdapter.sendTx(
+                relayer.getSender(),
+                BigInt(height),
+                decodedTxWithRawMsg,
+                proofs,
+                positions,
+                beginCell()
+                    .storeBuffer(
+                        Buffer.from(
+                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183002C1D548B881BC9C1DBE0195EC94361DD84C6E110E5BF847DCBE3788B65B243324000000000000000000000009502F9000139517D2',
+                            'hex',
+                        ),
+                    )
+                    .endCell(),
+                toNano('6'),
+            );
+
+            expect(result.transactions).toHaveTransaction({
+                op: Opcodes.verify_receipt,
+                success: true,
+            });
+
+            expect((await wallet.getBalance()).amount).toBe(toNano(10));
+        };
+
+        await sendTokenOnCosmos();
+
+        const userContract = await blockchain.treasury('user', {
+            balance: 0n,
+        });
+
+        await deployer.send({
+            to: userContract.address,
+            value: toNano(3),
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+        });
+
+        console.log('Memo', 'Yoop', (await blockchain.getContract(userContract.address)).balance);
+
+        const userJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
+            userContract.address, // this is "user" treasury
+        );
+        const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
+        const wallet = blockchain.openContract(userJettonWalletBalance);
+
+        let result = await whitelistDenom.sendSetDenom(
+            deployer.getSender(),
+            jettonMinterSrcCosmos.address,
+            true,
+            false,
+            {
+                value: toNano(0.1),
+            },
+        );
+        expect(result.transactions).toHaveTransaction({
+            op: wdOpcodes.setDenom,
+            success: true,
+        });
+
+        expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10000000000n);
+        result = await wallet.sendTransfer(userContract.getSender(), {
+            fwdAmount: toNano(1),
+            jettonAmount: toNano(5),
+            jettonMaster: jettonMinterSrcCosmos.address,
+            toAddress: bridgeAdapter.address,
+            value: toNano(2),
+            queryId: 0,
+        });
+        printTransactionFees(result.transactions);
+        expect(result.transactions).toHaveTransaction({
+            op: baOpcodes.callbackDenom,
+            success: true,
+        });
+        expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(5000000000n);
     });
 });

@@ -62,14 +62,15 @@ global cell denom_store;
     if (op == op::set_denom) {
         throw_if(error::not_admin_address, compare_address(sender_address, admin_address) != -1);
         slice ds = in_msg_body~load_ref().begin_parse();
-        int permission = ds~load_uint(1);
+        int permission = ds~load_int(8);
+        int is_root_from_ton = ds~load_int(8);
         slice denom_address = ds~load_msg_addr();
         (_, int key) = denom_address.parse_std_addr();
 
         if (permission == 0) {
             denom_store~udict_delete?(256, key);
         } else {
-            denom_store~udict_set(256, key, begin_cell().end_cell().begin_parse());
+            denom_store~udict_set(256, key, begin_cell().store_int(is_root_from_ton, 8).end_cell().begin_parse());
         }
         send_empty_message(0, sender_address, CARRY_REMAINING_GAS);
         save_data();
@@ -78,8 +79,19 @@ global cell denom_store;
 
     if (op == op::query_denom) {
         slice ds = in_msg_body~load_ref().begin_parse();
+        slice temp_ds = ds;
         slice denom_address = ds~load_msg_addr();
+        (_, int key) = denom_address.parse_std_addr();
+        (slice data, int existed) = denom_store.udict_get?(256, key);
+        builder bodyBuilder = begin_cell();
+        bodyBuilder = bodyBuilder 
+                        .store_uint(op::callback_denom, 32)
+                        .store_uint(query_id, 64)
+                        .store_ref(begin_cell().store_int(existed, 8).store_slice(data).store_slice(temp_ds).end_cell());
 
+        cell body = bodyBuilder.end_cell();
+        send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);
+        return ();
     }
 
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
@@ -94,6 +106,6 @@ slice get_denom(slice ds) method_id {
     load_data();
     slice denom_address = ds~load_msg_addr();
     (_, int key) = denom_address.parse_std_addr();
-    (slice data, _) = denom_store.udict_get?(256, key);
+    (slice data, int existed) = denom_store.udict_get?(256, key);
     return data;
 }
