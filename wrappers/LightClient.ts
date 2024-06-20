@@ -94,20 +94,6 @@ export class LightClient implements Contract {
         });
     }
 
-    async sendVerifySigs(provider: ContractProvider, via: Sender, commit: Commit, opts?: any) {
-        const commitCell = getCommitCell(commit);
-        const cell = beginCell().storeRef(commitCell).endCell();
-        await provider.internal(via, {
-            value: opts?.value || 0,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(LightClientOpcodes.verify_sigs, 32)
-                .storeUint(opts?.queryID || 0, 64)
-                .storeRef(cell)
-                .endCell(),
-        });
-    }
-
     async sendVerifyBlockHash(
         provider: ContractProvider,
         via: Sender,
@@ -186,18 +172,6 @@ export class LightClient implements Contract {
                         .storeRef(positions)
                         .endCell(),
                 )
-                .endCell(),
-        });
-    }
-
-    async sendVerifyUntrustedValidators(provider: ContractProvider, via: Sender, opts?: any) {
-        await provider.internal(via, {
-            value: opts?.value || 0,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(LightClientOpcodes.verify_untrusted_validators, 32)
-                .storeUint(opts?.queryID || 0, 64)
-                .storeRef(beginCell().endCell())
                 .endCell(),
         });
     }

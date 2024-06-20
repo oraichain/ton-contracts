@@ -1,9 +1,13 @@
 {
-    "name": "ton-contracts",
-    "version": "0.0.1",
+    "name": "@oraichain/ton-bridge-contracts",
+    "version": "0.9.1",
+    "main": "dist/index.js",
     "scripts": {
         "start": "blueprint run",
         "build": "blueprint build",
+        "build:all": "blueprint build --all",
+        "build:npm": "yarn build:all && tsc --project tsconfig.build.json && cp -r ./build ./dist",
+        "publish:npm": "yarn publish dist",
         "test": "jest --verbose"
     },
     "devDependencies": {
