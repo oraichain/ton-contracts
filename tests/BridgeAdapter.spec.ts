@@ -27,7 +27,7 @@ describe('BridgeAdapter', () => {
     let jettonMinterCode: Cell;
     let whitelistDenomCode: Cell;
 
-    const bridgeWasmAddress = 'orai1qmu0l3864e6rspdew0dyf34k0ujndam8u0t5w7295pzlerhq827s60sx8e';
+    const bridgeWasmAddress = 'orai16ka659l0t90dua6du8yq02ytgdh222ga3qcxaqxp86r78p6tl0usze57ve';
     const updateBlock = async (blockData: any, relayer: SandboxContract<TreasuryContract>) => {
         const { header, commit, validators, txs } = blockData;
 
@@ -385,7 +385,7 @@ describe('BridgeAdapter', () => {
                 data: beginCell()
                     .storeBuffer(
                         Buffer.from(
-                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183002C1D548B881BC9C1DBE0195EC94361DD84C6E110E5BF847DCBE3788B65B243324000000000000000000000009502F9000139517D2',
+                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183003D7D60A2ECA0C588A1267152022365E675054547609BA900129F5F3F149366CF8000000000000000000000009502F9000139517D2',
                             'hex',
                         ),
                     )
@@ -664,7 +664,7 @@ describe('BridgeAdapter', () => {
                     data: beginCell()
                         .storeBuffer(
                             Buffer.from(
-                                '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183002C1D548B881BC9C1DBE0195EC94361DD84C6E110E5BF847DCBE3788B65B243324000000000000000000000009502F9000139517D2',
+                                '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183003D7D60A2ECA0C588A1267152022365E675054547609BA900129F5F3F149366CF8000000000000000000000009502F9000139517D2',
                                 'hex',
                             ),
                         )
@@ -694,8 +694,6 @@ describe('BridgeAdapter', () => {
             value: toNano(3),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
         });
-
-        console.log('Memo', 'Yoop', (await blockchain.getContract(userContract.address)).balance);
 
         const userJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
             userContract.address, // this is "user" treasury
