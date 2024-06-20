@@ -13,7 +13,7 @@ describe('GenAddress', () => {
         });
         const code = await compile('LightClient');
         const init = { code, data };
-        expect(contractAddress(0, init).toString()).toBe('EQBhiCvcPtLcH5IKn6VazG4eegdrS1ibqQ1wa-oQQOfgPtXL');
+        expect(contractAddress(0, init).toString()).toBe('EQCENE7ly1sgygm8dWhTfW44Sypu1Vzidqd5E8A_kZLLujwL');
         expect(
             contractAddress(0, {
                 ...init,
@@ -25,6 +25,6 @@ describe('GenAddress', () => {
                     validatorHashSet: '',
                 }),
             }).toString(),
-        ).toBe('EQBWYiPjPkENUtXygAKDxCMjVm2QCekUo1wmoN2MkNhs2LcU');
+        ).toBe('EQD7WOQ3hPCSxizwkNHRNbrHqR7rA2o-4r76Iw3Omy2XuL7f');
     });
 });

@@ -1,5 +1,5 @@
 import { Address, toNano } from '@ton/core';
-import { LightClient, Opcodes } from '../wrappers/LightClient';
+import { LightClient, LightClientOpcodes } from '../wrappers/LightClient';
 import blockData from '../tests/fixtures/new_data.json';
 import * as dotenv from 'dotenv';
 import { createTonWallet, waitSeqno } from './utils';
@@ -16,7 +16,7 @@ async function waitUpdateBlock(client: TonClient, lightClientAddress: Address, w
                 const op = body.loadUint(32);
                 body.skip(64);
                 const realBody = body.loadRef().beginParse();
-                if (op === Opcodes.verify_sigs) {
+                if (op === LightClientOpcodes.verify_sigs) {
                     const commits = realBody.loadRef().beginParse();
                     const txHeight = commits.loadUint(32);
                     if (

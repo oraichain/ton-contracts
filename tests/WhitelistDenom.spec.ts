@@ -46,9 +46,13 @@ describe('Version', () => {
 
     it('try set admin address', async () => {
         const newAdmin = await blockchain.treasury('new admin');
-        await contract.sendSetAdminAddress(deployer.getSender(), newAdmin.address, {
-            value: toNano('0.1'),
-        });
+        await contract.sendSetAdminAddress(
+            deployer.getSender(),
+            { address: newAdmin.address },
+            {
+                value: toNano('0.1'),
+            },
+        );
         const addr = await contract.getAdminAddress();
         expect(addr.toString()).toBe(newAdmin.address.toString());
     });
@@ -57,16 +61,24 @@ describe('Version', () => {
         const denom = await blockchain.treasury('USDT');
         const beforeValue = await contract.getDenom(denom.address);
         expect(beforeValue).toBeNull();
-        let result = await contract.sendSetDenom(deployer.getSender(), denom.address, true, true, {
-            value: toNano('8'),
-        });
+        let result = await contract.sendSetDenom(
+            deployer.getSender(),
+            { denom: denom.address, permission: true, isRootFromTon: true },
+            {
+                value: toNano('8'),
+            },
+        );
         printTransactionFees(result.transactions);
         let value = await contract.getDenom(denom.address);
         expect(value?.asSlice().loadInt(8)).toBe(-1);
 
-        result = await contract.sendSetDenom(deployer.getSender(), denom.address, true, false, {
-            value: toNano('8'),
-        });
+        result = await contract.sendSetDenom(
+            deployer.getSender(),
+            { denom: denom.address, permission: true, isRootFromTon: false },
+            {
+                value: toNano('8'),
+            },
+        );
         value = await contract.getDenom(denom.address);
         expect(value?.asSlice().loadInt(8)).toBe(0);
     });
