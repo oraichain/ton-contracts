@@ -76,7 +76,7 @@ export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
         .endCell();
 }
 
-export const Opcodes = {
+export const BridgeAdapterOpcodes = {
     sendTx: crc32('op::send_tx'),
     confirmTx: crc32('op::confirm_tx'),
     callbackDenom: crc32('op::callback_denom'),
@@ -131,7 +131,7 @@ export class BridgeAdapter implements Contract {
             .endCell();
 
         return beginCell()
-            .storeUint(Opcodes.sendTx, 32)
+            .storeUint(BridgeAdapterOpcodes.sendTx, 32)
             .storeUint(queryId, 64)
             .storeUint(height, 64)
             .storeRef(txRaw)
