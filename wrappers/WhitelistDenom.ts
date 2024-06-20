@@ -23,7 +23,7 @@ export function whitelistDenomConfigToCell(config: WhitelistDenomConfig): Cell {
         .endCell();
 }
 
-export const Opcodes = {
+export const WhitelistDenomOpcodes = {
     setAdminAddress: crc32('op::set_admin_address'),
     setDenom: crc32('op::set_denom'),
 };
@@ -68,7 +68,7 @@ export class WhitelistDenom implements Contract {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.setAdminAddress, 32)
+                .storeUint(WhitelistDenomOpcodes.setAdminAddress, 32)
                 .storeUint(opts.queryId || 0, 64)
                 .storeRef(bodyCell)
                 .endCell(),
@@ -85,7 +85,7 @@ export class WhitelistDenom implements Contract {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.setDenom, 32)
+                .storeUint(WhitelistDenomOpcodes.setDenom, 32)
                 .storeUint(opts.queryId || 0, 64)
                 .storeRef(bodyCell)
                 .endCell(),

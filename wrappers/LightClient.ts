@@ -8,11 +8,13 @@ import {
     Dictionary,
     Sender,
     SendMode,
+    toNano,
 } from '@ton/core';
 import { getAuthInfoInput, getMerkleProofs, txBodyWasmToRef, TxWasm } from './TestClient';
 import { crc32 } from '../crc32';
 import { getBlockHashCell, getCommitCell, getValidatorsCell } from './utils';
 import { Commit, Header, Validator } from '@cosmjs/tendermint-rpc';
+import { ValueOps } from './@types';
 
 export type LightClientConfig = {
     height: number;
@@ -21,6 +23,12 @@ export type LightClientConfig = {
     validatorHashSet: string;
     nextValidatorHashSet: string;
 };
+
+export interface SendVerifyBlockHashInterface {
+    header: Header;
+    validators: Validator[];
+    commit: Commit;
+}
 
 export function lightClientConfigToCell(config: LightClientConfig): Cell {
     return beginCell()
@@ -55,7 +63,7 @@ export function lightClientConfigToCell(config: LightClientConfig): Cell {
         .endCell();
 }
 
-export const Opcodes = {
+export const LightClientOpcodes = {
     verify_block_hash: crc32('op::verify_block_hash'),
     verify_sigs: crc32('op::verify_sigs'),
     verify_receipt: crc32('op::verify_receipt'),
@@ -93,7 +101,7 @@ export class LightClient implements Contract {
             value: opts?.value || 0,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.verify_sigs, 32)
+                .storeUint(LightClientOpcodes.verify_sigs, 32)
                 .storeUint(opts?.queryID || 0, 64)
                 .storeRef(cell)
                 .endCell(),
@@ -103,24 +111,22 @@ export class LightClient implements Contract {
     async sendVerifyBlockHash(
         provider: ContractProvider,
         via: Sender,
-        header: Header,
-        validators: Validator[],
-        commit: Commit,
-        opts?: any,
+        data: SendVerifyBlockHashInterface,
+        opts: ValueOps,
     ) {
-        const data = beginCell()
-            .storeRef(getBlockHashCell(header))
-            .storeRef(getValidatorsCell(validators)!)
-            .storeRef(getCommitCell(commit))
+        const dataCell = beginCell()
+            .storeRef(getBlockHashCell(data.header))
+            .storeRef(getValidatorsCell(data.validators)!)
+            .storeRef(getCommitCell(data.commit))
             .endCell();
 
         await provider.internal(via, {
-            value: opts?.value || 0,
+            value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.verify_block_hash, 32)
-                .storeUint(opts?.queryID || 0, 64)
-                .storeRef(data)
+                .storeUint(LightClientOpcodes.verify_block_hash, 32)
+                .storeUint(opts.queryId || 0, 64)
+                .storeRef(dataCell)
                 .endCell(),
         });
     }
@@ -128,12 +134,15 @@ export class LightClient implements Contract {
     async sendVerifyReceipt(
         provider: ContractProvider,
         via: Sender,
-        height: string,
-        tx: TxWasm,
-        leaves: Buffer[],
-        leafData: Buffer,
-        opts?: any,
+        data: {
+            height: string;
+            tx: TxWasm;
+            leaves: Buffer[];
+            leafData: Buffer;
+        },
+        opts: ValueOps,
     ) {
+        const { height, tx, leaves, leafData } = data;
         const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
         const authInfo = beginCell()
             .storeRef(signInfos || beginCell().endCell())
@@ -164,11 +173,11 @@ export class LightClient implements Contract {
         const { branch: proofs, positions } = getMerkleProofs(leaves, leafData);
 
         await provider.internal(via, {
-            value: opts?.value || 0,
+            value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.verify_receipt, 32)
-                .storeUint(opts?.queryID || 0, 64)
+                .storeUint(LightClientOpcodes.verify_receipt, 32)
+                .storeUint(opts.queryId || 0, 64)
                 .storeRef(
                     beginCell()
                         .storeUint(BigInt(height), 64)
@@ -186,7 +195,7 @@ export class LightClient implements Contract {
             value: opts?.value || 0,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.verify_untrusted_validators, 32)
+                .storeUint(LightClientOpcodes.verify_untrusted_validators, 32)
                 .storeUint(opts?.queryID || 0, 64)
                 .storeRef(beginCell().endCell())
                 .endCell(),

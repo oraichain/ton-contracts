@@ -1,13 +1,9 @@
 import { Blockchain, printTransactionFees, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { LightClient, Opcodes } from '../wrappers/LightClient';
+import { LightClient, LightClientOpcodes } from '../wrappers/LightClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import blockData from './fixtures/data.json';
-import newBlockData from './fixtures/new_data.json';
-import newNewBlockData from './fixtures/new_data_1.json';
 import { createUpdateClientData, deserializeCommit, deserializeHeader, deserializeValidator } from '../wrappers/utils';
-import { toCamel } from 'snake-camel';
 
 describe('LightClient', () => {
     let code: Cell;
@@ -56,9 +52,11 @@ describe('LightClient', () => {
             const user = await blockchain.treasury('user');
             let result = await lightClient.sendVerifyBlockHash(
                 user.getSender(),
-                deserializeHeader(header),
-                validators.map(deserializeValidator),
-                deserializeCommit(lastCommit),
+                {
+                    header: deserializeHeader(header),
+                    validators: validators.map(deserializeValidator),
+                    commit: deserializeCommit(lastCommit),
+                },
                 {
                     value: toNano('10'),
                 },
@@ -67,16 +65,16 @@ describe('LightClient', () => {
             printTransactionFees(result.transactions);
 
             expect(result.transactions).toHaveTransaction({
-                op: Opcodes.verify_block_hash,
+                op: LightClientOpcodes.verify_block_hash,
                 success: true,
             });
 
             expect(result.transactions).toHaveTransaction({
-                op: Opcodes.verify_sigs,
+                op: LightClientOpcodes.verify_sigs,
                 success: true,
             });
 
-            console.log(`blockhash:`, Opcodes.verify_block_hash);
+            console.log(`blockhash:`, LightClientOpcodes.verify_block_hash);
             console.log('Finished: ', {
                 height: await lightClient.getHeight(),
                 chainId: await lightClient.getChainId(),

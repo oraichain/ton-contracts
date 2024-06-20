@@ -1,8 +1,8 @@
 import { Blockchain, printTransactionFees, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Address, beginCell, Cell, SendMode, toNano } from '@ton/core';
-import { LightClient, Opcodes } from '../wrappers/LightClient';
-import { Opcodes as wdOpcodes } from '../wrappers/WhitelistDenom';
-import { Opcodes as baOpcodes } from '../wrappers/BridgeAdapter';
+import { LightClient, LightClientOpcodes } from '../wrappers/LightClient';
+import { WhitelistDenomOpcodes } from '../wrappers/WhitelistDenom';
+import { BridgeAdapterOpcodes } from '../wrappers/BridgeAdapter';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import blockData from './fixtures/bridgeSrcCosmosData.json';
@@ -19,6 +19,7 @@ import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 import { getMerkleProofs } from '../wrappers/TestClient';
 import { JettonWallet } from '../wrappers/JettonWallet';
 import { crc32 } from '../crc32';
+import { createUpdateClientData, deserializeCommit, deserializeHeader, deserializeValidator } from '../wrappers/utils';
 
 describe('BridgeAdapter', () => {
     let lightClientCode: Cell;
@@ -27,49 +28,39 @@ describe('BridgeAdapter', () => {
     let jettonMinterCode: Cell;
     let whitelistDenomCode: Cell;
 
-    const bridgeWasmAddress = 'orai1qmu0l3864e6rspdew0dyf34k0ujndam8u0t5w7295pzlerhq827s60sx8e';
-    const updateBlock = async (blockData: any, relayer: SandboxContract<TreasuryContract>) => {
-        const { header, commit, validators, txs } = blockData;
+    const bridgeWasmAddress = 'orai16ka659l0t90dua6du8yq02ytgdh222ga3qcxaqxp86r78p6tl0usze57ve';
+    const updateBlock = async (blockNumber: number, relayer: SandboxContract<TreasuryContract>): Promise<string[]> => {
+        const { header, lastCommit, validators, txs } = await createUpdateClientData(
+            'https://rpc.orai.io',
+            blockNumber,
+        );
 
         let result = await lightClient.sendVerifyBlockHash(
             relayer.getSender(),
             {
-                appHash: header.app_hash,
-                chainId: header.chain_id,
-                consensusHash: header.consensus_hash,
-                dataHash: header.data_hash,
-                evidenceHash: header.evidence_hash,
-                height: header.height,
-                lastBlockId: header.last_block_id,
-                lastCommitHash: header.last_commit_hash,
-                lastResultsHash: header.last_results_hash,
-                validatorsHash: header.validators_hash,
-                nextValidatorsHash: header.next_validators_hash,
-                proposerAddress: header.proposer_address,
-                time: header.time,
-                version: header.version,
+                header: deserializeHeader(header),
+                validators: validators.map(deserializeValidator),
+                commit: deserializeCommit(lastCommit),
             },
-            validators,
-            commit,
             { value: toNano('2.5') },
         );
-        console.log(`blockhash:`, Opcodes.verify_block_hash);
+        console.log(`blockhash:`, LightClientOpcodes.verify_block_hash);
 
         expect(result.transactions).toHaveTransaction({
             success: true,
-            op: Opcodes.verify_block_hash,
+            op: LightClientOpcodes.verify_block_hash,
         });
 
-        console.log(Opcodes.verify_untrusted_validators);
+        console.log(LightClientOpcodes.verify_untrusted_validators);
         expect(result.transactions).toHaveTransaction({
             success: true,
-            op: Opcodes.verify_untrusted_validators,
+            op: LightClientOpcodes.verify_untrusted_validators,
         });
 
-        console.log('verify_sigs', Opcodes.verify_sigs);
+        console.log('verify_sigs', LightClientOpcodes.verify_sigs);
         expect(result.transactions).toHaveTransaction({
             success: true,
-            op: Opcodes.verify_sigs,
+            op: LightClientOpcodes.verify_sigs,
         });
 
         console.log('Finished: ', {
@@ -78,6 +69,8 @@ describe('BridgeAdapter', () => {
             dataHash: (await lightClient.getDataHash()).toString('hex'),
             validatorHash: (await lightClient.getValidatorHash()).toString('hex'),
         });
+
+        return txs.map((item) => Buffer.from(item, 'hex').toString('base64'));
     };
     beforeAll(async () => {
         lightClientCode = await compile('LightClient');
@@ -336,9 +329,8 @@ describe('BridgeAdapter', () => {
 
     it('successfully mint token to the user if coming from src::cosmos', async () => {
         const relayer = await blockchain.treasury('relayer');
-        await updateBlock(blockData, relayer);
-        const { header, txs } = blockData;
-        const height = header.height;
+        const height = 24871898;
+        const txs = await updateBlock(height, relayer);
         const chosenIndex = 0; // hardcode the txs with custom memo
         const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
         const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
@@ -383,7 +375,7 @@ describe('BridgeAdapter', () => {
                 data: beginCell()
                     .storeBuffer(
                         Buffer.from(
-                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183002C1D548B881BC9C1DBE0195EC94361DD84C6E110E5BF847DCBE3788B65B243324000000000000000000000009502F9000139517D2',
+                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183003EF4F27F21D22059F4E222352383B345E47D52206817E68CF04C5B850B88B4294000000000000000000000009502F9000139517D2',
                             'hex',
                         ),
                     )
@@ -395,20 +387,18 @@ describe('BridgeAdapter', () => {
         );
         printTransactionFees(result.transactions);
 
-        // expect(result.transactions).toHaveTransaction({
-        //     op: Opcodes.verify_receipt,
-        //     success: true,
-        // });
+        expect(result.transactions).toHaveTransaction({
+            op: LightClientOpcodes.verify_receipt,
+            success: true,
+        });
 
-        // expect((await wallet.getBalance()).amount).toBe(toNano(10));
+        expect((await wallet.getBalance()).amount).toBe(toNano(10));
     });
 
     it('successfully transfer jetton to user if coming from src::ton', async () => {
         const relayer = await blockchain.treasury('relayer');
-
-        await updateBlock(blockSrcTONJettonData, relayer);
-        const { header, txs } = blockSrcTONJettonData;
-        const height = header.height;
+        const height = 24872023;
+        const txs = await updateBlock(height, relayer);
         const chosenIndex = 0; // hardcode the txs with custom memo
         const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
         const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
@@ -468,7 +458,7 @@ describe('BridgeAdapter', () => {
         );
 
         expect(result.transactions).toHaveTransaction({
-            op: Opcodes.verify_receipt,
+            op: LightClientOpcodes.verify_receipt,
             success: true,
         });
 
@@ -479,9 +469,8 @@ describe('BridgeAdapter', () => {
     it('successfully transfer to user if coming from src::ton', async () => {
         const relayer = await blockchain.treasury('relayer');
         const user = await blockchain.treasury('user', { balance: 0n });
-        await updateBlock(bridgeSrcNativeTonData, relayer);
-        const { header, txs } = bridgeSrcNativeTonData;
-        const height = header.height;
+        const height = 24872267;
+        const txs = await updateBlock(height, relayer);
         const chosenIndex = 0; // hardcode the txs with custom memo
         const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
         const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
@@ -548,7 +537,7 @@ describe('BridgeAdapter', () => {
         );
 
         expect(result.transactions).toHaveTransaction({
-            op: Opcodes.verify_receipt,
+            op: LightClientOpcodes.verify_receipt,
             success: true,
         });
 
@@ -593,7 +582,7 @@ describe('BridgeAdapter', () => {
             },
         );
         expect(result.transactions).toHaveTransaction({
-            op: wdOpcodes.setDenom,
+            op: WhitelistDenomOpcodes.setDenom,
             success: true,
         });
         result = await usdtDeployerJettonWallet.sendTransfer(
@@ -618,20 +607,10 @@ describe('BridgeAdapter', () => {
             },
         );
         printTransactionFees(result.transactions);
-        const body = result.transactions[6].outMessages.get(0)?.body.asSlice();
-        console.log(result.transactions[6].outMessages.get(0));
-        const jetterAddress = body?.loadAddress(); // dia chi token
-        const amount = body?.loadCoins(); // amount chuyen di
-        const memo = body?.loadRef().asSlice();
-        const desDenom = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
-        const desChannel = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
-        const desReceiver = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
-        const oraiAddress = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
-        console.log({ jetterAddress, amount, desDenom, desChannel, desReceiver, oraiAddress });
 
         console.log('Bridge adapter balance:', (await blockchain.getContract(bridgeAdapter.address)).balance);
         expect(result.transactions).toHaveTransaction({
-            op: baOpcodes.callbackDenom,
+            op: BridgeAdapterOpcodes.callbackDenom,
             success: true,
         });
     });
@@ -639,9 +618,8 @@ describe('BridgeAdapter', () => {
     it('Test send jetton token from cosmos to bridge adapter', async () => {
         const sendTokenOnCosmos = async () => {
             const relayer = await blockchain.treasury('relayer');
-            await updateBlock(blockData, relayer);
-            const { header, txs } = blockData;
-            const height = header.height;
+            const height = 24871898;
+            const txs = await updateBlock(height, relayer);
             const chosenIndex = 0; // hardcode the txs with custom memo
             const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
             const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
@@ -685,7 +663,7 @@ describe('BridgeAdapter', () => {
                     data: beginCell()
                         .storeBuffer(
                             Buffer.from(
-                                '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183002C1D548B881BC9C1DBE0195EC94361DD84C6E110E5BF847DCBE3788B65B243324000000000000000000000009502F9000139517D2',
+                                '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183003EF4F27F21D22059F4E222352383B345E47D52206817E68CF04C5B850B88B4294000000000000000000000009502F9000139517D2',
                                 'hex',
                             ),
                         )
@@ -697,7 +675,7 @@ describe('BridgeAdapter', () => {
             );
 
             expect(result.transactions).toHaveTransaction({
-                op: Opcodes.verify_receipt,
+                op: LightClientOpcodes.verify_receipt,
                 success: true,
             });
 
@@ -736,7 +714,7 @@ describe('BridgeAdapter', () => {
             },
         );
         expect(result.transactions).toHaveTransaction({
-            op: wdOpcodes.setDenom,
+            op: WhitelistDenomOpcodes.setDenom,
             success: true,
         });
 
@@ -760,7 +738,7 @@ describe('BridgeAdapter', () => {
         printTransactionFees(result.transactions);
 
         expect(result.transactions).toHaveTransaction({
-            op: baOpcodes.callbackDenom,
+            op: BridgeAdapterOpcodes.callbackDenom,
             success: true,
         });
         expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(5000000000n);
