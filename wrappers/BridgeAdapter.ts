@@ -9,7 +9,8 @@ import {
     Sender,
     SendMode,
 } from '@ton/core';
-import { getAuthInfoInput, txBodyWasmToRef, TxWasm } from './TestClient';
+import { getAuthInfoInput, txBodyWasmToRef } from './utils';
+import { TxWasm } from './@types';
 import { crc32 } from '../crc32';
 import { ValueOps } from './@types';
 
