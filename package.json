@@ -1,7 +1,7 @@
 {
     "name": "@oraichain/ton-bridge-contracts",
-    "version": "0.9.1",
-    "main": "dist/index.js",
+    "version": "0.10.1",
+    "main": "wrappers/index.js",
     "scripts": {
         "start": "blueprint run",
         "build": "blueprint build",
