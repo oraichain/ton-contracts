@@ -31,12 +31,7 @@
     "dependencies": {
         "@types/varstruct": "^6.1.3",
         "cosmjs-types": "^0.9.0",
-<<<<<<< HEAD
-        "ton": "^13.9.0",
-=======
         "dotenv": "^16.4.5",
-        "snake-camel": "^1.0.8",
->>>>>>> 121b8a0 (update types for light client)
         "varstruct": "^6.1.3"
     }
 }
