@@ -133,7 +133,7 @@ global cell processed_txs;
         cell positions = in_msg_body~load_ref();
         cell data = in_msg_body~load_ref();
         slice data_slice = data.begin_parse();
-        int data_cell_hash = data.cell_hash();
+        int tx_cell_hash = tx_raw_cell.cell_hash();
         slice tx_raw = tx_raw_cell.begin_parse();
         ;; basic validate
         throw_unless(error::empty_tx, tx_raw.slice_refs_empty?() == 0);
@@ -143,7 +143,7 @@ global cell processed_txs;
         throw_unless(error::empty_auth_info, auth_info.slice_refs_empty?() == 0);
         throw_unless(error::empty_tx_body, tx_body.slice_refs_empty?() == 0);
         throw_unless(error::empty_tx_signatures, signatures.slice_refs_empty?() == 0);
-        (slice processed_data, int exist) = processed_txs.udict_get?(256, data_cell_hash);
+        (slice processed_data, int exist) = processed_txs.udict_get?(256, tx_cell_hash);
         throw_unless(error::already_process_data, exist == 0); ;; doesn't process the same data twice
         slice messages = tx_body~load_ref().begin_parse();
         while(messages.slice_refs_empty?() != -1) {
@@ -170,9 +170,8 @@ global cell processed_txs;
                 tuple_data~tpush(end_json);
                 int data_hash = digest_hash(tuple_data);
                 int msg_hash = digest_hash(tuple_msg);
-
                 if(data_hash == msg_hash){
-                    processed_txs~udict_set_builder(256, data_cell_hash, begin_cell().store_int(-1, 8)); ;; avoid reentrency
+                    processed_txs~udict_set_builder(256, tx_cell_hash, begin_cell().store_int(-1, 8)); ;; avoid reentrency
                     builder bodyBuilder = begin_cell();
                     bodyBuilder = bodyBuilder 
                         .store_uint(op::verify_receipt, 32)
@@ -239,7 +238,7 @@ global cell processed_txs;
         cell memo_cell = ds~load_ref();
         int amount = ds~load_coins();
 
-        cell emit_data = begin_cell().store_ref(memo_cell).store_coins(amount).end_cell();
+        cell emit_data = begin_cell().store_slice(jetton_master_address).store_coins(amount).store_coins(0).store_ref(memo_cell).end_cell();
         ;; execute burn if not from ton
         if (is_root_from_ton == 0) {
             slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master_address, jetton_wallet_code);

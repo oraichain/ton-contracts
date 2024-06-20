@@ -5,7 +5,7 @@ import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import '@ton/test-utils';
 import { Tx } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
-import { TestClient } from '../wrappers/TestClient';
+import { TestClient } from '../../wrappers/TestClient';
 import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
 
 const NOT_MSG_EXECUTE_ERROR = 3;

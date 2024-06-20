@@ -1,9 +1,9 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Cell, toNano } from '@ton/core';
-import { getTimeComponent, TestClient } from '../wrappers/TestClient';
+import { getTimeComponent, TestClient } from '../../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import * as timeFixtures from './fixtures/time.json';
+import * as timeFixtures from '../fixtures/time.json';
 
 describe('Time', () => {
     let code: Cell;

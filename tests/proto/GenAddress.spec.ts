@@ -1,5 +1,5 @@
 import { compile } from '@ton/blueprint';
-import { lightClientConfigToCell } from '../wrappers/LightClient';
+import { lightClientConfigToCell } from '../../wrappers/LightClient';
 import { contractAddress } from '@ton/core';
 
 describe('GenAddress', () => {
