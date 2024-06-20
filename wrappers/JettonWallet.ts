@@ -9,6 +9,7 @@ import {
     Sender,
     SendMode,
 } from '@ton/core';
+import { ValueOps } from './@types';
 
 export enum JettonOpCodes {
     TRANSFER = 0xf8a7ea5,
@@ -35,6 +36,14 @@ export function jettonWalletConfigToCell(config: JettonWalletConfig): Cell {
         .endCell();
 }
 
+export interface SendTransferInterface {
+    toAddress: Address;
+    fwdAmount: bigint;
+    jettonAmount: bigint;
+    jettonMaster: Address;
+    memo: Cell;
+}
+
 export class JettonWallet implements Contract {
     constructor(
         readonly address: Address,
@@ -59,33 +68,21 @@ export class JettonWallet implements Contract {
         });
     }
 
-    async sendTransfer(
-        provider: ContractProvider,
-        via: Sender,
-        opts: {
-            value: bigint;
-            toAddress: Address;
-            queryId: number;
-            fwdAmount: bigint;
-            jettonAmount: bigint;
-            jettonMaster: Address;
-            memo: Cell;
-        },
-    ) {
+    async sendTransfer(provider: ContractProvider, via: Sender, data: SendTransferInterface, opts: ValueOps) {
         await provider.internal(via, {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
                 .storeUint(JettonOpCodes.TRANSFER, 32)
-                .storeUint(opts.queryId, 64)
-                .storeCoins(opts.jettonAmount)
-                .storeAddress(opts.toAddress)
+                .storeUint(opts.queryId || 0, 64)
+                .storeCoins(data.jettonAmount)
+                .storeAddress(data.toAddress)
                 .storeAddress(via.address) // response address
                 .storeDict(Dictionary.empty())
-                .storeCoins(opts.fwdAmount)
+                .storeCoins(data.fwdAmount)
                 .storeUint(0, 1)
-                .storeRef(beginCell().storeAddress(opts.jettonMaster).endCell())
-                .storeRef(opts.memo)
+                .storeRef(beginCell().storeAddress(data.jettonMaster).endCell())
+                .storeRef(data.memo)
                 .endCell(),
         });
     }

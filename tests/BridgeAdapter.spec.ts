@@ -39,12 +39,12 @@ describe('BridgeAdapter', () => {
                 consensusHash: header.consensus_hash,
                 dataHash: header.data_hash,
                 evidenceHash: header.evidence_hash,
-                height: BigInt(header.height),
+                height: header.height,
                 lastBlockId: header.last_block_id,
                 lastCommitHash: header.last_commit_hash,
                 lastResultsHash: header.last_results_hash,
-                validatorHash: header.validators_hash,
-                nextValidatorHash: header.next_validators_hash,
+                validatorsHash: header.validators_hash,
+                nextValidatorsHash: header.next_validators_hash,
                 proposerAddress: header.proposer_address,
                 time: header.time,
                 version: header.version,
@@ -585,27 +585,50 @@ describe('BridgeAdapter', () => {
     });
 
     it('Test send jetton token from ton to bridge adapter', async () => {
-        let result = await whitelistDenom.sendSetDenom(deployer.getSender(), usdtMinterContract.address, true, true, {
-            value: toNano(0.1),
-        });
+        let result = await whitelistDenom.sendSetDenom(
+            deployer.getSender(),
+            { denom: usdtMinterContract.address, permission: true, isRootFromTon: true },
+            {
+                value: toNano(0.1),
+            },
+        );
         expect(result.transactions).toHaveTransaction({
             op: wdOpcodes.setDenom,
             success: true,
         });
-        result = await usdtDeployerJettonWallet.sendTransfer(usdtDeployer.getSender(), {
-            fwdAmount: toNano(1),
-            jettonAmount: toNano(333),
-            jettonMaster: usdtMinterContract.address,
-            toAddress: bridgeAdapter.address,
-            memo: beginCell()
-                .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
-                .endCell(),
-            value: toNano(2),
-            queryId: 0,
-        });
+        result = await usdtDeployerJettonWallet.sendTransfer(
+            usdtDeployer.getSender(),
+            {
+                fwdAmount: toNano(1),
+                jettonAmount: toNano(333),
+                jettonMaster: usdtMinterContract.address,
+                toAddress: bridgeAdapter.address,
+                memo: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(
+                        beginCell().storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx')).endCell(),
+                    )
+                    .endCell(),
+            },
+            {
+                value: toNano(2),
+                queryId: 0,
+            },
+        );
         printTransactionFees(result.transactions);
-        console.log(result.transactions[6].children);
-        console.log(result.transactions[6].outMessages.get(0)?.body.asSlice().loadCoins());
+        const body = result.transactions[6].outMessages.get(0)?.body.asSlice();
+        console.log(result.transactions[6].outMessages.get(0));
+        const jetterAddress = body?.loadAddress(); // dia chi token
+        const amount = body?.loadCoins(); // amount chuyen di
+        const memo = body?.loadRef().asSlice();
+        const desDenom = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
+        const desChannel = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
+        const desReceiver = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
+        const oraiAddress = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
+        console.log({ jetterAddress, amount, desDenom, desChannel, desReceiver, oraiAddress });
+
         console.log('Bridge adapter balance:', (await blockchain.getContract(bridgeAdapter.address)).balance);
         expect(result.transactions).toHaveTransaction({
             op: baOpcodes.callbackDenom,
@@ -703,9 +726,11 @@ describe('BridgeAdapter', () => {
 
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
-            jettonMinterSrcCosmos.address,
-            true,
-            false,
+            {
+                denom: jettonMinterSrcCosmos.address,
+                permission: true,
+                isRootFromTon: false,
+            },
             {
                 value: toNano(0.1),
             },
@@ -716,17 +741,22 @@ describe('BridgeAdapter', () => {
         });
 
         expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10000000000n);
-        result = await wallet.sendTransfer(userContract.getSender(), {
-            fwdAmount: toNano(1),
-            jettonAmount: toNano(5),
-            jettonMaster: jettonMinterSrcCosmos.address,
-            toAddress: bridgeAdapter.address,
-            memo: beginCell()
-                .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
-                .endCell(),
-            value: toNano(2),
-            queryId: 0,
-        });
+        result = await wallet.sendTransfer(
+            userContract.getSender(),
+            {
+                fwdAmount: toNano(1),
+                jettonAmount: toNano(5),
+                jettonMaster: jettonMinterSrcCosmos.address,
+                toAddress: bridgeAdapter.address,
+                memo: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
+                    .endCell(),
+            },
+            {
+                value: toNano(2),
+                queryId: 0,
+            },
+        );
         printTransactionFees(result.transactions);
 
         expect(result.transactions).toHaveTransaction({

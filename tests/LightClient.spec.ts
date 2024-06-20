@@ -6,17 +6,13 @@ import { compile } from '@ton/blueprint';
 import blockData from './fixtures/data.json';
 import newBlockData from './fixtures/new_data.json';
 import newNewBlockData from './fixtures/new_data_1.json';
-import specialBlockData from './fixtures/specialBlock.json';
-import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
-import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
-import { defaultRegistryTypes } from '@cosmjs/stargate';
-import { createHash } from 'crypto';
+import { createUpdateClientData, deserializeCommit, deserializeHeader, deserializeValidator } from '../wrappers/utils';
+import { toCamel } from 'snake-camel';
 
 describe('LightClient', () => {
     let code: Cell;
     beforeAll(async () => {
         code = await compile('LightClient');
-        console.log('Code', code.toBoc().toString('hex'));
     });
 
     let blockchain: Blockchain;
@@ -55,30 +51,17 @@ describe('LightClient', () => {
     });
 
     it('test light client verify block hash', async () => {
-        const testcase = async (blockData: any) => {
-            const { header, commit, validators } = blockData;
+        const testcase = async (blockNumber: any) => {
+            const { header, lastCommit, validators } = await createUpdateClientData('https://rpc.orai.io', blockNumber);
             const user = await blockchain.treasury('user');
             let result = await lightClient.sendVerifyBlockHash(
                 user.getSender(),
+                deserializeHeader(header),
+                validators.map(deserializeValidator),
+                deserializeCommit(lastCommit),
                 {
-                    appHash: header.app_hash,
-                    chainId: header.chain_id,
-                    consensusHash: header.consensus_hash,
-                    dataHash: header.data_hash,
-                    evidenceHash: header.evidence_hash,
-                    height: BigInt(header.height),
-                    lastBlockId: header.last_block_id,
-                    lastCommitHash: header.last_commit_hash,
-                    lastResultsHash: header.last_results_hash,
-                    validatorHash: header.validators_hash,
-                    nextValidatorHash: header.next_validators_hash,
-                    proposerAddress: header.proposer_address,
-                    time: header.time,
-                    version: header.version,
+                    value: toNano('10'),
                 },
-                validators,
-                commit,
-                { value: toNano('10') },
             );
 
             printTransactionFees(result.transactions);
@@ -101,100 +84,7 @@ describe('LightClient', () => {
                 validatorHash: (await lightClient.getValidatorHash()).toString('hex'),
             });
         };
-
-        await testcase(blockData);
-        await testcase(newBlockData);
-        await testcase(newNewBlockData);
-    });
-
-    xit('test light client special block', async () => {
-        const testcase = async (blockData: any) => {
-            const { header, commit, validators, txs } = blockData;
-            const user = await blockchain.treasury('user');
-            let result = await lightClient.sendVerifyBlockHash(
-                user.getSender(),
-                {
-                    appHash: header.app_hash,
-                    chainId: header.chain_id,
-                    consensusHash: header.consensus_hash,
-                    dataHash: header.data_hash,
-                    evidenceHash: header.evidence_hash,
-                    height: BigInt(header.height),
-                    lastBlockId: header.last_block_id,
-                    lastCommitHash: header.last_commit_hash,
-                    lastResultsHash: header.last_results_hash,
-                    validatorHash: header.validators_hash,
-                    nextValidatorHash: header.next_validators_hash,
-                    proposerAddress: header.proposer_address,
-                    time: header.time,
-                    version: header.version,
-                },
-                validators,
-                commit,
-                { value: toNano('10') },
-            );
-
-            printTransactionFees(result.transactions);
-
-            expect(result.transactions).toHaveTransaction({
-                op: Opcodes.verify_block_hash,
-                success: true,
-            });
-
-            expect(result.transactions).toHaveTransaction({
-                op: Opcodes.verify_sigs,
-                success: true,
-            });
-
-            console.log(`blockhash:`, Opcodes.verify_block_hash);
-            console.log('Finished: ', {
-                height: await lightClient.getHeight(),
-                chainId: await lightClient.getChainId(),
-                dataHash: (await lightClient.getDataHash()).toString('hex'),
-                validatorHash: (await lightClient.getValidatorHash()).toString('hex'),
-            });
-
-            console.log('Txs: ', txs);
-            const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
-
-            const choosenIndex = 0;
-            const decodedTx = decodeTxRaw(Buffer.from(txs[choosenIndex], 'base64'));
-            const registry = new Registry(defaultRegistryTypes);
-            registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
-            const rawMsg = decodedTx.body.messages.map((msg) => {
-                return {
-                    typeUrl: msg.typeUrl,
-                    value: registry.decode(msg),
-                };
-            });
-            const decodedTxWithRawMsg: any = {
-                ...decodedTx,
-                body: {
-                    messages: rawMsg,
-                    memo: decodedTx.body.memo,
-                    timeoutHeight: decodedTx.body.timeoutHeight,
-                    extensionOptions: decodedTx.body.extensionOptions,
-                    nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
-                },
-            };
-            result = await lightClient.sendVerifyReceipt(
-                user.getSender(),
-                header.height,
-                decodedTxWithRawMsg,
-                leaves,
-                leaves[choosenIndex],
-                {
-                    value: toNano('0.5'),
-                },
-            );
-
-            expect(result.transactions).toHaveTransaction({
-                op: Opcodes.verify_receipt,
-                success: true,
-            });
-            printTransactionFees(result.transactions);
-        };
-
-        await testcase(specialBlockData);
+        await testcase(24552927);
+        await testcase(24555600);
     });
 });
