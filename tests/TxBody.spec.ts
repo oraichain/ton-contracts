@@ -5,9 +5,8 @@ import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { toHex } from '@cosmjs/encoding';
 import { sha256 } from '@cosmjs/crypto';
-import { decodeTxRaw, Registry } from '@cosmjs/proto-signing';
+import { decodeTxRaw } from '@cosmjs/proto-signing';
 import { TxBody } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
-import * as blockData from './fixtures/bridgeData.json';
 
 describe('TxBodyProtobuf', () => {
     let code: Cell;

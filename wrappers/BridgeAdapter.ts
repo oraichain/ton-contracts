@@ -9,8 +9,9 @@ import {
     Sender,
     SendMode,
 } from '@ton/core';
-import { getAuthInfoInput, TxBodyWasm, txBodyWasmToRef, TxWasm } from './TestClient';
+import { getAuthInfoInput, txBodyWasmToRef, TxWasm } from './TestClient';
 import { crc32 } from '../crc32';
+import { ValueOps } from './@types';
 
 export type BridgeAdapterConfig = {
     bridge_wasm_smart_contract: string;
@@ -86,19 +87,22 @@ export const Src = {
     TON: crc32('src::ton'),
 };
 
+export interface SendTxInterface {
+    height: bigint;
+    tx: TxWasm;
+    proofs: Cell | undefined;
+    positions: Cell;
+    data: Cell;
+}
+
 export class BridgeAdapter implements Contract {
     constructor(
         readonly address: Address,
         readonly init?: { code: Cell; data: Cell },
     ) {}
 
-    static buildBridgeAdapterSendTxBody(
-        height: bigint,
-        tx: TxWasm,
-        proofs: Cell | undefined,
-        positions: Cell,
-        data: Cell,
-    ) {
+    static buildBridgeAdapterSendTxBody(sendTxData: SendTxInterface, queryId: number = 0) {
+        const { height, tx, proofs, positions, data } = sendTxData;
         const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
         const authInfo = beginCell()
             .storeRef(signInfos || beginCell().endCell())
@@ -128,7 +132,7 @@ export class BridgeAdapter implements Contract {
 
         return beginCell()
             .storeUint(Opcodes.sendTx, 32)
-            .storeUint(0, 64)
+            .storeUint(queryId, 64)
             .storeUint(height, 64)
             .storeRef(txRaw)
             .storeRef(proofs ?? beginCell().endCell())
@@ -147,29 +151,20 @@ export class BridgeAdapter implements Contract {
         return new BridgeAdapter(contractAddress(workchain, init), init);
     }
 
-    async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
+    async sendDeploy(provider: ContractProvider, via: Sender, ops: ValueOps) {
         await provider.internal(via, {
-            value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
             body: beginCell().endCell(),
         });
     }
 
-    async sendTx(
-        provider: ContractProvider,
-        via: Sender,
-        height: bigint,
-        txWasm: TxWasm,
-        proofs: Cell | undefined,
-        positions: Cell,
-        data: Cell,
-        value: bigint,
-    ) {
-        const sendTxBody = BridgeAdapter.buildBridgeAdapterSendTxBody(height, txWasm, proofs, positions, data);
+    async sendTx(provider: ContractProvider, via: Sender, data: SendTxInterface, ops: ValueOps) {
+        const sendTxBody = BridgeAdapter.buildBridgeAdapterSendTxBody(data, ops.queryId);
 
         await provider.internal(via, {
-            value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
             body: sendTxBody,
         });
     }

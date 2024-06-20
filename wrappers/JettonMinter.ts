@@ -1,15 +1,6 @@
-import {
-    Address,
-    beginCell,
-    Cell,
-    Contract,
-    contractAddress,
-    ContractProvider,
-    Sender,
-    SendMode,
-    toNano,
-} from '@ton/core';
+import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
 import { TupleItemSlice } from '@ton/core';
+import { ValueOps } from './@types';
 
 export type JettonMinterConfig = {
     adminAddress: Address;
@@ -24,6 +15,12 @@ export function jettonMinterConfigToCell(config: JettonMinterConfig): Cell {
         .storeRef(config.content)
         .storeRef(config.jettonWalletCode)
         .endCell();
+}
+
+export interface MintJettonInterface {
+    toAddress: Address;
+    jettonAmount: bigint;
+    amount: bigint;
 }
 
 export class JettonMinter implements Contract {
@@ -42,38 +39,28 @@ export class JettonMinter implements Contract {
         return new JettonMinter(contractAddress(workchain, init), init);
     }
 
-    async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
+    async sendDeploy(provider: ContractProvider, via: Sender, ops: ValueOps) {
         await provider.internal(via, {
-            value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
             body: beginCell().endCell(),
         });
     }
 
-    async sendMint(
-        provider: ContractProvider,
-        via: Sender,
-        opts: {
-            toAddress: Address;
-            jettonAmount: bigint;
-            amount: bigint;
-            queryId: number;
-            value: bigint;
-        },
-    ) {
+    async sendMint(provider: ContractProvider, via: Sender, data: MintJettonInterface, opts: ValueOps) {
         await provider.internal(via, {
-            value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
+            value: opts.value,
             body: beginCell()
                 .storeUint(21, 32)
-                .storeUint(opts.queryId, 64)
-                .storeAddress(opts.toAddress)
-                .storeCoins(opts.amount)
+                .storeUint(opts.queryId || 0, 64)
+                .storeAddress(data.toAddress)
+                .storeCoins(data.amount)
                 .storeRef(
                     beginCell()
                         .storeUint(0x178d4519, 32)
-                        .storeUint(opts.queryId, 64)
-                        .storeCoins(opts.jettonAmount)
+                        .storeUint(opts.queryId || 0, 64)
+                        .storeCoins(data.jettonAmount)
                         .storeAddress(this.address)
                         .storeAddress(this.address)
                         .storeCoins(0)

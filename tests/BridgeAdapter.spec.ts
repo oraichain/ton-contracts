@@ -121,7 +121,9 @@ describe('BridgeAdapter', () => {
                 jettonMinterCode,
             ),
         );
-        const deployUsdtMinterResult = await usdtMinterContract.sendDeploy(usdtDeployer.getSender(), toNano('1000'));
+        const deployUsdtMinterResult = await usdtMinterContract.sendDeploy(usdtDeployer.getSender(), {
+            value: toNano('1000'),
+        });
 
         expect(deployUsdtMinterResult.transactions).toHaveTransaction({
             from: usdtDeployer.address,
@@ -129,13 +131,15 @@ describe('BridgeAdapter', () => {
             deploy: true,
             success: true,
         });
-        await usdtMinterContract.sendMint(usdtDeployer.getSender(), {
-            toAddress: usdtDeployer.address,
-            jettonAmount: toNano(123456),
-            amount: toNano(0.5),
-            queryId: 0,
-            value: toNano(1),
-        });
+        await usdtMinterContract.sendMint(
+            usdtDeployer.getSender(),
+            {
+                toAddress: usdtDeployer.address,
+                jettonAmount: toNano(123456),
+                amount: toNano(0.5),
+            },
+            { value: toNano(1), queryId: 0 },
+        );
         const usdtWalletAddress = await usdtMinterContract.getWalletAddress(usdtDeployer.address);
         const usdtJettonWallet = JettonWallet.createFromAddress(usdtWalletAddress);
         usdtDeployerJettonWallet = blockchain.openContract(usdtJettonWallet);
@@ -197,7 +201,9 @@ describe('BridgeAdapter', () => {
             ),
         );
 
-        const deployBridgeResult = await bridgeAdapter.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployBridgeResult = await bridgeAdapter.sendDeploy(deployer.getSender(), {
+            value: toNano('0.05'),
+        });
 
         expect(deployBridgeResult.transactions).toHaveTransaction({
             from: deployer.address,
@@ -217,7 +223,9 @@ describe('BridgeAdapter', () => {
             ),
         );
 
-        const deployJettonMinterResult = await jettonMinterSrcCosmos.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployJettonMinterResult = await jettonMinterSrcCosmos.sendDeploy(deployer.getSender(), {
+            value: toNano('0.05'),
+        });
 
         expect(deployJettonMinterResult.transactions).toHaveTransaction({
             from: deployer.address,
@@ -237,7 +245,9 @@ describe('BridgeAdapter', () => {
             ),
         );
 
-        const deployJettonMinterSrcTon = await jettonMinterSrcTon.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployJettonMinterSrcTon = await jettonMinterSrcTon.sendDeploy(deployer.getSender(), {
+            value: toNano('0.05'),
+        });
 
         expect(deployJettonMinterSrcTon.transactions).toHaveTransaction({
             from: deployer.address,
@@ -246,13 +256,18 @@ describe('BridgeAdapter', () => {
             success: true,
         });
 
-        await jettonMinterSrcTon.sendMint(deployer.getSender(), {
-            toAddress: bridgeAdapter.address,
-            jettonAmount: toNano(1000000000),
-            amount: toNano(0.5), // deploy fee
-            queryId: 0,
-            value: toNano(1),
-        });
+        await jettonMinterSrcTon.sendMint(
+            deployer.getSender(),
+            {
+                toAddress: bridgeAdapter.address,
+                jettonAmount: toNano(1000000000),
+                amount: toNano(0.5), // deploy fee
+            },
+            {
+                queryId: 0,
+                value: toNano(1),
+            },
+        );
 
         const bridgeJettonWallet = await jettonMinterSrcTon.getWalletAddress(bridgeAdapter.address);
         const bridgeJettonWalletBalance = JettonWallet.createFromAddress(bridgeJettonWallet);
@@ -360,19 +375,23 @@ describe('BridgeAdapter', () => {
 
         const result = await bridgeAdapter.sendTx(
             relayer.getSender(),
-            BigInt(height),
-            decodedTxWithRawMsg,
-            proofs,
-            positions,
-            beginCell()
-                .storeBuffer(
-                    Buffer.from(
-                        '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183002C1D548B881BC9C1DBE0195EC94361DD84C6E110E5BF847DCBE3788B65B243324000000000000000000000009502F9000139517D2',
-                        'hex',
-                    ),
-                )
-                .endCell(),
-            toNano('6'),
+            {
+                height: BigInt(height),
+                tx: decodedTxWithRawMsg,
+                positions,
+                proofs,
+                data: beginCell()
+                    .storeBuffer(
+                        Buffer.from(
+                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183002C1D548B881BC9C1DBE0195EC94361DD84C6E110E5BF847DCBE3788B65B243324000000000000000000000009502F9000139517D2',
+                            'hex',
+                        ),
+                    )
+                    .endCell(),
+            },
+            {
+                value: toNano('6'),
+            },
         );
         printTransactionFees(result.transactions);
 
@@ -429,19 +448,23 @@ describe('BridgeAdapter', () => {
 
         const result = await bridgeAdapter.sendTx(
             relayer.getSender(),
-            BigInt(height),
-            decodedTxWithRawMsg,
-            proofs,
-            positions,
-            beginCell()
-                .storeBuffer(
-                    Buffer.from(
-                        '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830019DD962909A0368DB72AEF9AFD8A4058061F3E562F460A8677A48D500EE016374000000000000000000000009502F900377EADAD6',
-                        'hex',
-                    ),
-                )
-                .endCell(),
-            toNano('6'),
+            {
+                height: BigInt(height),
+                tx: decodedTxWithRawMsg,
+                proofs,
+                positions,
+                data: beginCell()
+                    .storeBuffer(
+                        Buffer.from(
+                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830019DD962909A0368DB72AEF9AFD8A4058061F3E562F460A8677A48D500EE016374000000000000000000000009502F900377EADAD6',
+                            'hex',
+                        ),
+                    )
+                    .endCell(),
+            },
+            {
+                value: toNano('6'),
+            },
         );
 
         expect(result.transactions).toHaveTransaction({
@@ -505,19 +528,23 @@ describe('BridgeAdapter', () => {
 
         const result = await bridgeAdapter.sendTx(
             relayer.getSender(),
-            BigInt(height),
-            decodedTxWithRawMsg,
-            proofs,
-            positions,
-            beginCell()
-                .storeBuffer(
-                    Buffer.from(
-                        '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1820000000000000000000000012A05F2006EFD5B5AC',
-                        'hex',
-                    ),
-                )
-                .endCell(),
-            toNano('6'),
+            {
+                height: BigInt(height),
+                tx: decodedTxWithRawMsg,
+                positions,
+                proofs,
+                data: beginCell()
+                    .storeBuffer(
+                        Buffer.from(
+                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1820000000000000000000000012A05F2006EFD5B5AC',
+                            'hex',
+                        ),
+                    )
+                    .endCell(),
+            },
+            {
+                value: toNano('6'),
+            },
         );
 
         expect(result.transactions).toHaveTransaction({
@@ -531,19 +558,23 @@ describe('BridgeAdapter', () => {
 
         const replayTx = await bridgeAdapter.sendTx(
             relayer.getSender(),
-            BigInt(height),
-            decodedTxWithRawMsg,
-            proofs,
-            positions,
-            beginCell()
-                .storeBuffer(
-                    Buffer.from(
-                        '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1820000000000000000000000012A05F2006EFD5B5AC',
-                        'hex',
-                    ),
-                )
-                .endCell(),
-            toNano('6'),
+            {
+                height: BigInt(height),
+                tx: decodedTxWithRawMsg,
+                proofs,
+                positions,
+                data: beginCell()
+                    .storeBuffer(
+                        Buffer.from(
+                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1820000000000000000000000012A05F2006EFD5B5AC',
+                            'hex',
+                        ),
+                    )
+                    .endCell(),
+            },
+            {
+                value: toNano('6'),
+            },
         );
 
         // expect prevent exitCode
@@ -623,19 +654,23 @@ describe('BridgeAdapter', () => {
 
             let result = await bridgeAdapter.sendTx(
                 relayer.getSender(),
-                BigInt(height),
-                decodedTxWithRawMsg,
-                proofs,
-                positions,
-                beginCell()
-                    .storeBuffer(
-                        Buffer.from(
-                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183002C1D548B881BC9C1DBE0195EC94361DD84C6E110E5BF847DCBE3788B65B243324000000000000000000000009502F9000139517D2',
-                            'hex',
-                        ),
-                    )
-                    .endCell(),
-                toNano('6'),
+                {
+                    height: BigInt(height),
+                    tx: decodedTxWithRawMsg,
+                    proofs,
+                    positions,
+                    data: beginCell()
+                        .storeBuffer(
+                            Buffer.from(
+                                '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183002C1D548B881BC9C1DBE0195EC94361DD84C6E110E5BF847DCBE3788B65B243324000000000000000000000009502F9000139517D2',
+                                'hex',
+                            ),
+                        )
+                        .endCell(),
+                },
+                {
+                    value: toNano('6'),
+                },
             );
 
             expect(result.transactions).toHaveTransaction({
