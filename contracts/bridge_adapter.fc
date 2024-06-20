@@ -238,7 +238,7 @@ global cell processed_txs;
         cell memo_cell = ds~load_ref();
         int amount = ds~load_coins();
 
-        cell emit_data = begin_cell().store_ref(memo_cell).store_coins(amount).end_cell();
+        cell emit_data = begin_cell().store_slice(jetton_master_address).store_coins(amount).store_coins(0).store_ref(memo_cell).end_cell();
         ;; execute burn if not from ton
         if (is_root_from_ton == 0) {
             slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master_address, jetton_wallet_code);

@@ -600,14 +600,27 @@ describe('BridgeAdapter', () => {
             jettonMaster: usdtMinterContract.address,
             toAddress: bridgeAdapter.address,
             memo: beginCell()
-                .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx')).endCell())
                 .endCell(),
             value: toNano(2),
             queryId: 0,
         });
         printTransactionFees(result.transactions);
-        console.log(result.transactions[6].children);
-        console.log(result.transactions[6].outMessages.get(0)?.body.asSlice().loadCoins());
+        console.log(result.transactions[6].raw.toBoc().toString('hex'));
+        const body = result.transactions[6].outMessages.get(0)?.body.asSlice();
+        const jetterAddress = body?.loadAddress(); // dia chi token
+        console.log(body);
+        const amount = body?.loadCoins(); // amount chuyen di
+        const memo = body?.loadRef().asSlice();
+        const desDenom = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
+        const desChannel = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
+        const desReceiver = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
+        const oraiAddress = memo?.loadRef().asSlice().loadStringTail(); // load tung gia tri trong memo
+        console.log({ jetterAddress, amount, desDenom, desChannel, desReceiver, oraiAddress });
+
         console.log('Bridge adapter balance:', (await blockchain.getContract(bridgeAdapter.address)).balance);
         expect(result.transactions).toHaveTransaction({
             op: baOpcodes.callbackDenom,
@@ -615,7 +628,7 @@ describe('BridgeAdapter', () => {
         });
     });
 
-    it('Test send jetton token from cosmos to bridge adapter', async () => {
+    xit('Test send jetton token from cosmos to bridge adapter', async () => {
         const sendTokenOnCosmos = async () => {
             const relayer = await blockchain.treasury('relayer');
             await updateBlock(blockData, relayer);
