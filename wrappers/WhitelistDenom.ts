@@ -10,6 +10,7 @@ import {
     SendMode,
 } from '@ton/core';
 import { crc32 } from '../crc32';
+import { ValueOps } from './@types';
 
 export type WhitelistDenomConfig = {
     admin: Address;
@@ -26,6 +27,16 @@ export const Opcodes = {
     setAdminAddress: crc32('op::set_admin_address'),
     setDenom: crc32('op::set_denom'),
 };
+
+export interface SendSetDenomInterface {
+    denom: Address;
+    permission: boolean;
+    isRootFromTon: boolean;
+}
+
+export interface SendSetAdminInterface {
+    address: Address;
+}
 
 export class WhitelistDenom implements Contract {
     constructor(
@@ -51,38 +62,31 @@ export class WhitelistDenom implements Contract {
         });
     }
 
-    async sendSetAdminAddress(provider: ContractProvider, via: Sender, address: Address, opts?: any) {
-        let bodyCell = beginCell().storeAddress(address).endCell();
+    async sendSetAdminAddress(provider: ContractProvider, via: Sender, data: SendSetAdminInterface, opts: ValueOps) {
+        let bodyCell = beginCell().storeAddress(data.address).endCell();
         await provider.internal(via, {
-            value: opts?.value || 0,
+            value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
                 .storeUint(Opcodes.setAdminAddress, 32)
-                .storeUint(opts?.queryID || 0, 64)
+                .storeUint(opts.queryId || 0, 64)
                 .storeRef(bodyCell)
                 .endCell(),
         });
     }
 
-    async sendSetDenom(
-        provider: ContractProvider,
-        via: Sender,
-        denom: Address,
-        permission: boolean,
-        isRootFromTon: boolean,
-        opts?: any,
-    ) {
+    async sendSetDenom(provider: ContractProvider, via: Sender, data: SendSetDenomInterface, opts: ValueOps) {
         let bodyCell = beginCell()
-            .storeInt(permission ? -1 : 0, 8)
-            .storeInt(isRootFromTon ? -1 : 0, 8)
-            .storeAddress(denom)
+            .storeInt(data.permission ? -1 : 0, 8)
+            .storeInt(data.isRootFromTon ? -1 : 0, 8)
+            .storeAddress(data.denom)
             .endCell();
         await provider.internal(via, {
-            value: opts?.value || 0,
+            value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
                 .storeUint(Opcodes.setDenom, 32)
-                .storeUint(opts?.queryID || 0, 64)
+                .storeUint(opts.queryId || 0, 64)
                 .storeRef(bodyCell)
                 .endCell(),
         });
