@@ -5,9 +5,6 @@ import { WhitelistDenomOpcodes } from '../wrappers/WhitelistDenom';
 import { BridgeAdapterOpcodes } from '../wrappers/BridgeAdapter';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import blockData from './fixtures/bridgeSrcCosmosData.json';
-import blockSrcTONJettonData from './fixtures/bridgeSrcTonData.json';
-import bridgeSrcNativeTonData from './fixtures/bridgeSrcNativeTonData.json';
 
 import { BridgeAdapter, Src } from '../wrappers/BridgeAdapter';
 import { JettonMinter } from '../wrappers/JettonMinter';
@@ -300,7 +297,6 @@ describe('BridgeAdapter', () => {
     });
 
     it('should persistent when creating memo to test', async () => {
-        console.log(Opcodes.verify_receipt.toString(16));
         const memo = beginCell()
             .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
             .storeAddress(jettonMinterSrcCosmos.address)
@@ -331,7 +327,7 @@ describe('BridgeAdapter', () => {
 
     it('successfully mint token to the user if coming from src::cosmos', async () => {
         const relayer = await blockchain.treasury('relayer');
-        const height = 24871898;
+        const height = 24873994;
         const txs = await updateBlock(height, relayer);
         const chosenIndex = 0; // hardcode the txs with custom memo
         const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
@@ -362,11 +358,8 @@ describe('BridgeAdapter', () => {
         );
         const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
         const wallet = blockchain.openContract(userJettonWalletBalance);
-
         console.log(BigInt('0x' + beginCell().storeAddress(wallet.address).endCell().hash().toString('hex')));
-
         const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
-
         const result = await bridgeAdapter.sendTx(
             relayer.getSender(),
             {
@@ -377,7 +370,7 @@ describe('BridgeAdapter', () => {
                 data: beginCell()
                     .storeBuffer(
                         Buffer.from(
-                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183003EF4F27F21D22059F4E222352383B345E47D52206817E68CF04C5B850B88B4294000000000000000000000009502F9000139517D2',
+                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E18300071737B65193DDBB57097037AE801EE6DC77EE97DD5862112116B04DA4EB70080000000000000000000000009502F9000139517D2',
                             'hex',
                         ),
                     )
@@ -388,7 +381,6 @@ describe('BridgeAdapter', () => {
             },
         );
         printTransactionFees(result.transactions);
-
         expect(result.transactions).toHaveTransaction({
             op: LightClientOpcodes.verify_receipt,
             success: true,
@@ -617,10 +609,10 @@ describe('BridgeAdapter', () => {
         });
     });
 
-    xit('Test send jetton token from cosmos to bridge adapter', async () => {
+    it('Test send jetton token from cosmos to bridge adapter', async () => {
         const sendTokenOnCosmos = async () => {
             const relayer = await blockchain.treasury('relayer');
-            const height = 24871898;
+            const height = 24873994;
             const txs = await updateBlock(height, relayer);
             const chosenIndex = 0; // hardcode the txs with custom memo
             const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
@@ -665,7 +657,7 @@ describe('BridgeAdapter', () => {
                     data: beginCell()
                         .storeBuffer(
                             Buffer.from(
-                                '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E183003EF4F27F21D22059F4E222352383B345E47D52206817E68CF04C5B850B88B4294000000000000000000000009502F9000139517D2',
+                                '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E18300071737B65193DDBB57097037AE801EE6DC77EE97DD5862112116B04DA4EB70080000000000000000000000009502F9000139517D2',
                                 'hex',
                             ),
                         )
