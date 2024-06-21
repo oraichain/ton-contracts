@@ -1,9 +1,9 @@
 import { Address, toNano } from '@ton/core';
 import { LightClient, LightClientOpcodes } from '../wrappers/LightClient';
-import blockData from '../tests/fixtures/new_data.json';
 import * as dotenv from 'dotenv';
 import { createTonWallet, waitSeqno } from './utils';
 import { TonClient } from '@ton/ton';
+import { createUpdateClientData, deserializeCommit, deserializeHeader, deserializeValidator } from '../wrappers';
 dotenv.config();
 
 async function waitUpdateBlock(client: TonClient, lightClientAddress: Address, waitBlockNumber: number) {
@@ -40,36 +40,25 @@ async function waitUpdateBlock(client: TonClient, lightClientAddress: Address, w
 
 export async function updateClient() {
     var { client, walletContract, key } = await createTonWallet();
-    const { header, commit, validators } = blockData;
+    const blockHeight = 24873994;
     const lightClient = LightClient.createFromAddress(Address.parse(process.env.LIGHT_CLIENT as string));
     const lightClientContract = client.open(lightClient);
-    // await lightClientContract.sendVerifyBlockHash(
-    //     walletContract.sender(key.secretKey),
-    //     {
-    //         appHash: header.app_hash,
-    //         chainId: header.chain_id,
-    //         consensusHash: header.consensus_hash,
-    //         dataHash: header.data_hash,
-    //         evidenceHash: header.evidence_hash,
-    //         height: BigInt(header.height),
-    //         lastBlockId: header.last_block_id,
-    //         lastCommitHash: header.last_commit_hash,
-    //         lastResultsHash: header.last_results_hash,
-    //         validatorHash: header.validators_hash,
-    //         nextValidatorHash: header.next_validators_hash,
-    //         proposerAddress: header.proposer_address,
-    //         time: header.time,
-    //         version: header.version,
-    //     },
-    //     validators,
-    //     commit,
-    //     { value: toNano('2') },
-    // );
-    // await waitSeqno(walletContract, await walletContract.getSeqno());
+
+    const { header, lastCommit, validators, txs } = await createUpdateClientData('https://rpc.orai.io', blockHeight);
+    await lightClientContract.sendVerifyBlockHash(
+        walletContract.sender(key.secretKey),
+        {
+            header: deserializeHeader(header),
+            validators: validators.map(deserializeValidator),
+            commit: deserializeCommit(lastCommit),
+        },
+        { value: toNano('2.5') },
+    );
+    await waitSeqno(walletContract, await walletContract.getSeqno());
 
     while (true) {
-        console.log('Waiting for update block:', parseInt(header.height));
-        const { height, txHash } = await waitUpdateBlock(client, lightClient.address, parseInt(header.height));
+        console.log('Waiting for update block:');
+        const { height, txHash } = await waitUpdateBlock(client, lightClient.address, blockHeight);
         if (height && txHash) {
             console.log('Update block:', height, 'at', txHash);
             break;

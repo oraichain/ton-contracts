@@ -271,16 +271,17 @@ describe('BridgeAdapter', () => {
 
         await deployer.getSender().send({
             to: jettonMinterSrcCosmos.address,
-            value: toNano('1000'),
+            value: toNano('10'),
         });
 
         await deployer.getSender().send({
             to: jettonMinterSrcTon.address,
-            value: toNano('1000'),
+            value: toNano('10'),
         });
+
         await deployer.getSender().send({
             to: bridgeJettonWalletSrcTon.address,
-            value: toNano('1000'),
+            value: toNano('10'),
         });
     });
 
