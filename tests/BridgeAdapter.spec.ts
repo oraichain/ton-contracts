@@ -25,7 +25,7 @@ describe('BridgeAdapter', () => {
     let jettonMinterCode: Cell;
     let whitelistDenomCode: Cell;
 
-    const bridgeWasmAddress = 'orai16ka659l0t90dua6du8yq02ytgdh222ga3qcxaqxp86r78p6tl0usze57ve';
+    const bridgeWasmAddress = 'orai1pq2nfsylg344z6fwxkyzu0twmvr4mdrwc2zm4frynlcteypjt82sm2k2fu';
     const updateBlock = async (blockNumber: number, relayer: SandboxContract<TreasuryContract>): Promise<string[]> => {
         const { header, lastCommit, validators, txs } = await createUpdateClientData(
             'https://rpc.orai.io',
@@ -288,7 +288,7 @@ describe('BridgeAdapter', () => {
     it('successfully deploy BridgeAdapter contract', async () => {
         console.log('bridgeAdapterCode', bridgeAdapterCode.toBoc().toString('hex'));
         console.log('successfully deploy');
-        console.log(Buffer.from('{"submit":{"data":').toString('hex'));
+        console.log('msg_prefix', Buffer.from('{"submit_bridge_to_ton_info":{"data":').toString('hex'));
         const stack = await bridgeAdapter.getBridgeData();
         expect(stack.readCell().toBoc()).toEqual(beginCell().storeAddress(lightClient.address).endCell().toBoc());
         expect(stack.readCell().toBoc()).toEqual(
@@ -299,6 +299,7 @@ describe('BridgeAdapter', () => {
 
     it('should persistent when creating memo to test', async () => {
         const memo = beginCell()
+            .storeUint(65536, 64)
             .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
             .storeAddress(jettonMinterSrcCosmos.address)
             .storeUint(toNano(10), 128)
@@ -308,6 +309,7 @@ describe('BridgeAdapter', () => {
         console.log({ memo: Buffer.from(memo, 'hex').toString('hex').toUpperCase() });
 
         const memoJettonSrcTON = beginCell()
+            .storeUint(65536, 64)
             .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
             .storeAddress(jettonMinterSrcTon.address)
             .storeUint(toNano(10), 128)
@@ -317,6 +319,7 @@ describe('BridgeAdapter', () => {
         console.log({ memoJettonSrcTON: Buffer.from(memoJettonSrcTON, 'hex').toString('hex').toUpperCase() });
 
         const memoSrcTONNative = beginCell()
+            .storeUint(65536, 64)
             .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
             .storeAddress(null)
             .storeUint(toNano(10), 128)
@@ -328,7 +331,7 @@ describe('BridgeAdapter', () => {
 
     it('successfully mint token to the user if coming from src::cosmos', async () => {
         const relayer = await blockchain.treasury('relayer');
-        const height = 24873994;
+        const height = 25276106;
         const txs = await updateBlock(height, relayer);
         const chosenIndex = 0; // hardcode the txs with custom memo
         const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
@@ -371,7 +374,7 @@ describe('BridgeAdapter', () => {
                 data: beginCell()
                     .storeBuffer(
                         Buffer.from(
-                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E18300071737B65193DDBB57097037AE801EE6DC77EE97DD5862112116B04DA4EB70080000000000000000000000009502F9000139517D2',
+                            '000000000001000080002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830015B002105171BCE0FEDCFA734E7860B692739EAEAD2FD113A5B0268C073735C54000000000000000000000009502F9000139517D2',
                             'hex',
                         ),
                     )
@@ -392,7 +395,7 @@ describe('BridgeAdapter', () => {
 
     it('successfully transfer jetton to user if coming from src::ton', async () => {
         const relayer = await blockchain.treasury('relayer');
-        const height = 24872023;
+        const height = 25276310;
         const txs = await updateBlock(height, relayer);
         const chosenIndex = 0; // hardcode the txs with custom memo
         const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
@@ -441,7 +444,7 @@ describe('BridgeAdapter', () => {
                 data: beginCell()
                     .storeBuffer(
                         Buffer.from(
-                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830019DD962909A0368DB72AEF9AFD8A4058061F3E562F460A8677A48D500EE016374000000000000000000000009502F900377EADAD6',
+                            '000000000001000080002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830019DD962909A0368DB72AEF9AFD8A4058061F3E562F460A8677A48D500EE016374000000000000000000000009502F900377EADAD6',
                             'hex',
                         ),
                     )
@@ -464,7 +467,7 @@ describe('BridgeAdapter', () => {
     it('successfully transfer to user if coming from src::ton', async () => {
         const relayer = await blockchain.treasury('relayer');
         const user = await blockchain.treasury('user', { balance: 0n });
-        const height = 24872267;
+        const height = 25276386;
         const txs = await updateBlock(height, relayer);
         const chosenIndex = 0; // hardcode the txs with custom memo
         const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
@@ -520,7 +523,7 @@ describe('BridgeAdapter', () => {
                 data: beginCell()
                     .storeBuffer(
                         Buffer.from(
-                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1820000000000000000000000012A05F2006EFD5B5AC',
+                            '000000000001000080002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1820000000000000000000000012A05F2006EFD5B5AC',
                             'hex',
                         ),
                     )
@@ -613,7 +616,7 @@ describe('BridgeAdapter', () => {
     it('Test send jetton token from cosmos to bridge adapter', async () => {
         const sendTokenOnCosmos = async () => {
             const relayer = await blockchain.treasury('relayer');
-            const height = 24873994;
+            const height = 25276106;
             const txs = await updateBlock(height, relayer);
             const chosenIndex = 0; // hardcode the txs with custom memo
             const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
@@ -658,7 +661,7 @@ describe('BridgeAdapter', () => {
                     data: beginCell()
                         .storeBuffer(
                             Buffer.from(
-                                '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E18300071737B65193DDBB57097037AE801EE6DC77EE97DD5862112116B04DA4EB70080000000000000000000000009502F9000139517D2',
+                                '000000000001000080002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830015B002105171BCE0FEDCFA734E7860B692739EAEAD2FD113A5B0268C073735C54000000000000000000000009502F9000139517D2',
                                 'hex',
                             ),
                         )
