@@ -10,7 +10,7 @@
 #include "utils/jetton.fc";
 #include "utils/helper.fc";
 ;; prefix and suffix for json
-const msg_prefix = "7b227375626d6974223a7b2264617461223a"s;
+const msg_prefix = "7b227375626d69745f6272696467655f746f5f746f6e5f696e666f223a7b2264617461223a"s;
 const end_json = "7d7d"s;
 const slice quotes = "22"s;
 ;; storage variables
@@ -59,7 +59,7 @@ global cell processed_txs;
 
 () confirm_tx (slice in_msg_body) impure {
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
-    (slice to, slice jetton_master, int amount, int src) = (in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_uint(128), in_msg_body~load_uint(32));
+    (_, slice to, slice jetton_master, int amount, int src) = (in_msg_body~load_uint(64), in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_uint(128), in_msg_body~load_uint(32));
 
     if(src == src::cosmos){
         cell mint_msg = begin_cell()
