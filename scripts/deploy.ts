@@ -1,7 +1,7 @@
 import { compile } from '@ton/blueprint';
 import { LightClient } from '../wrappers/LightClient';
 import { createTonWallet, waitSeqno } from './utils';
-import { beginCell, toNano } from '@ton/core';
+import { Address, beginCell, toNano } from '@ton/core';
 import { WhitelistDenom } from '../wrappers/WhitelistDenom';
 import { BridgeAdapter } from '../wrappers/BridgeAdapter';
 import { JettonMinter } from '../wrappers/JettonMinter';
@@ -18,7 +18,7 @@ async function deploy() {
             {
                 chainId: 'Oraichain',
                 dataHash: '',
-                height: 10000,
+                height: 11111,
                 nextValidatorHashSet: '',
                 validatorHashSet: '',
             },
@@ -44,9 +44,19 @@ async function deploy() {
             await compile('JettonMinter'),
         ),
     );
-    await usdtMinterContract.sendDeploy(walletContract.sender(key.secretKey), { value: toNano('1') });
+    await usdtMinterContract.sendDeploy(walletContract.sender(key.secretKey), { value: toNano('3') });
     await waitSeqno(walletContract, await walletContract.getSeqno());
     console.log('Success deploy usdtContract at address: ', usdtMinterContract.address);
+
+    await usdtMinterContract.sendMint(
+        walletContract.sender(key.secretKey),
+        {
+            toAddress: walletContract.address,
+            jettonAmount: toNano(1_000_000),
+            amount: toNano(0.5),
+        },
+        { value: toNano(1), queryId: 0 },
+    );
 
     const whitelistContract = client.open(
         WhitelistDenom.createFromConfig(
@@ -65,11 +75,11 @@ async function deploy() {
         walletContract.sender(key.secretKey),
         {
             denom: usdtMinterContract.address,
-            isRootFromTon: false,
+            isRootFromTon: true,
             permission: true,
         },
         {
-            value: toNano('3'),
+            value: toNano('1'),
         },
     );
     await waitSeqno(walletContract, await walletContract.getSeqno());
@@ -79,7 +89,7 @@ async function deploy() {
         {
             light_client: lightClient.address,
             jetton_wallet_code: await compile('JettonWallet'),
-            bridge_wasm_smart_contract: 'orai16ka659l0t90dua6du8yq02ytgdh222ga3qcxaqxp86r78p6tl0usze57ve',
+            bridge_wasm_smart_contract: 'orai1pq2nfsylg344z6fwxkyzu0twmvr4mdrwc2zm4frynlcteypjt82sm2k2fu',
             whitelist_denom: whitelistContract.address,
         },
         await compile('BridgeAdapter'),
@@ -89,6 +99,38 @@ async function deploy() {
     await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), { value: toNano('0.5') });
     await waitSeqno(walletContract, await walletContract.getSeqno());
     console.log('Success deploy tonBridgeContract at address: ', tonBridgeContract.address);
+
+    // This one we consider it as orai token
+    const jettonMinterSrcCosmos = client.open(
+        JettonMinter.createFromConfig(
+            {
+                adminAddress: tonBridge.address,
+                content: beginCell()
+                    .storeBuffer(Buffer.from('ORAI Token'))
+                    .storeBuffer(Buffer.from('ORAI'))
+                    .storeBuffer(Buffer.from('ORAI token from Oraichain'))
+                    .endCell(),
+                jettonWalletCode: await compile('JettonWallet'),
+            },
+            await compile('JettonMinter'),
+        ),
+    );
+    await jettonMinterSrcCosmos.sendDeploy(walletContract.sender(key.secretKey), { value: toNano('3') });
+    await waitSeqno(walletContract, await walletContract.getSeqno());
+    console.log('Success deploy jettonMinterSrcCosmos at address: ', jettonMinterSrcCosmos.address);
+
+    await whitelistContract.sendSetDenom(
+        walletContract.sender(key.secretKey),
+        {
+            denom: jettonMinterSrcCosmos.address,
+            isRootFromTon: false,
+            permission: true,
+        },
+        {
+            value: toNano('1'),
+        },
+    );
+    await waitSeqno(walletContract, await walletContract.getSeqno());
 }
 
 deploy()
