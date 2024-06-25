@@ -1365,6 +1365,25 @@ export class TestClient implements Contract {
 
         return result.stack.readBuffer().toString('hex');
     }
+
+    async getCalculateAddress(provider: ContractProvider, jettonAddress: Cell, jettonMaster: Cell, jettonCode: Cell) {
+        const result = await provider.get('get_calculate_address', [
+            {
+                type: 'slice',
+                cell: jettonAddress,
+            },
+            {
+                type: 'slice',
+                cell: jettonMaster,
+            },
+            {
+                type: 'slice',
+                cell: jettonCode,
+            },
+        ]);
+
+        return result.stack.readCell();
+    }
 }
 
 export function getAuthInfoInput(data: AuthInfo) {

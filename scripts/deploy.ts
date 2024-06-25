@@ -71,34 +71,34 @@ async function deploy() {
     // await waitSeqno(walletContract, await walletContract.getSeqno());
     // console.log('Success deploy whitelistContract at address: ', whitelistContract.address);
 
-    await whitelistContract.sendSetDenom(
-        walletContract.sender(key.secretKey),
-        {
-            denom: Address.parse('EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs'),
-            isRootFromTon: true,
-            permission: true,
-        },
-        {
-            value: toNano('1'),
-        },
-    );
-    await waitSeqno(walletContract, await walletContract.getSeqno());
+    // await whitelistContract.sendSetDenom(
+    //     walletContract.sender(key.secretKey),
+    //     {
+    //         denom: Address.parse('EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs'),
+    //         isRootFromTon: true,
+    //         permission: true,
+    //     },
+    //     {
+    //         value: toNano('1'),
+    //     },
+    // );
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
 
     // BRIDGE ADAPTER
     const tonBridge = BridgeAdapter.createFromConfig(
         {
-            light_client: lightClient.address,
-            jetton_wallet_code: await compile('JettonWallet'),
+            light_client: Address.parse('EQCSnxYiqpz1hiOw76klvQfPCxalze9SoGTB8ZrVDhatdYjN'),
+            jetton_wallet_code: await compile('UsdtJettonWallet'),
             bridge_wasm_smart_contract: 'orai1y4kj224wmzmrna4kz9nk3n00zxdst5nra0z0u0nry5k6seqdw5psu4t9fn',
-            whitelist_denom: whitelistContract.address,
+            whitelist_denom: Address.parse('EQATDM6mfPZjPDMD9TVa6D9dlbmAKY5w6xOJiTXJ9Nqj_dsu'),
         },
         await compile('BridgeAdapter'),
     );
 
-    // const tonBridgeContract = client.open(tonBridge);
-    // await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), { value: toNano('0.1') });
-    // await waitSeqno(walletContract, await walletContract.getSeqno());
-    // console.log('Success deploy tonBridgeContract at address: ', tonBridgeContract.address);
+    const tonBridgeContract = client.open(tonBridge);
+    await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), { value: toNano('0.1') });
+    await waitSeqno(walletContract, await walletContract.getSeqno());
+    console.log('Success deploy tonBridgeContract at address: ', tonBridgeContract.address);
 
     // This one we consider it as orai token
     // const jettonMinterSrcCosmos = client.open(

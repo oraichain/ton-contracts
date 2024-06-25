@@ -396,3 +396,9 @@ int buffer_parse(slice msg, slice data) method_id {
 slice get_hex_to_str(slice ds) method_id {
     return hex_to_str(ds);
 }
+
+slice calculate_address(slice sender_address, slice jetton_master, cell jetton_code) {
+    slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(sender_address, jetton_master, jetton_code);
+
+    return bridge_jetton_wallet;
+} 

@@ -47,6 +47,7 @@ describe('LightClient', () => {
     });
 
     it('test light client verify block hash', async () => {
+        console.log('Usdt Jetton Wallet', (await compile('UsdtJettonWallet')).toBoc().toString('hex'));
         const testcase = async (blockNumber: any) => {
             const { header, lastCommit, validators } = await createUpdateClientData('https://rpc.orai.io', blockNumber);
             const user = await blockchain.treasury('user');
