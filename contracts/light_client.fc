@@ -211,6 +211,7 @@ global cell untrusted_validator;
     if (op == op::verify_receipt) {
         slice body = in_msg_body~load_ref().begin_parse();
         int receipt_height = body~load_uint(64);
+        slice response_address = body~load_msg_addr();
         slice tx_raw = body~load_ref().begin_parse();
         slice proofs = body~load_ref().begin_parse();
         slice positions =  body~load_ref().begin_parse();
@@ -232,6 +233,7 @@ global cell untrusted_validator;
                         .store_uint(op::confirm_tx, 32)
                         .store_uint(query_id, 64)
                         .store_slice(data)
+                        .store_ref(begin_cell().store_slice(response_address).end_cell())
                     .end_cell();
 
         send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);

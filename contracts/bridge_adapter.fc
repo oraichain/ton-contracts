@@ -57,17 +57,18 @@ global cell processed_txs;
     ;; emit_log_simple(event_id,data,query_id);
 }
 
-() confirm_tx (slice in_msg_body) impure {
+() confirm_tx (slice in_msg_body, int msg_value) impure {
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
     (_, slice to, slice jetton_master, int amount, int src) = (in_msg_body~load_uint(64), in_msg_body~load_msg_addr(), in_msg_body~load_msg_addr(), in_msg_body~load_uint(128), in_msg_body~load_uint(32));
-
+    slice ref_slice = in_msg_body~load_ref().begin_parse();
+    slice response_address = ref_slice~load_msg_addr();
     if(src == src::cosmos){
         cell mint_msg = begin_cell()
                     .store_uint(op::internal_transfer(), 32)
                     .store_uint(query_id, 64)
                     .store_coins(amount)
                     .store_uint(0, 2)
-                    .store_slice(my_address())
+                    .store_slice(response_address)
                     .store_coins(0)
                     .store_maybe_ref(null())
                     .end_cell();
@@ -76,7 +77,7 @@ global cell processed_txs;
                     .store_uint(op::mint(),32)
                     .store_uint(query_id,64)
                     .store_slice(to)
-                    .store_coins(amount)
+                    .store_coins(msg_value)
                     .store_ref(mint_msg)
                     .end_cell();
         
@@ -96,7 +97,7 @@ global cell processed_txs;
                         .store_uint(query_id, 64)
                         .store_coins(amount)
                         .store_slice(to)
-                        .store_slice(my_address())
+                        .store_slice(response_address)
                         .store_maybe_ref(null())
                         .store_coins(0)
                         .store_maybe_ref(null())
@@ -179,6 +180,7 @@ global cell processed_txs;
                         .store_ref(
                         begin_cell()
                             .store_uint(height, 64)
+                            .store_slice(sender_address)
                             .store_ref(tx_raw_cell)
                             .store_ref(proofs)
                             .store_ref(positions)
@@ -195,9 +197,9 @@ global cell processed_txs;
         return ();
     } 
     
-    if(op == op::confirm_tx){   
+    if(op == op::confirm_tx){
         throw_unless(error::invalid_sender, sender_address.slice_hash() == light_client.slice_hash()); ;; only light client can confirm tx
-        confirm_tx(in_msg_body); 
+        confirm_tx(in_msg_body, msg_value); 
         return ();
     }
 
@@ -221,6 +223,7 @@ global cell processed_txs;
                             .store_slice(jetton_master_address)
                             .store_coins(jetton_amount)
                             .store_ref(memo)
+                            .store_ref(begin_cell().store_slice(from_address).end_cell())
                         .end_cell());
         cell body = bodyBuilder.end_cell();
         send_simple_message(0, whitelist_denom, body, CARRY_REMAINING_GAS);
@@ -237,6 +240,7 @@ global cell processed_txs;
         slice jetton_master_address = ds~load_msg_addr();
         cell memo_cell = ds~load_ref();
         int amount = ds~load_coins();
+        slice response_address = ds~load_ref().begin_parse();
 
         cell emit_data = begin_cell().store_slice(jetton_master_address).store_coins(amount).store_coins(0).store_ref(memo_cell).end_cell();
         ;; execute burn if not from ton
@@ -246,14 +250,26 @@ global cell processed_txs;
                             .store_uint(op::burn(), 32)
                             .store_uint(query_id, 64)
                             .store_coins(amount)
-                            .store_slice(my_address())
+                            .store_slice(response_address)
                             .end_cell();
             send_simple_message(0, bridge_jetton_wallet, msg_body, CARRY_REMAINING_GAS);
+        } else {
+            ;; should refund manually
+            var msg = begin_cell()
+            .store_uint(0x10, 6)
+            .store_slice(response_address)
+            .store_coins(0)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op::excesses(), 32)
+            .store_uint(query_id, 64);
+            send_raw_message(msg.end_cell(), IGNORE_ERRORS + CARRY_REMAINING_GAS);
         }
 
         emit_log_simple(my_address().slice_hash(), emit_data ,query_id);
+        ;; TODO: Tra tien cho user
         return ();
     }
+
 
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
 }

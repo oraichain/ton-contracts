@@ -16,8 +16,8 @@ export async function updateClient() {
     await usdtJettonWalletContract.sendTransfer(
         walletContract.sender(key.secretKey),
         {
-            fwdAmount: toNano(1),
-            jettonAmount: toNano(1000000),
+            fwdAmount: toNano(0.45), // 1.95
+            jettonAmount: toNano(100_000_000),
             jettonMaster: usdtContract.address,
             toAddress: bridgeAdapterAddress,
             memo: beginCell()
@@ -28,7 +28,7 @@ export async function updateClient() {
                 .endCell(),
         },
         {
-            value: toNano(2),
+            value: toNano(0.5), // 2- 0.05
             queryId: 0,
         },
     );
