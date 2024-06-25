@@ -53,7 +53,7 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
     if (s.preload_uint(1)) {
         ;; forward_payload in ref
         (int remain_bits, int remain_refs) = slice_bits_refs(s);
-        throw_unless(error::invalid_message, (remain_refs == 1) & (remain_bits == 1)); ;; we check that there is no excess in the slice
+        throw_unless(5006, (remain_refs == 1) & (remain_bits == 1)); ;; we check that there is no excess in the slice
     }
     ;; else forward_payload in slice - arbitrary bits and refs
 }

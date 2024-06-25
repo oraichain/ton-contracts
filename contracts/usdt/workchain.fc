@@ -1,7 +1,6 @@
-#include "stdlib.fc";
-#include "op-codes.fc";
+#include "../imports/stdlib.fc";
 
-const MY_WORKCHAIN = BASECHAIN;
+const MY_WORKCHAIN = 0;
 
 int is_same_workchain(slice addr) inline {
     (int wc, _) = parse_std_addr(addr);
@@ -9,5 +8,5 @@ int is_same_workchain(slice addr) inline {
 }
 
 () check_same_workchain(slice addr) impure inline {
-    throw_unless(error::wrong_workchain, is_same_workchain(addr));
+    throw_unless(5005, is_same_workchain(addr));
 }

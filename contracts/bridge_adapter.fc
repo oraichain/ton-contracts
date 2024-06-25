@@ -7,7 +7,7 @@
 #include "utils/messages.fc";
 #include "common/messages.fc";
 #include "common/address.fc";
-#include "utils/jetton.fc";
+;; #include "utils/jetton.fc";
 #include "usdt/jetton-utils.fc";
 #include "utils/helper.fc";
 ;; prefix and suffix for json
