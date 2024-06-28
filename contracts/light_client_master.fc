@@ -116,9 +116,18 @@ global cell light_client_code;
         slice msg = in_msg_body~load_ref().begin_parse();
         slice sender_address = msg~load_msg_addr();
         cell ds = msg~load_ref();
+        slice cs = ds.begin_parse();
+
+        slice header = cs~load_ref().begin_parse();
+        cell validators = cs~load_ref();
         
-        (cell header, cell validators, cell commit) = parse_verify_light_client_body(ds.begin_parse());
-        (_, _, _, slice validator_hash_set) = get_data_from_header(header.begin_parse());
+        ;; get validator set
+        header~load_ref();
+        slice first_hashes = header~load_ref().begin_parse();
+        first_hashes~load_ref();
+        first_hashes~load_ref();
+        slice validator_hash_set = first_hashes~load_ref().begin_parse();
+
         int result = verify::verify_validators_set(validator_hash_set, validators.begin_parse());
         throw_if(error::invalid_verify_validators_set, result != -1);
         ;; send verify_sigs message
@@ -137,9 +146,12 @@ global cell light_client_code;
         slice msg = in_msg_body~load_ref().begin_parse();
         slice response_address = msg~load_msg_addr();
         cell ds = msg~load_ref();
+        slice cs = ds.begin_parse();
         
-        (cell header, cell validators, cell commit) = parse_verify_light_client_body(ds.begin_parse());
-        (int height, _, _, slice validator_hash_set) = get_data_from_header(header.begin_parse());
+        (cell header, cell validators, cell commit) = parse_verify_light_client_body(cs);
+        slice slice_header = header.begin_parse();
+        slice inner_header = slice_header~load_ref().begin_parse();
+        int height = inner_header~load_uint(32);
         
         int result = 0;
         result = verify::verify_single_optimized_commit_builder(
@@ -179,7 +191,9 @@ global cell light_client_code;
         cell ds = msg~load_ref();
 
         (cell header, cell validators, cell commit) = parse_verify_light_client_body(ds.begin_parse());
-        (int height, _, _, _) = get_data_from_header(header.begin_parse());
+        slice slice_header = header.begin_parse();
+        slice inner_header = slice_header~load_ref().begin_parse();
+        int height = inner_header~load_uint(32);
 
         slice light_client_address = calculate_specific_light_client_address(height, chain_id, my_address(), trusting_period,light_client_code);
         cell state_init = calculate_light_client_state_init(height, chain_id, my_address(), trusting_period, light_client_code);
@@ -204,7 +218,9 @@ global cell light_client_code;
         slice response_address = msg~load_msg_addr();
         cell ds = msg~load_ref();
         (cell header, _, _) = parse_verify_light_client_body(ds.begin_parse());
-        (int height, _, _, _) = get_data_from_header(header.begin_parse());
+        slice slice_header = header.begin_parse();
+        slice inner_header = slice_header~load_ref().begin_parse();
+        int height = inner_header~load_uint(32);
         trusted_height = height;
         save_data();
         ;; refund excess money to user
