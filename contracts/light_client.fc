@@ -89,7 +89,9 @@ global slice light_client_master_address;
         slice response_address = msg~load_msg_addr();
         cell ds = msg~load_ref();
         (cell header, _, cell commit) = parse_verify_light_client_body(ds.begin_parse());
-        (int height, _, _, slice validator_hash_set) = get_data_from_header(header.begin_parse());
+        slice slice_header = header.begin_parse();
+        slice inner_header = slice_header~load_ref().begin_parse();
+        int height = inner_header~load_uint(32);
         int result = 0;
 
         result = verify::verify_single_optimized_commit_builder(
