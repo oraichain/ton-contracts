@@ -3,9 +3,13 @@ const log::verify_receipt = 1;
 const op::verify_block_hash = "op::verify_block_hash"c;
 const op::store_untrusted_validators = "op::store_untrusted_validators"c;
 const op::verify_untrusted_validators = "op::verify_untrusted_validators"c;
-const op::verify_sigs = "op::verify_sigs"c; 
-const op::verify_receipt = "op::verify_receipt"c; 
 
+const op::verify_on_untrusted_sigs = "op::verify_on_untrusted_sigs"c; 
+const op::verify_on_trusted_sigs = "op::verify_on_trusted_sigs"c; 
+const op::verify_receipt = "op::verify_receipt"c;
+const op::create_new_light_client = "op::create_new_light_client"c; 
+const op::update_light_client_state = "op::update_light_client_state"c; 
+const op::finalize_verify_light_client = "op::finalize_verify_light_client"c; 
 
 ;; bridge adapter
 const op::send_tx = "op::send_tx"c;

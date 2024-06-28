@@ -22,6 +22,12 @@ slice get_validator_hash(slice header) inline_ref {
     return (height, chain_id, data_hash, validators_hash);
 }
 
+(cell, cell, cell) parse_verify_light_client_body(slice ds) inline_ref {
+    cell header = ds~load_ref();
+    cell validators_cell = ds~load_ref();
+    cell commit = ds~load_ref();
+    return (header, validators_cell, commit);
+}
 
 int equal_slice? (slice a, slice b) {
     return a.slice_hash() == b.slice_hash();
