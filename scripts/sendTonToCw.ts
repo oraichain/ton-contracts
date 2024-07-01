@@ -1,6 +1,6 @@
 import { Address, beginCell, toNano } from '@ton/core';
 import * as dotenv from 'dotenv';
-import { createTonWallet, waitSeqno } from './utils';
+import { calculateIbcTimeoutTimestamp, createTonWallet, waitSeqno } from './utils';
 import { JettonMinter, JettonWallet } from '../wrappers';
 dotenv.config();
 
@@ -20,6 +20,7 @@ export async function updateClient() {
             jettonAmount: toNano(100_000_000),
             jettonMaster: usdtContract.address,
             toAddress: bridgeAdapterAddress,
+            timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
             memo: beginCell()
                 .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
                 .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())

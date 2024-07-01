@@ -41,6 +41,7 @@ export interface SendTransferInterface {
     fwdAmount: bigint;
     jettonAmount: bigint;
     jettonMaster: Address;
+    timeout: bigint;
     memo: Cell;
 }
 
@@ -81,7 +82,7 @@ export class JettonWallet implements Contract {
                 .storeDict(Dictionary.empty())
                 .storeCoins(data.fwdAmount)
                 .storeUint(0, 1)
-                .storeRef(beginCell().storeAddress(data.jettonMaster).endCell())
+                .storeRef(beginCell().storeAddress(data.jettonMaster).storeUint(data.timeout, 64).endCell())
                 .storeRef(data.memo)
                 .endCell(),
         });
