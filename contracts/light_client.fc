@@ -14,7 +14,7 @@
 ;; store in a header_ref
 global int height;
 global slice chain_id;
-global slice data_hash;
+global slice app_hash;
 global cell validator;
 
 ;; trusting
@@ -27,7 +27,7 @@ global slice light_client_master_address;
 () preload_data(slice ds) impure {
     height = ds~load_uint(64);
     chain_id = ds~load_ref().begin_parse();
-    data_hash = ds~load_ref().begin_parse();
+    app_hash = ds~load_ref().begin_parse();
     validator = ds~load_ref();
 
     trusting_period = ds~load_uint(32);
@@ -49,7 +49,7 @@ global slice light_client_master_address;
                         .store_uint(created_at, 32)
                         .store_slice(light_client_master_address)
                         .store_ref(begin_cell().store_slice(chain_id).end_cell())
-                        .store_ref(begin_cell().store_slice(data_hash).end_cell())
+                        .store_ref(begin_cell().store_slice(app_hash).end_cell())
                         .store_ref(validator)
                         .end_cell();
     
@@ -122,7 +122,7 @@ global slice light_client_master_address;
         slice response_address = msg~load_msg_addr();
         cell ds = msg~load_ref();
         (cell header, cell validators, _) = parse_verify_light_client_body(ds.begin_parse());
-        (_, chain_id, data_hash, _) = get_data_from_header(header.begin_parse());
+        (_, chain_id, app_hash, _) = get_data_from_header(header.begin_parse());
         validator = validators;
         created_at = now();
         save_data();
@@ -140,34 +140,7 @@ global slice light_client_master_address;
     }
 
     if (op == op::verify_receipt) {
-        slice body = in_msg_body~load_ref().begin_parse();
-        int receipt_height = body~load_uint(64);
-        slice response_address = body~load_msg_addr();
-        slice tx_raw = body~load_ref().begin_parse();
-        slice proofs = body~load_ref().begin_parse();
-        slice positions =  body~load_ref().begin_parse();
-        slice data =  body~load_ref().begin_parse();
-        throw_if(error::invalid_height, receipt_height != height);
-        (tuple encode_tx_raw, _) = tx_raw::encode(tx_raw);
-        int tx_hash = begin_cell()
-                    .store_uint(prefix::leaf, 8)
-                    .store_uint(digest_hash(encode_tx_raw), 256)
-                    .end_cell()
-                    .begin_parse()
-                    .string_hash();
-        int calculate_data_hash = hash_from_tree_proof_ref(proofs, tx_hash, positions);
-     
-        (_, int value) = data_hash.load_uint(256);
-        throw_if(error::invalid_verify_receipt, value != calculate_data_hash);
-       
-        cell body = begin_cell()
-                        .store_uint(op::confirm_tx, 32)
-                        .store_uint(query_id, 64)
-                        .store_slice(data)
-                        .store_ref(begin_cell().store_slice(response_address).end_cell())
-                    .end_cell();
-
-        send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);
+        ;; FIXME: change the way it verify data from bridge adapter based on app_hash
         return ();
     }
 
@@ -184,7 +157,7 @@ slice get_chain_id() method_id {
     return chain_id;
 }
 
-slice get_data_hash() method_id {
+slice get_app_hash() method_id {
     load_data();
-    return data_hash;
+    return app_hash;
 }

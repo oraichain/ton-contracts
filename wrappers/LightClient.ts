@@ -68,6 +68,8 @@ export const LightClientOpcodes = {
     verify_sigs: crc32('op::verify_sigs'),
     verify_receipt: crc32('op::verify_receipt'),
     verify_untrusted_validators: crc32('op::verify_untrusted_validators'),
+    verify_on_trusted_sigs: crc32('op:verify_on_trusted_sigs'),
+    update_light_client_state: crc32('op:update_light_client_state'),
 };
 
 export class LightClient implements Contract {

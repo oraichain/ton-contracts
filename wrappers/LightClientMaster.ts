@@ -40,8 +40,10 @@ export function lightClientMasterConfigToCell(config: LightClientMasterConfig): 
 
 export const LightClientMasterOpcodes = {
     verify_block_hash: crc32('op::verify_block_hash'),
-    verify_sigs: crc32('op::verify_sigs'),
     verify_untrusted_validators: crc32('op::verify_untrusted_validators'),
+    verify_on_untrusted_sigs: crc32('op::verify_on_untrusted_sigs'),
+    create_new_light_client: crc32('op::create_new_light_client'),
+    finalize_verify_light_client: crc32('op::finalize_verify_light_client'),
 };
 
 export class LightClientMaster implements Contract {

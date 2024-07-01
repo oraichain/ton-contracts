@@ -73,7 +73,13 @@ global cell light_client_code;
         ;; store block data
         slice ds = in_msg_body~load_ref().begin_parse();
         (cell header, cell validators_cell, cell commit) = parse_verify_light_client_body(ds);
-        (int height, slice temp_chain_id, slice data_hash, slice validator_hash_set) = get_data_from_header(header.begin_parse());
+
+        slice header_cs = header.begin_parse();
+        slice inner_header = header_cs~load_ref().begin_parse();
+        inner_header~load_ref();
+        slice temp_chain_id = inner_header~load_ref().begin_parse();
+        int height = inner_header~load_uint(32);
+
         throw_if(error::not_match_chain_id, chain_id.equal_slice?(temp_chain_id) != -1);
         
         ;; update untrusted validators here
