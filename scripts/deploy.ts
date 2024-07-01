@@ -30,23 +30,23 @@ async function deploy() {
     // console.log('Success deploy light client at address: ', lightClient.address);
 
     // USDT
-    // const usdtMinterContract = client.open(
-    //     JettonMinter.createFromConfig(
-    //         {
-    //             adminAddress: walletContract.address,
-    //             content: beginCell()
-    //                 .storeBuffer(Buffer.from('USDT Token'))
-    //                 .storeBuffer(Buffer.from('USDT'))
-    //                 .storeBuffer(Buffer.from('USDT token from Telegram OpenNetwork'))
-    //                 .endCell(),
-    //             jettonWalletCode: await compile('JettonWallet'),
-    //         },
-    //         await compile('JettonMinter'),
-    //     ),
-    // );
-    // await usdtMinterContract.sendDeploy(walletContract.sender(key.secretKey), { value: toNano('3') });
+    const usdtMinterContract = client.open(
+        JettonMinter.createFromConfig(
+            {
+                adminAddress: walletContract.address,
+                content: beginCell()
+                    .storeBuffer(Buffer.from('USDT Token'))
+                    .storeBuffer(Buffer.from('USDT'))
+                    .storeBuffer(Buffer.from('USDT token from Telegram OpenNetwork'))
+                    .endCell(),
+                jettonWalletCode: await compile('JettonWallet'),
+            },
+            await compile('JettonMinter'),
+        ),
+    );
+    // await usdtMinterContract.sendDeploy(walletContract.sender(key.secretKey), { value: toNano('1') });
     // await waitSeqno(walletContract, await walletContract.getSeqno());
-    // console.log('Success deploy usdtContract at address: ', usdtMinterContract.address);
+    console.log('Success deploy usdtContract at address: ', usdtMinterContract.address);
 
     // await usdtMinterContract.sendMint(
     //     walletContract.sender(key.secretKey),
@@ -69,12 +69,12 @@ async function deploy() {
 
     // await whitelistContract.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
     // await waitSeqno(walletContract, await walletContract.getSeqno());
-    // console.log('Success deploy whitelistContract at address: ', whitelistContract.address);
+    console.log('Success deploy whitelistContract at address: ', whitelistContract.address);
 
     await whitelistContract.sendSetDenom(
         walletContract.sender(key.secretKey),
         {
-            denom: Address.parse('EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs'),
+            denom: usdtMinterContract.address,
             isRootFromTon: true,
             permission: true,
         },
@@ -87,7 +87,7 @@ async function deploy() {
     // BRIDGE ADAPTER
     const tonBridge = BridgeAdapter.createFromConfig(
         {
-            light_client: lightClient.address,
+            light_client: whitelistContract.address, // just fake it for demo
             jetton_wallet_code: await compile('JettonWallet'),
             bridge_wasm_smart_contract: 'orai1y4kj224wmzmrna4kz9nk3n00zxdst5nra0z0u0nry5k6seqdw5psu4t9fn',
             whitelist_denom: whitelistContract.address,
@@ -95,10 +95,10 @@ async function deploy() {
         await compile('BridgeAdapter'),
     );
 
-    // const tonBridgeContract = client.open(tonBridge);
-    // await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), { value: toNano('0.1') });
-    // await waitSeqno(walletContract, await walletContract.getSeqno());
-    // console.log('Success deploy tonBridgeContract at address: ', tonBridgeContract.address);
+    const tonBridgeContract = client.open(tonBridge);
+    await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), { value: toNano('0.1') });
+    await waitSeqno(walletContract, await walletContract.getSeqno());
+    console.log('Success deploy tonBridgeContract at address: ', tonBridgeContract.address);
 
     // This one we consider it as orai token
     // const jettonMinterSrcCosmos = client.open(

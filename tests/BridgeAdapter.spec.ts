@@ -23,6 +23,7 @@ import { getMerkleProofs } from '../wrappers/TestClient';
 import { JettonWallet } from '../wrappers/JettonWallet';
 import { crc32 } from '../crc32';
 import { createUpdateClientData, deserializeCommit, deserializeHeader, deserializeValidator } from '../wrappers/utils';
+import { calculateIbcTimeoutTimestamp } from '../scripts/utils';
 
 describe('BridgeAdapter', () => {
     let lightClientCode: Cell;
@@ -277,17 +278,17 @@ describe('BridgeAdapter', () => {
 
         await deployer.getSender().send({
             to: jettonMinterSrcCosmos.address,
-            value: toNano('3'),
+            value: toNano('10'),
         });
 
         await deployer.getSender().send({
             to: jettonMinterSrcTon.address,
-            value: toNano('3'),
+            value: toNano('10'),
         });
 
         await deployer.getSender().send({
             to: bridgeJettonWalletSrcTon.address,
-            value: toNano('3'),
+            value: toNano('10'),
         });
     });
 
@@ -594,6 +595,8 @@ describe('BridgeAdapter', () => {
             op: WhitelistDenomOpcodes.setDenom,
             success: true,
         });
+
+        const senderBeforeBalance = (await blockchain.getContract(usdtDeployer.getSender().address)).balance;
         result = await usdtDeployerJettonWallet.sendTransfer(
             usdtDeployer.getSender(),
             {
@@ -601,6 +604,7 @@ describe('BridgeAdapter', () => {
                 jettonAmount: toNano(333),
                 jettonMaster: usdtMinterContract.address,
                 toAddress: bridgeAdapter.address,
+                timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
                 memo: beginCell()
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
                     .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
@@ -622,6 +626,8 @@ describe('BridgeAdapter', () => {
             op: BridgeAdapterOpcodes.callbackDenom,
             success: true,
         });
+        const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address)).balance;
+        expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
     });
 
     it('Test send jetton token from cosmos to bridge adapter', async () => {
@@ -733,6 +739,7 @@ describe('BridgeAdapter', () => {
                 jettonAmount: toNano(5),
                 jettonMaster: jettonMinterSrcCosmos.address,
                 toAddress: bridgeAdapter.address,
+                timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
                 memo: beginCell()
                     .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
                     .endCell(),
