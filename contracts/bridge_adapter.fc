@@ -250,9 +250,12 @@ global cell processed_txs;
         slice response_address = ds~load_ref().begin_parse();
 
         cell emit_data = begin_cell()
+                            .store_uint(op::receive_packet, 32)
                             .store_uint(packet_seq, 64)
                             .store_uint(timeout, 64)
                             .store_slice(jetton_master_address)
+                            .store_slice(response_address)
+                            .store_uint(0, 16) ;; channel-id => update soon when have this feature
                             .store_coins(amount)
                             .store_ref(memo_cell)
                             .end_cell();

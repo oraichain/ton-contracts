@@ -71,18 +71,18 @@ async function deploy() {
     // await waitSeqno(walletContract, await walletContract.getSeqno());
     console.log('Success deploy whitelistContract at address: ', whitelistContract.address);
 
-    await whitelistContract.sendSetDenom(
-        walletContract.sender(key.secretKey),
-        {
-            denom: usdtMinterContract.address,
-            isRootFromTon: true,
-            permission: true,
-        },
-        {
-            value: toNano('1'),
-        },
-    );
-    await waitSeqno(walletContract, await walletContract.getSeqno());
+    // await whitelistContract.sendSetDenom(
+    //     walletContract.sender(key.secretKey),
+    //     {
+    //         denom: usdtMinterContract.address,
+    //         isRootFromTon: true,
+    //         permission: true,
+    //     },
+    //     {
+    //         value: toNano('1'),
+    //     },
+    // );
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
 
     // BRIDGE ADAPTER
     const tonBridge = BridgeAdapter.createFromConfig(
