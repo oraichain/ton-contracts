@@ -1,0 +1,71 @@
+#include "./constants.fc";
+#include "../utils/helper.fc";
+#include "../imports/stdlib.fc";
+#include "../utils/varint.fc";
+;; https://github.com/cosmos/ics23/blob/02f5aa596fe38272538b526a92d9ee4960a30382/js/src/proofs.ts#L155-L170
+;; proof: https://github.com/cosmos/ics23/blob/c7c728879896fb260fe76b208ea6a17c2b0132a3/js/src/generated/codecimpl.d.ts#L37-L49
+int calculate_existence_root(slice proof){
+    slice value = proof~load_ref().begin_parse();
+    slice leaf = proof~load_ref().begin_parse();
+    slice path = proof~load_ref().begin_parse();
+    slice key = proof;
+    int res = apply_leaf(leaf, key, value);
+    while(path.slice_refs_empty?() != -1) {
+        slice next_ref = ds~load_ref().begin_parse();
+        res = apply_inner(path, res);
+        path = next_ref;
+    }
+    return res;
+}
+
+int apply_leaf(slice leaf, slice key, slice value){
+    int pre_hash_key = leaf~load_uint(8);
+    int pre_hash_value = leaf~load_uint(8);
+    int leaf_hash = leaf~load_uint(8); ;; reduntdant cause spec of tendermint and iavl is sha256
+    int leaf_len = leaf~load_uint(8);
+    cell leaf_prefix = leaf~load_ref(8).begin_parse();
+    slice pkey = prepare_leaf_data(hash_op, length_op, key);
+    slice pvalue = prepare_leaf_data(hash_op, length_op, value);
+    slice data = begin_cell()
+                    .store_slice(leaf_prefix)
+                    .store_slice(pkey)
+                    .store_slice(pvalue)
+                    .end_cell().begin_parse();
+
+    int hash = string_hash(data);
+    return hash;
+}
+
+slice prepare_leaf_data(int hash_op, int length_op, slice data){
+    slice hash =  do_hash_or_noop(hash_op,preimage);
+    return do_length_op(length_op, data);
+}
+
+slice do_hash_or_noop(int hash_op, slice preimage){
+    if(hash_op == ics23::hashOp::NO_HASH){
+        return preimage;
+    }
+    tuple image_tuple = preimage.slice_ref_to_tuple();
+    int hash = digest_hash(image_tuple);
+    return begin_cell().storeUint(hash, 32).end_cell();
+}
+
+slice do_length_op(int length_op, slice data){
+    if(length_op == ics23::lengthOp::NO_PREFIX){
+        return data;
+    }
+    int data_len = slice_bits(data) >> 3;
+    return begin_cell().store_builder(varint::encode_builder(0,data_len)).store_slice(data).end_cell();
+}
+
+int apply_inner(slice inner, int child){
+    slice prefix = inner~load_ref().begin_parse();
+    slice suffix = inner~load_ref().begin_parse();
+    int inner_hash = inner; ;; reduntdant cause spec of tendermint and iavl is sha256
+    slice data = begin_cell()
+                    .store_slice(prefix)
+                    .store_uint(child, 32)
+                    .store_slice(suffix)
+                    .end_cell().begin_parse();
+    return string_hash(data);
+}
