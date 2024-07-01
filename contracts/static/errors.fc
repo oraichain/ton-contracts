@@ -13,14 +13,14 @@ const int error::empty_tx = 3000;
 const int error::empty_auth_info = 3001;
 const int error::empty_tx_body = 3002;
 const int error::empty_tx_signatures = 3002;
+const int error::invalid_contract_address = 3003;
+const int error::unsupported_type_url = 3004;
+const int error::unsupported_wasm_message = 3005;
+const int error::invalid_sender = 3006;
+const int error::already_process_data = 3007;
+const int error::unsupport_this_denom = 3008;
+const int error::packet_timeout = 3009;
 
-const int error::invalid_contract_address = 3100;
-const int error::unsupported_type_url = 3101;
-const int error::unsupported_wasm_message = 3102;
-const int error::invalid_sender = 3103;
-
-const int error::already_process_data = 3200;
-const int error::unsupport_this_denom = 3201;
 
 
 ;; Whitelist denom error

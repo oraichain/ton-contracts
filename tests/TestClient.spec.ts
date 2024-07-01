@@ -1,12 +1,22 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Address, beginCell, Cell, toNano } from '@ton/core';
-import { BlockId, TestClient, buildRecursiveSliceRef, getMerkleProofs, leafHash } from '../wrappers/TestClient';
+import {
+    BlockId,
+    TestClient,
+    buildRecursiveSliceRef,
+    getMerkleProofs,
+    leafHash,
+} from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { result as blockData } from './fixtures/block.json';
 import { result as validators } from './fixtures/validators.json';
 import { createHash } from 'crypto';
 import { Src } from '../wrappers/BridgeAdapter';
+import * as proofs from './fixtures/proofs.json';
+import { CommitmentProof, ExistenceProof } from 'cosmjs-types/cosmos/ics23/v1/proofs';
+import { verifyMembership, calculateExistenceRoot, ics23 } from '@confio/ics23';
+import { getExistenceProofCell } from '../wrappers';
 
 const validatorMap = Object.fromEntries(validators.validators.map((v) => [v.address, v]));
 
@@ -74,7 +84,10 @@ describe('TestClient', () => {
             '2f042189d233b9113b91177184c699dcb140439f73cf0c7fb0c640d5edc46d76f95470bb54d0322bb0cdabeb7c848226a2d7e318a2d5d741961f8eeccefa3304',
             'hex',
         );
-        const publicKey = Buffer.from('10b8dfde73aeda38f81c5ce9c181ccaf2e25d0c66b8d4bfb41732f0ae61ee566', 'hex');
+        const publicKey = Buffer.from(
+            '10b8dfde73aeda38f81c5ce9c181ccaf2e25d0c66b8d4bfb41732f0ae61ee566',
+            'hex',
+        );
         const verified = await lightClient.getCheckSignature(data, signature, publicKey);
         console.log('verified', verified);
     });
@@ -190,40 +203,70 @@ describe('TestClient', () => {
     });
 
     it('memo unique', async () => {
-        console.log(Address.parse('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').toStringBuffer().length);
+        console.log(
+            Address.parse('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').toStringBuffer()
+                .length,
+        );
         console.log(Src.COSMOS);
         const memo = beginCell()
-            .storeAddress(Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address)
-            .storeAddress(Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address)
+            .storeAddress(
+                Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address,
+            )
+            .storeAddress(
+                Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address,
+            )
             .storeUint(BigInt('10000000000000000'), 128)
             .storeUint(Src.COSMOS, 32)
             .endCell()
             .beginParse();
-        console.log(Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase());
-        const buffer = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
+        console.log(
+            Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase(),
+        );
+        const buffer = beginCell()
+            .storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex'))
+            .endCell();
         const res = await lightClient.getMemo(buffer);
         console.log(Src.COSMOS);
     });
 
-    it("should tuple of bits equal despite of the different element size", async()=>{
+    it('should tuple of bits equal despite of the different element size', async () => {
         const memo = beginCell()
-        .storeAddress(Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address)
-        .storeAddress(Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address)
-        .storeUint(BigInt('10000000000000000'), 128)
-        .storeUint(Src.COSMOS, 32)
-        .endCell()
-        .beginParse();
-        const data = Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase();
-        const buffer = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
-        console.log(data)
-        const msg = {"action":{"data":data}}
+            .storeAddress(
+                Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address,
+            )
+            .storeAddress(
+                Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address,
+            )
+            .storeUint(BigInt('10000000000000000'), 128)
+            .storeUint(Src.COSMOS, 32)
+            .endCell()
+            .beginParse();
+        const data = Buffer.from(memo.asCell().bits.toString(), 'hex')
+            .toString('hex')
+            .toUpperCase();
+        const buffer = beginCell()
+            .storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex'))
+            .endCell();
+        console.log(data);
+        const msg = { action: { data: data } };
         const msgBuffer = Buffer.from(JSON.stringify(msg));
         const msgSlice = buildRecursiveSliceRef(msgBuffer);
-        console.log(Buffer.from('{"write":{"data":').toString('hex'))
-        console.log(Buffer.from('}}').toString('hex'))
-        console.log(Buffer.from('"').toString('hex'))
+        console.log(Buffer.from('{"write":{"data":').toString('hex'));
+        console.log(Buffer.from('}}').toString('hex'));
+        console.log(Buffer.from('"').toString('hex'));
 
         await lightClient.getBuffParse(msgSlice ?? beginCell().endCell(), buffer);
-        
-    })
+    });
+
+    it('should calculateExistenceProof successfully', async () => {
+        for (const proof of Object.values(proofs)) {
+            const existenceProof = ics23.CommitmentProof.fromObject(proof).exist!;
+            const result = calculateExistenceRoot(existenceProof);
+            const hashResult = Buffer.from(result).toString('hex');
+            const number = await lightClient.getCalculateExistenceRoot(
+                getExistenceProofCell(existenceProof as ExistenceProof),
+            );
+            console.log(number.toString(16), hashResult);
+        }
+    });
 });

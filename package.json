@@ -11,6 +11,7 @@
         "test": "jest --verbose"
     },
     "devDependencies": {
+        "@confio/ics23": "^0.6.8",
         "@cosmjs/cosmwasm-stargate": "^0.32.3",
         "@cosmjs/crypto": "^0.32.3",
         "@cosmjs/encoding": "^0.32.3",

@@ -2,7 +2,14 @@ import { Cell, Tuple, TupleItem, TupleItemSlice, beginCell } from '@ton/core';
 import crypto from 'crypto';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 
-import { Fee, Tip, TxBody, ModeInfo_Single, SignerInfo, AuthInfo } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import {
+    Fee,
+    Tip,
+    TxBody,
+    ModeInfo_Single,
+    SignerInfo,
+    AuthInfo,
+} from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 
 import { int64FromString, writeVarint64 } from 'cosmjs-types/varint';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
@@ -26,6 +33,7 @@ import {
     fromRfc3339WithNanoseconds,
     Tendermint34Client,
 } from '@cosmjs/tendermint-rpc';
+import { ExistenceProof, InnerOp, LeafOp } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 
 export type TestClientConfig = {
     id: number;
@@ -86,8 +94,16 @@ export const getInt64Slice = (modeInfo: ModeInfo_Single) => {
 
 export const getBlockSlice = (blockId: BlockId): Cell => {
     return beginCell()
-        .storeUint(blockId.hash ? BigInt('0x' + Buffer.from(blockId.hash).toString('hex')) : 0n, 256)
-        .storeUint(blockId.parts.hash ? BigInt('0x' + Buffer.from(blockId.parts.hash).toString('hex')) : 0n, 256)
+        .storeUint(
+            blockId.hash ? BigInt('0x' + Buffer.from(blockId.hash).toString('hex')) : 0n,
+            256,
+        )
+        .storeUint(
+            blockId.parts.hash
+                ? BigInt('0x' + Buffer.from(blockId.parts.hash).toString('hex'))
+                : 0n,
+            256,
+        )
         .storeUint(blockId.parts.total, 8)
         .endCell();
 };
@@ -99,7 +115,9 @@ export const getSignInfoCell = (mode: SignerInfo): Cell => {
         .storeRef(typeUrl)
         .storeRef(value || beginCell().endCell())
         .endCell();
-    const modeInfo = mode.modeInfo?.single ? getInt64Slice(mode.modeInfo?.single) : beginCell().endCell();
+    const modeInfo = mode.modeInfo?.single
+        ? getInt64Slice(mode.modeInfo?.single)
+        : beginCell().endCell();
     const { lo, hi } = int64FromString(mode.sequence.toString());
     const buff = [] as number[];
     writeVarint64({ lo, hi }, buff, 0);
@@ -316,14 +334,19 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
     let messagesCell: Cell | undefined;
 
     for (let i = txBodyWasm.messages.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl))
+            .endCell();
         const value = msgExecuteContractToCell(txBodyWasm.messages[i].value);
         const innerCell = beginCell()
             .storeRef(typeUrl)
             .storeRef(value || beginCell().endCell())
             .endCell();
         if (!messagesCell) {
-            messagesCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            messagesCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
             messagesCell = beginCell().storeRef(messagesCell).storeRef(innerCell).endCell();
         }
@@ -332,7 +355,9 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
     const memo_timeout_height_builder = beginCell();
 
     if (txBodyWasm.memo) {
-        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo, 'hex')).endCell());
+        memo_timeout_height_builder.storeRef(
+            beginCell().storeBuffer(Buffer.from(txBodyWasm.memo, 'hex')).endCell(),
+        );
     }
 
     if (txBodyWasm.timeoutHeight > 0n) {
@@ -341,7 +366,9 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
 
     let extCell;
     for (let i = txBodyWasm.extensionOptions.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl))
+            .endCell();
         const value = buildRecursiveSliceRef(txBodyWasm.extensionOptions[i].value);
         const innerCell = beginCell()
             .storeRef(typeUrl)
@@ -382,14 +409,19 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
 export const txBodyToSliceRef = (txBodyWasm: TxBody) => {
     let messagesCell;
     for (let i = txBodyWasm.messages.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl))
+            .endCell();
         const value = buildRecursiveSliceRef(txBodyWasm.messages[i].value);
         const innerCell = beginCell()
             .storeRef(typeUrl)
             .storeRef(value || beginCell().endCell())
             .endCell();
         if (!messagesCell) {
-            messagesCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            messagesCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
             messagesCell = beginCell().storeRef(messagesCell).storeRef(innerCell).endCell();
         }
@@ -407,7 +439,9 @@ export const txBodyToSliceRef = (txBodyWasm: TxBody) => {
 
     let extCell;
     for (let i = txBodyWasm.extensionOptions.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl))
+            .endCell();
         const value = buildRecursiveSliceRef(txBodyWasm.extensionOptions[i].value);
         const innerCell = beginCell()
             .storeRef(typeUrl)
@@ -542,7 +576,9 @@ export const serializeCommit = (commit: Commit): SerializedCommit => {
         signatures: commit.signatures.map((sig) => {
             return {
                 blockIdFlag: sig.blockIdFlag,
-                validatorAddress: sig.validatorAddress ? Buffer.from(sig.validatorAddress).toString('hex') : '',
+                validatorAddress: sig.validatorAddress
+                    ? Buffer.from(sig.validatorAddress).toString('hex')
+                    : '',
                 timestamp: sig.timestamp
                     ? toRfc3339WithNanoseconds(sig.timestamp)
                     : new Date('0001-01-01T00:00:00Z').getTime().toString(),
@@ -601,8 +637,12 @@ export const deserializeCommit = (serializedCommit: SerializedCommit): Commit =>
         signatures: serializedCommit.signatures.map((sig) => {
             return {
                 blockIdFlag: sig.blockIdFlag,
-                validatorAddress: sig.validatorAddress ? Buffer.from(sig.validatorAddress, 'hex') : Buffer.from(''),
-                timestamp: sig.timestamp ? fromRfc3339WithNanoseconds(sig.timestamp) : new Date('0001-01-01T00:00:00Z'),
+                validatorAddress: sig.validatorAddress
+                    ? Buffer.from(sig.validatorAddress, 'hex')
+                    : Buffer.from(''),
+                timestamp: sig.timestamp
+                    ? fromRfc3339WithNanoseconds(sig.timestamp)
+                    : new Date('0001-01-01T00:00:00Z'),
                 signature: sig.signature ? Buffer.from(sig.signature, 'hex') : undefined,
             };
         }),
@@ -614,9 +654,15 @@ export function getAuthInfoInput(data: AuthInfo) {
     for (let i = data.signerInfos.length - 1; i >= 0; i--) {
         const innerCell = getSignInfoCell(data.signerInfos[i]);
         if (!finalSignInfosCell) {
-            finalSignInfosCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            finalSignInfosCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
-            finalSignInfosCell = beginCell().storeRef(finalSignInfosCell!).storeRef(innerCell).endCell();
+            finalSignInfosCell = beginCell()
+                .storeRef(finalSignInfosCell!)
+                .storeRef(innerCell)
+                .endCell();
         }
     }
     let fee = beginCell().endCell();
@@ -660,7 +706,9 @@ export const getValidatorsCell = (validators: Validator[]) => {
     for (let i = validators.length - 1; i >= 0; i--) {
         let builder = beginCell().storeBuffer(Buffer.from(validators[i].address));
         if (validators[i]?.pubkey?.data) {
-            builder = builder.storeRef(beginCell().storeBuffer(Buffer.from(validators[i].pubkey!.data)).endCell());
+            builder = builder.storeRef(
+                beginCell().storeBuffer(Buffer.from(validators[i].pubkey!.data)).endCell(),
+            );
         } else {
             builder = builder.storeRef(
                 beginCell()
@@ -678,7 +726,10 @@ export const getValidatorsCell = (validators: Validator[]) => {
         builder = builder.storeUint(validators[i].votingPower, 32);
         const innerCell = builder.endCell();
         if (!validatorCell) {
-            validatorCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            validatorCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
             validatorCell = beginCell().storeRef(validatorCell).storeRef(innerCell).endCell();
         }
@@ -712,7 +763,49 @@ export const getBlockHashCell = (header: Header) => {
     return dsCell;
 };
 
-export const createUpdateClientData = async (rpcUrl: string, height: number): Promise<LightClientData> => {
+export const getExistLeafOpCell = (leaf: LeafOp) => {
+    return beginCell()
+        .storeUint(leaf.prehashKey, 8)
+        .storeUint(leaf.prehashValue, 8)
+        .storeUint(leaf.hash, 8)
+        .storeUint(leaf.length, 8)
+        .storeRef(beginCell().storeBuffer(Buffer.from(leaf.prefix)).endCell());
+};
+
+export const getPathOpCell = (innerOps: InnerOp[]) => {
+    let innerOpsCell;
+    for (let i = innerOps.length - 1; i >= 0; i--) {
+        const innerOp = innerOps[i];
+        const innerCell = beginCell()
+            .storeUint(innerOp.hash, 8)
+            .storeRef(beginCell().storeBuffer(Buffer.from(innerOp.prefix)))
+            .storeRef(beginCell().storeBuffer(Buffer.from(innerOp.suffix)))
+            .endCell();
+        if (!innerOpsCell) {
+            innerOpsCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
+        } else {
+            innerOpsCell = beginCell().storeRef(innerOpsCell).storeRef(innerCell).endCell();
+        }
+    }
+    return innerOpsCell;
+};
+
+export const getExistenceProofCell = (proof: ExistenceProof) => {
+    const builder = beginCell()
+        .storeBuffer(Buffer.from(proof.key))
+        .storeRef(beginCell().storeBuffer(Buffer.from(proof.value)).endCell())
+        .storeRef(getExistLeafOpCell(proof.leaf!))
+        .storeRef(getPathOpCell(proof.path!)!);
+    return builder.endCell();
+};
+
+export const createUpdateClientData = async (
+    rpcUrl: string,
+    height: number,
+): Promise<LightClientData> => {
     const tendermintClient = await Tendermint34Client.connect(rpcUrl);
     const [
         {

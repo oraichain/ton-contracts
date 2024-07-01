@@ -10,6 +10,9 @@ const op::verify_receipt = "op::verify_receipt"c;
 ;; bridge adapter
 const op::send_tx = "op::send_tx"c;
 const op::confirm_tx = "op::confirm_tx"c;
+const op::ack_timeout = "op::send_tx"c;
+const bridge_packet = "bridge_packet"c;
+const ack_timeout = "ack_timeout"c;
 
 ;; Minter
 int op::mint() asm "21 PUSHINT";

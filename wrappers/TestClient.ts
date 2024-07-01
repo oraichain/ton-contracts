@@ -16,7 +16,14 @@ import crypto from 'crypto';
 import { crc32 } from '../crc32';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 
-import { Fee, Tip, TxBody, ModeInfo_Single, SignerInfo, AuthInfo } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import {
+    Fee,
+    Tip,
+    TxBody,
+    ModeInfo_Single,
+    SignerInfo,
+    AuthInfo,
+} from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 
 const MAX_BYTES_CELL = 1023 / 8 - 1;
 
@@ -99,7 +106,9 @@ export const getVersionSlice = (version: Version): Cell => {
 export const getTimeSlice = (timestampz: string): Cell => {
     const { seconds, nanoseconds } = getTimeComponent(timestampz);
     let cell = beginCell();
-    cell = cell.storeUint(seconds < 0 ? 0 : seconds, 32).storeUint(nanoseconds < 0 ? 0 : nanoseconds, 32);
+    cell = cell
+        .storeUint(seconds < 0 ? 0 : seconds, 32)
+        .storeUint(nanoseconds < 0 ? 0 : nanoseconds, 32);
 
     return cell.endCell();
 };
@@ -137,7 +146,9 @@ export const getSignInfoCell = (mode: SignerInfo): Cell => {
         .storeRef(typeUrl)
         .storeRef(value || beginCell().endCell())
         .endCell();
-    const modeInfo = mode.modeInfo?.single ? getInt64Slice(mode.modeInfo?.single) : beginCell().endCell();
+    const modeInfo = mode.modeInfo?.single
+        ? getInt64Slice(mode.modeInfo?.single)
+        : beginCell().endCell();
     const { lo, hi } = int64FromString(mode.sequence.toString());
     let buff = [] as number[];
     writeVarint64({ lo, hi }, buff, 0);
@@ -354,14 +365,19 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
     let messagesCell: Cell | undefined;
 
     for (let i = txBodyWasm.messages.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl))
+            .endCell();
         const value = msgExecuteContractToCell(txBodyWasm.messages[i].value);
         let innerCell = beginCell()
             .storeRef(typeUrl)
             .storeRef(value || beginCell().endCell())
             .endCell();
         if (!messagesCell) {
-            messagesCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            messagesCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
             messagesCell = beginCell().storeRef(messagesCell).storeRef(innerCell).endCell();
         }
@@ -370,7 +386,9 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
     let memo_timeout_height_builder = beginCell();
 
     if (txBodyWasm.memo) {
-        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo)).endCell());
+        memo_timeout_height_builder.storeRef(
+            beginCell().storeBuffer(Buffer.from(txBodyWasm.memo)).endCell(),
+        );
     }
 
     if (txBodyWasm.timeoutHeight > 0n) {
@@ -379,7 +397,9 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
 
     let extCell;
     for (let i = txBodyWasm.extensionOptions.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl))
+            .endCell();
         const value = buildRecursiveSliceRef(txBodyWasm.extensionOptions[i].value);
         let innerCell = beginCell()
             .storeRef(typeUrl)
@@ -420,14 +440,19 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
 export const txBodyToSliceRef = (txBodyWasm: TxBody) => {
     let messagesCell;
     for (let i = txBodyWasm.messages.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl))
+            .endCell();
         const value = buildRecursiveSliceRef(txBodyWasm.messages[i].value);
         let innerCell = beginCell()
             .storeRef(typeUrl)
             .storeRef(value || beginCell().endCell())
             .endCell();
         if (!messagesCell) {
-            messagesCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            messagesCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
             messagesCell = beginCell().storeRef(messagesCell).storeRef(innerCell).endCell();
         }
@@ -445,7 +470,9 @@ export const txBodyToSliceRef = (txBodyWasm: TxBody) => {
 
     let extCell;
     for (let i = txBodyWasm.extensionOptions.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl))
+            .endCell();
         const value = buildRecursiveSliceRef(txBodyWasm.extensionOptions[i].value);
         let innerCell = beginCell()
             .storeRef(typeUrl)
@@ -640,7 +667,12 @@ export class TestClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    async getCheckSignature(provider: ContractProvider, data: Buffer, signature: Buffer, publicKey: Buffer) {
+    async getCheckSignature(
+        provider: ContractProvider,
+        data: Buffer,
+        signature: Buffer,
+        publicKey: Buffer,
+    ) {
         const result = await provider.get('get_check_signature', [
             {
                 type: 'slice',
@@ -842,7 +874,11 @@ export class TestClient implements Contract {
     }
 
     // Validator Hash Input
-    async getValidatorHashInputEncode(provider: ContractProvider, pubkey: string, votingPower: number) {
+    async getValidatorHashInputEncode(
+        provider: ContractProvider,
+        pubkey: string,
+        votingPower: number,
+    ) {
         let pubkeyBuffer = Buffer.from(pubkey, 'base64');
         const result = await provider.get('validator_hash_input_encode', [
             {
@@ -875,7 +911,12 @@ export class TestClient implements Contract {
         return result.stack.readBuffer();
     }
 
-    async getVerifyVote(provider: ContractProvider, vote: CanonicalVote, signature: Buffer, publicKey: Buffer) {
+    async getVerifyVote(
+        provider: ContractProvider,
+        vote: CanonicalVote,
+        signature: Buffer,
+        publicKey: Buffer,
+    ) {
         const data = getCanonicalVoteSlice(vote);
         const result = await provider.get('verify_vote', [
             {
@@ -895,7 +936,12 @@ export class TestClient implements Contract {
         return result.stack.readNumber() !== 0;
     }
 
-    async getVerifyCommitSigs(provider: ContractProvider, header: Header, commit: Commit, validators: Validators[]) {
+    async getVerifyCommitSigs(
+        provider: ContractProvider,
+        header: Header,
+        commit: Commit,
+        validators: Validators[],
+    ) {
         const sliceHeader = beginCell()
             .storeUint(parseInt(header.height), 32)
             .storeRef(getVersionSlice(header.version))
@@ -911,10 +957,17 @@ export class TestClient implements Contract {
                 .storeUint(signature.block_id_flag, 8)
                 .storeBuffer(Buffer.from(signature.validator_address, 'hex'))
                 .storeRef(getTimeSlice(signature.timestamp))
-                .storeBuffer(signature.signature ? Buffer.from(signature.signature, 'base64') : Buffer.from(''))
+                .storeBuffer(
+                    signature.signature
+                        ? Buffer.from(signature.signature, 'base64')
+                        : Buffer.from(''),
+                )
                 .endCell();
             if (!signatureCell) {
-                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+                signatureCell = beginCell()
+                    .storeRef(beginCell().endCell())
+                    .storeRef(cell)
+                    .endCell();
             } else {
                 signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
             }
@@ -953,7 +1006,10 @@ export class TestClient implements Contract {
             builder = builder.storeUint(parseInt(validators[i].voting_power), 32);
             let innerCell = builder.endCell();
             if (!validatorCell) {
-                validatorCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+                validatorCell = beginCell()
+                    .storeRef(beginCell().endCell())
+                    .storeRef(innerCell)
+                    .endCell();
             } else {
                 validatorCell = beginCell().storeRef(validatorCell).storeRef(innerCell).endCell();
             }
@@ -1109,7 +1165,9 @@ export class TestClient implements Contract {
             {
                 type: 'slice',
                 cell:
-                    modeInfo.mode === 0 ? beginCell().endCell() : beginCell().storeBuffer(Buffer.from(buff)).endCell(),
+                    modeInfo.mode === 0
+                        ? beginCell().endCell()
+                        : beginCell().storeBuffer(Buffer.from(buff)).endCell(),
             },
         ]);
         return result.stack.readBuffer();
@@ -1215,7 +1273,10 @@ export class TestClient implements Contract {
                 .storeRef(beginCell().storeBuffer(Buffer.from(signature)).endCell())
                 .endCell();
             if (!signatureCell) {
-                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+                signatureCell = beginCell()
+                    .storeRef(beginCell().endCell())
+                    .storeRef(cell)
+                    .endCell();
             } else {
                 signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
             }
@@ -1237,7 +1298,10 @@ export class TestClient implements Contract {
                     .storeRef(
                         beginCell()
                             .storeUint(
-                                BigInt('0x' + '9e70c46eda6841ed6ede4ae280d2cd2683dc103b9568f63f06f04e9d7e0617f0'),
+                                BigInt(
+                                    '0x' +
+                                        '9e70c46eda6841ed6ede4ae280d2cd2683dc103b9568f63f06f04e9d7e0617f0',
+                                ),
                                 256,
                             )
                             .endCell(),
@@ -1269,7 +1333,10 @@ export class TestClient implements Contract {
                 .storeRef(beginCell().storeBuffer(Buffer.from(signature)).endCell())
                 .endCell();
             if (!signatureCell) {
-                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+                signatureCell = beginCell()
+                    .storeRef(beginCell().endCell())
+                    .storeRef(cell)
+                    .endCell();
             } else {
                 signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
             }
@@ -1308,7 +1375,10 @@ export class TestClient implements Contract {
                 .storeRef(beginCell().storeBuffer(Buffer.from(signature)).endCell())
                 .endCell();
             if (!signatureCell) {
-                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+                signatureCell = beginCell()
+                    .storeRef(beginCell().endCell())
+                    .storeRef(cell)
+                    .endCell();
             } else {
                 signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
             }
@@ -1365,6 +1435,16 @@ export class TestClient implements Contract {
 
         return result.stack.readBuffer().toString('hex');
     }
+
+    async getCalculateExistenceRoot(provider: ContractProvider, proof: Cell) {
+        const result = await provider.get('get_calculate_existence_root', [
+            {
+                type: 'slice',
+                cell: proof,
+            },
+        ]);
+        return result.stack.readBigNumber();
+    }
 }
 
 export function getAuthInfoInput(data: AuthInfo) {
@@ -1372,9 +1452,15 @@ export function getAuthInfoInput(data: AuthInfo) {
     for (let i = data.signerInfos.length - 1; i >= 0; i--) {
         let innerCell = getSignInfoCell(data.signerInfos[i]);
         if (!finalSignInfosCell) {
-            finalSignInfosCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            finalSignInfosCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
-            finalSignInfosCell = beginCell().storeRef(finalSignInfosCell!).storeRef(innerCell).endCell();
+            finalSignInfosCell = beginCell()
+                .storeRef(finalSignInfosCell!)
+                .storeRef(innerCell)
+                .endCell();
         }
     }
     let fee = beginCell().endCell();

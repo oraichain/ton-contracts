@@ -26,6 +26,7 @@
 #include "static/op_codes.fc";
 #include "static/state.fc";
 #include "utils/helper.fc";
+#include "ics23/proof.fc";
 
 
 
@@ -395,4 +396,8 @@ int buffer_parse(slice msg, slice data) method_id {
 
 slice get_hex_to_str(slice ds) method_id {
     return hex_to_str(ds);
+}
+
+int get_calculate_existence_root(slice proof) method_id {
+    return calculate_existence_root(proof);
 }
