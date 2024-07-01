@@ -63,20 +63,13 @@ describe('LightClientMaster', () => {
 
             printTransactionFees(result.transactions);
 
-            // expect(result.transactions).toHaveTransaction({
-            //     op: LightClientMasterOpcodes.verify_block_hash,
-            //     success: true,
-            // });
-
-            // expect(result.transactions).toHaveTransaction({
-            //     op: LightClientMasterOpcodes.verify_sigs,
-            //     success: true,
-            // });
+            expect(result.transactions).toHaveTransaction({
+                op: LightClientMasterOpcodes.verify_block_hash,
+                success: true,
+            });
 
             console.log(`blockhash:`, LightClientMasterOpcodes.verify_block_hash);
-            // console.log('Finished: ', {
-            //     height: await lightClientMaster.getTrustedHeight(),
-            // });
+            expect(await lightClientMaster.getTrustedHeight()).toBe(blockNumber);
         };
         await testcase(24552927);
         await testcase(24555600);
