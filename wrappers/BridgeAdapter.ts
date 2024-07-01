@@ -71,6 +71,7 @@ export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
     return beginCell()
         .storeAddress(config.light_client)
         .storeAddress(config.whitelist_denom)
+        .storeUint(0, 64)
         .storeRef(beginCell().storeBuffer(Buffer.from(config.bridge_wasm_smart_contract)).endCell())
         .storeRef(config.jetton_wallet_code)
         .storeRef(beginCell().storeDict(Dictionary.empty()).endCell()) // empty dict

@@ -207,15 +207,12 @@ global cell processed_txs;
     }
 
     if (op == op::transfer_notification()) {
-        ~dump(null());
         int query_id = in_msg_body~load_uint(64);
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
         slice either_forward_payload = in_msg_body;
         slice first_ref = either_forward_payload~load_ref().begin_parse();
-        ~dump(null());
         slice jetton_master_address = first_ref~load_msg_addr();
-        ~dump(first_ref);
         int timeout = first_ref~load_uint(64);
         cell memo = either_forward_payload~load_ref();
         slice calculate_sender = calculate_user_jetton_wallet_address(from_address, jetton_master_address, jetton_wallet_code);

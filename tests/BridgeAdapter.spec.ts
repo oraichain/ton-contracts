@@ -595,10 +595,12 @@ describe('BridgeAdapter', () => {
             op: WhitelistDenomOpcodes.setDenom,
             success: true,
         });
+
+        const senderBeforeBalance = (await blockchain.getContract(usdtDeployer.getSender().address)).balance;
         result = await usdtDeployerJettonWallet.sendTransfer(
             usdtDeployer.getSender(),
             {
-                fwdAmount: toNano(2),
+                fwdAmount: toNano(1),
                 jettonAmount: toNano(333),
                 jettonMaster: usdtMinterContract.address,
                 toAddress: bridgeAdapter.address,
@@ -613,17 +615,19 @@ describe('BridgeAdapter', () => {
                     .endCell(),
             },
             {
-                value: toNano(3),
+                value: toNano(2),
                 queryId: 0,
             },
         );
         printTransactionFees(result.transactions);
 
         console.log('Bridge adapter balance:', (await blockchain.getContract(bridgeAdapter.address)).balance);
-        // expect(result.transactions).toHaveTransaction({
-        //     op: BridgeAdapterOpcodes.callbackDenom,
-        //     success: true,
-        // });
+        expect(result.transactions).toHaveTransaction({
+            op: BridgeAdapterOpcodes.callbackDenom,
+            success: true,
+        });
+        const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address)).balance;
+        expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
     });
 
     it('Test send jetton token from cosmos to bridge adapter', async () => {
