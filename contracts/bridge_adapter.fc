@@ -72,9 +72,9 @@ global cell processed_txs;
     (int op_codes, int packet_seq, int timeout, slice to, slice jetton_master, int amount, int src) = (data~load_uint(32), data~load_uint(64), data~load_uint(64), data~load_msg_addr(), data~load_msg_addr(), data~load_uint(128), data~load_uint(32));
     slice response_address = body~load_msg_addr();
 
-    if (now() > timeout) {
+    if (op_codes == op::send_to_ton & (now() > timeout)) {
         cell emit_data = begin_cell()
-                            .store_uint(op_codes == op::send_to_ton ? op::timeout_send_packet : op::ack_timeout_send_to_cosmos, 32)
+                            .store_uint(op::timeout_send_packet, 32)
                             .store_uint(packet_seq, 64)
                             .store_uint(0, 16) ;; channel-id => update soon when have this feature
                             .end_cell();
@@ -90,9 +90,10 @@ global cell processed_txs;
             .store_uint(query_id, 64);
         send_raw_message(msg.end_cell(), IGNORE_ERRORS + CARRY_REMAINING_GAS);
         return ();
-    } else {
-        if(src == src::cosmos){
-            cell mint_msg = begin_cell()
+    }
+
+    if(src == src::cosmos){
+        cell mint_msg = begin_cell()
                     .store_uint(op::internal_transfer(), 32)
                     .store_uint(query_id, 64)
                     .store_coins(amount)
@@ -102,7 +103,7 @@ global cell processed_txs;
                     .store_maybe_ref(null())
                     .end_cell();
       
-            cell body = begin_cell()
+        cell body = begin_cell()
                     .store_uint(op::mint(),32)
                     .store_uint(query_id,64)
                     .store_slice(to)
@@ -110,18 +111,18 @@ global cell processed_txs;
                     .store_ref(mint_msg)
                     .end_cell();
         
-            send_simple_message(0, jetton_master, body, CARRY_REMAINING_GAS);
-        }
+        send_simple_message(0, jetton_master, body, CARRY_REMAINING_GAS);
+    }
 
-        if(src == src::ton){
-            int jetton_master_len = slice_bits(jetton_master);
-            if(jetton_master_len == 2){
-                send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
-            } 
+    if(src == src::ton){
+        int jetton_master_len = slice_bits(jetton_master);
+        if(jetton_master_len == 2){
+            send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
+        } 
 
-            if(jetton_master_len == 267) {
-                slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
-                cell body = begin_cell()
+        if(jetton_master_len == 267) {
+            slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
+            cell body = begin_cell()
                         .store_uint(op::transfer(), 32)
                         .store_uint(query_id, 64)
                         .store_coins(amount)
@@ -131,12 +132,13 @@ global cell processed_txs;
                         .store_coins(0)
                         .store_maybe_ref(null())
                         .end_cell();
-                send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
-            }
+            send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
         }
+    }
 
+    if (op_codes == ack::timeout) {
         cell emit_data = begin_cell()
-                            .store_uint(op_codes == op::send_to_ton ? op::timeout_send_packet : op::ack_timeout_send_to_cosmos, 32)
+                            .store_uint(op::ack_refund, 32)
                             .store_uint(packet_seq, 64)
                             .store_uint(0, 16) ;; channel-id => update soon when have this feature
                             .end_cell();
