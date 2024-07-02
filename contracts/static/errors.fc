@@ -23,10 +23,13 @@ const int error::packet_timeout = 3009;
 
 
 
-;; Whitelist denom error
+;; Whitelist denom error 5xxx
 const int error::same_admin_address = 5000;
 const int error::not_admin_address = 5001;
 
+;; ics23 Proof error 6xxx
+const int error::existence_root_empty_key_or_value = 6000;
+const int error::existence_root_empty_leaf = 6001;
 
 
 

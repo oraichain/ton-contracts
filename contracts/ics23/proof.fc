@@ -2,6 +2,7 @@
 #include "../utils/helper.fc";
 #include "../imports/stdlib.fc";
 #include "../utils/varint.fc";
+#include "../static/errors.fc";
 
 slice do_hash_or_noop(int hash_op, slice preimage){
     if(hash_op == ics23::hashOp::NO_HASH){
@@ -180,6 +181,10 @@ int calculate_existence_root(slice proof){
     slice path = proof~load_ref().begin_parse();
   
     slice key = proof;
+    throw_if(error::existence_root_empty_key_or_value, key.slice_empty?());
+    throw_if(error::existence_root_empty_key_or_value, value.slice_empty?());
+    throw_if(error::existence_root_empty_leaf, leaf.slice_empty?());
+
     int res = apply_leaf(leaf, key, value);
     while(path.slice_refs_empty?() != -1) {
         slice next_ref = path~load_ref().begin_parse();
