@@ -358,8 +358,8 @@ describe('TestClient', () => {
                         getExistenceProofCell(existenceProof as ExistenceProof),
                     );
                 } catch (error) {
-                    const err =  JSON.parse(JSON.stringify(error));
-                    expect(err.exitCode).toEqual(6000)
+                    const err = JSON.parse(JSON.stringify(error));
+                    expect(err.exitCode).toEqual(6000);
                 }
             }
         });
@@ -373,8 +373,8 @@ describe('TestClient', () => {
                         getExistenceProofCell(existenceProof as ExistenceProof),
                     );
                 } catch (error) {
-                    const err =  JSON.parse(JSON.stringify(error));
-                    expect(err.exitCode).toEqual(6001)
+                    const err = JSON.parse(JSON.stringify(error));
+                    expect(err.exitCode).toEqual(6001);
                 }
             }
         });
@@ -398,21 +398,20 @@ describe('TestClient', () => {
         });
 
         it('should verifyExistence successfully', async () => {
-            for (const proof of Object.values(proofs).slice(0, 1)) {
-                const existenceProof = CommitmentProof.fromJSON(proof).exist!;
-                const root = calculateExistenceRoot(existenceProof as any);
-                const key = keys.keyPath[1];
-                const number = await lightClient.getVerifyExistence(
-                    getVerifyExistenceInput(
-                        root,
-                        existenceProof as ExistenceProof,
-                        iavlSpec as ProofSpec,
-                        key,
-                        toAscii(value),
-                    ),
-                );
-                expect(number).toEqual(-1n);
-            }
+            const proof = Object.values(proofs)[0];
+            const existenceProof = CommitmentProof.fromJSON(proof).exist!;
+            const root = calculateExistenceRoot(existenceProof as any);
+            const key = keys.keyPath[1];
+            const number = await lightClient.getVerifyExistence(
+                getVerifyExistenceInput(
+                    root,
+                    existenceProof as ExistenceProof,
+                    iavlSpec as ProofSpec,
+                    key,
+                    toAscii(value),
+                ),
+            );
+            expect(number).toEqual(-1n);
         });
 
         it('should verifyChainedMembership successfully', async () => {
