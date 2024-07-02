@@ -381,7 +381,7 @@ describe('BridgeAdapter', () => {
                 data: beginCell()
                     .storeBuffer(
                         Buffer.from(
-                            '946282250000000000000000000000006683B8CD80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830039BAC56451CE935A1A352F045C6D06B5AA1A26EC3C88F6031824C2A4DB7024C7C000000000000000000000009502F9000139517D2',
+                            '946282250000000000000000000000006683E03980002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830017FDEC5708A68ED1AF60B2AF67ED4EB36884E5953E58B58FC1904B88BBBBF384C000000000000000000000009502F9000139517D2',
                             'hex',
                         ),
                     )
@@ -393,12 +393,12 @@ describe('BridgeAdapter', () => {
         );
         printTransactionFees(result.transactions);
         prettyLogTransactions(result.transactions);
-        // expect(result.transactions).toHaveTransaction({
-        //     op: LightClientOpcodes.verify_receipt,
-        //     success: true,
-        // });
+        expect(result.transactions).toHaveTransaction({
+            op: LightClientOpcodes.verify_receipt,
+            success: true,
+        });
 
-        // expect((await wallet.getBalance()).amount).toBe(toNano(10));
+        expect((await wallet.getBalance()).amount).toBe(toNano(10));
     });
 
     it('successfully transfer jetton to user if coming from src::ton', async () => {
