@@ -141,6 +141,24 @@ global slice light_client_master_address;
 
     if (op == op::verify_receipt) {
         ;; FIXME: change the way it verify data from bridge adapter based on app_hash
+        cell body = in_msg_body~load_ref();
+        builder forward_builder = begin_cell();
+        ;; should forward to light_client_master and this master will forward light client message
+        forward_builder = forward_builder 
+                    .store_uint(op::confirm_tx, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(body);
+        cell forward_cell = forward_builder.end_cell();
+        cell body_builder = begin_cell()
+                                .store_uint(op::proxy_forward_msg, 32)
+                                .store_uint(query_id, 64)
+                                .store_ref(begin_cell()
+                                    .store_uint(height, 64)
+                                    .store_slice(sender_address)
+                                    .store_ref(forward_cell)
+                                    .end_cell())
+                                .end_cell();
+        send_simple_message(0, light_client_master_address, body_builder, CARRY_REMAINING_GAS);      
         return ();
     }
 

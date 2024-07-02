@@ -87,7 +87,7 @@ async function deploy() {
     // BRIDGE ADAPTER
     const tonBridge = BridgeAdapter.createFromConfig(
         {
-            light_client: whitelistContract.address, // just fake it for demo
+            light_client_master: whitelistContract.address, // just fake it for demo
             jetton_wallet_code: await compile('JettonWallet'),
             bridge_wasm_smart_contract: 'orai1y4kj224wmzmrna4kz9nk3n00zxdst5nra0z0u0nry5k6seqdw5psu4t9fn',
             whitelist_denom: whitelistContract.address,

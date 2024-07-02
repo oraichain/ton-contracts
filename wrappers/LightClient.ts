@@ -70,6 +70,7 @@ export const LightClientOpcodes = {
     verify_untrusted_validators: crc32('op::verify_untrusted_validators'),
     verify_on_trusted_sigs: crc32('op:verify_on_trusted_sigs'),
     update_light_client_state: crc32('op:update_light_client_state'),
+    timeout_send_packet: crc32('op:timeout_send_packet'),
 };
 
 export class LightClient implements Contract {
@@ -93,29 +94,6 @@ export class LightClient implements Contract {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell().endCell(),
-        });
-    }
-
-    async sendVerifyBlockHash(
-        provider: ContractProvider,
-        via: Sender,
-        data: SendVerifyBlockHashInterface,
-        opts: ValueOps,
-    ) {
-        const dataCell = beginCell()
-            .storeRef(getBlockHashCell(data.header))
-            .storeRef(getValidatorsCell(data.validators)!)
-            .storeRef(getCommitCell(data.commit))
-            .endCell();
-
-        await provider.internal(via, {
-            value: opts.value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(LightClientOpcodes.verify_block_hash, 32)
-                .storeUint(opts.queryId || 0, 64)
-                .storeRef(dataCell)
-                .endCell(),
         });
     }
 

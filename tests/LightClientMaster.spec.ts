@@ -71,7 +71,7 @@ describe('LightClientMaster', () => {
             console.log(`blockhash:`, LightClientMasterOpcodes.verify_block_hash);
             expect(await lightClientMaster.getTrustedHeight()).toBe(blockNumber);
         };
-        await testcase(24552927);
-        await testcase(24555600);
+        await testcase(26073868);
+        await testcase(26083868);
     });
 });
