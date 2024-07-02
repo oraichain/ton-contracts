@@ -233,7 +233,9 @@ int verify_chained_membership(int root, slice specs, slice proofs, slice keys, s
         proofs = next_proof;
         keys = next_key;
     }
- 
-    return root == subroot;
+    if(subroot != root){
+        return 0;
+    }
+    return 1;
 }
 

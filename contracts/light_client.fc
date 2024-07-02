@@ -10,12 +10,16 @@
 #include "utils/tx_raw.fc";
 #include "common/messages.fc";
 #include "common/address.fc";
+#include "ics23/proof.fc";
 
 ;; store in a header_ref
 global int height;
 global slice chain_id;
 global slice app_hash;
 global cell validator;
+;; proofSpecs 
+;; https://github.com/cosmos/ics23/blob/c7c728879896fb260fe76b208ea6a17c2b0132a3/js/src/generated/codecimpl.d.ts#L705
+global slice specs;
 
 ;; trusting
 global int trusting_period;
@@ -140,13 +144,22 @@ global slice light_client_master_address;
     }
 
     if (op == op::verify_receipt) {
+        throw_unless(error::invalid_sender, compare_address(sender_address, light_client_master_address));
         ;; FIXME: change the way it verify data from bridge adapter based on app_hash
         cell body = in_msg_body~load_ref();
+        slice cs_body = body.begin_parse();
+        slice proofs = cs_body~load_ref().begin_parse();
+        slice specs = cs_body~load_ref().begin_parse();
+        slice keys = cs_body~load_ref().begin_parse();
+        slice data = cs_body~load_ref();
+        int commitment = data.cell_hash();
+        int ack = verify_chained_membership(app_hash.load_uint(256), specs,proofs, keys, begin_cell().store_uint(commitment, 256).end_cell());
         builder forward_builder = begin_cell();
         ;; should forward to light_client_master and this master will forward light client message
         forward_builder = forward_builder 
                     .store_uint(op::confirm_tx, 32)
                     .store_uint(query_id, 64)
+                    .store_uint(ack, 1)
                     .store_ref(body);
         cell forward_cell = forward_builder.end_cell();
         cell body_builder = begin_cell()
