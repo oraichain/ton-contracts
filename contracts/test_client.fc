@@ -412,3 +412,10 @@ int get_ensure_spec(slice ds) method_id {
     (slice proof, slice spec) = (ds~load_ref().begin_parse(), ds~load_ref().begin_parse());
     return ensure_spec(proof,spec);
 }
+
+int get_verify_chained_membership(slice ds) method_id {
+    (int root, slice proofs, slice specs, slice keys) = (ds~load_uint(256), ds~load_ref().begin_parse(), ds~load_ref().begin_parse(), ds~load_ref().begin_parse());
+    slice value = ds;
+   
+    return verify_chained_membership(root, specs, proofs, keys, value);
+}

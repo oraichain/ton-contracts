@@ -1467,6 +1467,17 @@ export class TestClient implements Contract {
 
         return result.stack.readBigNumber();
     }
+
+    async getVerifyChainedMembership(provider: ContractProvider, ds: Cell) {
+        const result = await provider.get('get_verify_chained_membership', [
+            {
+                type: 'slice',
+                cell: ds,
+            },
+        ]);
+
+        return result.stack.readBigNumber();
+    }
 }
 
 export function getAuthInfoInput(data: AuthInfo) {

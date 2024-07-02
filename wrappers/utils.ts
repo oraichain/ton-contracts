@@ -34,7 +34,7 @@ import {
     Tendermint34Client,
 } from '@cosmjs/tendermint-rpc';
 import { ExistenceProof, InnerOp, LeafOp, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
-import { ics23 } from '@confio/ics23';
+import { calculateExistenceRoot, ics23, verifyMembership } from '@confio/ics23';
 
 export type TestClientConfig = {
     id: number;
@@ -832,8 +832,8 @@ export const getSpecCell = (spec: ProofSpec) => {
 
 export const getVerifyExistenceInput = (
     root: Uint8Array,
-    spec: ProofSpec,
     proof: ExistenceProof,
+    spec: ProofSpec,
     key: Uint8Array,
     value: Uint8Array,
 ) => {
@@ -845,6 +845,118 @@ export const getVerifyExistenceInput = (
         .storeRef(beginCell().storeBuffer(Buffer.from(value)).endCell());
     return builder.endCell();
 };
+
+export const getVerifyChainedMembershipProof = (
+    root: Uint8Array,
+    proofs: ExistenceProof[],
+    specs: ProofSpec[],
+    keys: { keyPath: Uint8Array[] },
+    value: Uint8Array,
+) => {
+    let cellProofs;
+    let cellSpecs;
+    let cellKeys;
+    for (let i = proofs.length - 1; i >= 0; i--) {
+        const innerCell = getExistenceProofCell(proofs[i]);
+        if (!cellProofs) {
+            cellProofs = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeSlice(innerCell.beginParse())
+                .endCell();
+        } else {
+            cellProofs = beginCell()
+                .storeRef(cellProofs)
+                .storeSlice(innerCell.beginParse())
+                .endCell();
+        }
+    }
+
+    for (let i = specs.length - 1; i >= 0; i--) {
+        const innerCell = getSpecCell(specs[i]);
+        if (!cellSpecs) {
+            cellSpecs = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeSlice(innerCell.beginParse())
+                .endCell();
+        } else {
+            cellSpecs = beginCell()
+                .storeRef(cellSpecs)
+                .storeSlice(innerCell.beginParse())
+                .endCell();
+        }
+    }
+    // reverse order of keyPath
+    for (let i = 0; i < keys.keyPath.length; i++) {
+        if (!cellKeys) {
+            cellKeys = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeBuffer(Buffer.from(keys.keyPath[i]))
+                .endCell();
+        } else {
+            cellKeys = beginCell()
+                .storeRef(cellKeys)
+                .storeBuffer(Buffer.from(keys.keyPath[i]))
+                .endCell();
+        }
+    }
+
+    return beginCell()
+        .storeUint(BigInt('0x' + Buffer.from(root).toString('hex')), 256)
+        .storeBuffer(Buffer.from(value))
+        .storeRef(cellProofs!)
+        .storeRef(cellSpecs!)
+        .storeRef(cellKeys!)
+        .endCell();
+};
+
+export function verifyChainedMembershipProof(
+    root: Uint8Array,
+    specs: ProofSpec[],
+    proofs: ics23.CommitmentProof[],
+    keys: { keyPath: Uint8Array[] },
+    value: Uint8Array,
+    index: number,
+): null | Error {
+    let subroot: Uint8Array = value;
+    for (let i = index; i < proofs.length; i++) {
+        const keyIndex = keys.keyPath.length - 1 - i;
+        const key = keys.keyPath[keyIndex];
+
+        if (!key) {
+            throw new Error(`could not retrieve key bytes for key ${keys.keyPath[keyIndex]}`);
+        }
+        if (proofs[i]?.exist) {
+            try {
+                subroot = calculateExistenceRoot(proofs[i].exist as ics23.IExistenceProof);
+                console.log(Buffer.from(subroot).toString());
+            } catch (err) {
+                console.log(err);
+            }
+
+            const ok = verifyMembership(
+                proofs[i] as ics23.CommitmentProof,
+                specs[i] as ics23.IProofSpec,
+                subroot,
+                key,
+                value,
+            );
+
+            if (!ok) {
+                throw new Error(`failed to verify membership at index ${i}`);
+            }
+            value = subroot;
+        } else if (proofs[i].nonexist) {
+            throw new Error('Non-existence proof not supported');
+        } else {
+            throw new Error('Invalid proof type');
+        }
+    }
+    if (Buffer.compare(subroot, root) !== 0) {
+        throw new Error('Root mismatch');
+    }
+    console.log('Root match');
+    return null;
+}
 
 export const createUpdateClientData = async (
     rpcUrl: string,
