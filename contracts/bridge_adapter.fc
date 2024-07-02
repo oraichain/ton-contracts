@@ -136,7 +136,7 @@ global cell processed_txs;
         }
     }
 
-    if (op_codes == ack::timeout) {
+    if (op_codes == op::ack_timeout) {
         cell emit_data = begin_cell()
                             .store_uint(op::ack_refund, 32)
                             .store_uint(packet_seq, 64)

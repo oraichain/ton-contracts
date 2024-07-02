@@ -36,7 +36,6 @@ const op::callback_denom = "op::callback_denom"c;
 
 ;; packet prefix
 const op::send_to_ton = "op::send_to_ton"c;
-const op::ack_send_to_ton = "op::ack_send_to_ton"c;
 const op::ack_refund = "op::ack_refund"c;
 const op::ack_timeout = "op::ack_timeout"c;
 const op::receive_packet = "op::receive_packet"c;
