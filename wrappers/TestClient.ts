@@ -1445,6 +1445,28 @@ export class TestClient implements Contract {
         ]);
         return result.stack.readBigNumber();
     }
+
+    async getVerifyExistence(provider: ContractProvider, ds: Cell) {
+        const result = await provider.get('get_verify_existence', [
+            {
+                type: 'slice',
+                cell: ds,
+            },
+        ]);
+
+        return result.stack.readBigNumber();
+    }
+
+    async getEnsureSpec(provider: ContractProvider, ds: Cell) {
+        const result = await provider.get('get_ensure_spec', [
+            {
+                type: 'slice',
+                cell: ds,
+            },
+        ]);
+
+        return result.stack.readBigNumber();
+    }
 }
 
 export function getAuthInfoInput(data: AuthInfo) {

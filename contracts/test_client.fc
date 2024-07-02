@@ -401,3 +401,14 @@ slice get_hex_to_str(slice ds) method_id {
 int get_calculate_existence_root(slice proof) method_id {
     return calculate_existence_root(proof);
 }
+
+int get_verify_existence(slice ds) method_id {
+    (int root, slice proof, slice spec, slice value) = (ds~load_uint(256), ds~load_ref().begin_parse(), ds~load_ref().begin_parse(), ds~load_ref().begin_parse());
+    slice key = ds; 
+    return verify_existance(root,spec, proof, key, value);
+}
+
+int get_ensure_spec(slice ds) method_id {
+    (slice proof, slice spec) = (ds~load_ref().begin_parse(), ds~load_ref().begin_parse());
+    return ensure_spec(proof,spec);
+}

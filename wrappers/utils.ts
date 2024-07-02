@@ -33,7 +33,8 @@ import {
     fromRfc3339WithNanoseconds,
     Tendermint34Client,
 } from '@cosmjs/tendermint-rpc';
-import { ExistenceProof, InnerOp, LeafOp } from 'cosmjs-types/cosmos/ics23/v1/proofs';
+import { ExistenceProof, InnerOp, LeafOp, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
+import { ics23 } from '@confio/ics23';
 
 export type TestClientConfig = {
     id: number;
@@ -778,16 +779,23 @@ export const getPathOpCell = (innerOps: InnerOp[]) => {
         const innerOp = innerOps[i];
         const innerCell = beginCell()
             .storeUint(innerOp.hash, 8)
-            .storeRef(beginCell().storeBuffer(Buffer.from(innerOp.prefix)))
-            .storeRef(beginCell().storeBuffer(Buffer.from(innerOp.suffix)))
-            .endCell();
+            .storeRef(
+                innerOp.prefix
+                    ? beginCell().storeBuffer(Buffer.from(innerOp.prefix)).endCell()
+                    : beginCell().endCell(),
+            )
+            .storeRef(
+                innerOp.suffix
+                    ? beginCell().storeBuffer(Buffer.from(innerOp.suffix)).endCell()
+                    : beginCell().endCell(),
+            );
         if (!innerOpsCell) {
             innerOpsCell = beginCell()
                 .storeRef(beginCell().endCell())
-                .storeRef(innerCell)
+                .storeBuilder(innerCell)
                 .endCell();
         } else {
-            innerOpsCell = beginCell().storeRef(innerOpsCell).storeRef(innerCell).endCell();
+            innerOpsCell = beginCell().storeRef(innerOpsCell).storeBuilder(innerCell).endCell();
         }
     }
     return innerOpsCell;
@@ -799,6 +807,42 @@ export const getExistenceProofCell = (proof: ExistenceProof) => {
         .storeRef(beginCell().storeBuffer(Buffer.from(proof.value)).endCell())
         .storeRef(getExistLeafOpCell(proof.leaf!))
         .storeRef(getPathOpCell(proof.path!)!);
+    return builder.endCell();
+};
+
+export const getSpecCell = (spec: ProofSpec) => {
+    const leafSpec = spec.leafSpec;
+    const innerSpec = spec.innerSpec;
+    const leafSpecCell = beginCell()
+        .storeUint(leafSpec?.prehashKey!, 8)
+        .storeUint(leafSpec?.prehashValue!, 8)
+        .storeUint(leafSpec?.hash!, 8)
+        .storeUint(leafSpec?.length!, 8)
+        .storeRef(beginCell().storeBuffer(Buffer.from(leafSpec?.prefix!)).endCell());
+
+    const innerSpecCell = beginCell()
+        .storeUint(innerSpec?.hash!, 8)
+        .storeUint(innerSpec?.minPrefixLength!, 8)
+        .storeUint(innerSpec?.maxPrefixLength!, 8)
+        .storeUint(innerSpec?.childOrder?.length!, 8)
+        .storeUint(innerSpec?.childSize!, 8);
+
+    return beginCell().storeRef(leafSpecCell.endCell()).storeRef(innerSpecCell.endCell()).endCell();
+};
+
+export const getVerifyExistenceInput = (
+    root: Uint8Array,
+    spec: ProofSpec,
+    proof: ExistenceProof,
+    key: Uint8Array,
+    value: Uint8Array,
+) => {
+    const builder = beginCell()
+        .storeUint(BigInt('0x' + Buffer.from(root).toString('hex')), 256)
+        .storeBuffer(Buffer.from(key))
+        .storeRef(getExistenceProofCell(proof))
+        .storeRef(getSpecCell(spec))
+        .storeRef(beginCell().storeBuffer(Buffer.from(value)).endCell());
     return builder.endCell();
 };
 

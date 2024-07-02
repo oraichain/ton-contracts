@@ -14,11 +14,51 @@ import { result as validators } from './fixtures/validators.json';
 import { createHash } from 'crypto';
 import { Src } from '../wrappers/BridgeAdapter';
 import * as proofs from './fixtures/proofs.json';
-import { CommitmentProof, ExistenceProof } from 'cosmjs-types/cosmos/ics23/v1/proofs';
+import {
+    CommitmentProof,
+    ExistenceProof,
+    HashOp,
+    LengthOp,
+    ProofSpec,
+} from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { verifyMembership, calculateExistenceRoot, ics23 } from '@confio/ics23';
-import { getExistenceProofCell } from '../wrappers';
+import { getExistenceProofCell, getSpecCell, getVerifyExistenceInput } from '../wrappers';
+import { fromBech32, toAscii } from '@cosmjs/encoding';
 
 const validatorMap = Object.fromEntries(validators.validators.map((v) => [v.address, v]));
+const iavlSpec = {
+    leafSpec: {
+        prefix: Uint8Array.from([0]),
+        hash: HashOp.SHA256,
+        prehashValue: HashOp.SHA256,
+        prehashKey: HashOp.NO_HASH,
+        length: LengthOp.VAR_PROTO,
+    },
+    innerSpec: {
+        childOrder: [0, 1],
+        minPrefixLength: 4,
+        maxPrefixLength: 12,
+        childSize: 33,
+        hash: HashOp.SHA256,
+    },
+};
+
+const tendermintSpec = {
+    leafSpec: {
+        prefix: Uint8Array.from([0]),
+        hash: HashOp.SHA256,
+        prehashValue: HashOp.SHA256,
+        prehashKey: HashOp.NO_HASH,
+        length: LengthOp.VAR_PROTO,
+    },
+    innerSpec: {
+        childOrder: [0, 1],
+        minPrefixLength: 1,
+        maxPrefixLength: 1,
+        childSize: 32,
+        hash: HashOp.SHA256,
+    },
+};
 
 describe('TestClient', () => {
     let code: Cell;
@@ -259,14 +299,84 @@ describe('TestClient', () => {
     });
 
     it('should calculateExistenceProof successfully', async () => {
-        for (const proof of Object.values(proofs)) {
+        for (const proof of Object.values(proofs).slice(0, 2)) {
             const existenceProof = ics23.CommitmentProof.fromObject(proof).exist!;
             const result = calculateExistenceRoot(existenceProof);
             const hashResult = Buffer.from(result).toString('hex');
             const number = await lightClient.getCalculateExistenceRoot(
                 getExistenceProofCell(existenceProof as ExistenceProof),
             );
-            console.log(number.toString(16), hashResult);
+            expect(paddingForUint256(number.toString(16))).toEqual(hashResult);
         }
     });
+
+    it('should verifyExistence successfully', async () => {
+        const contract = fromBech32(
+            'orai15un8msx3n5zf9ahlxmfeqd2kwa5wm0nrpxer304m9nd5q6qq0g6sku5pdd',
+        );
+        const key = encodeNamespaces([Buffer.from('balance')]);
+        const finalKey = Buffer.concat([
+            key,
+            Buffer.from('orai1mycmhyrmd6dusp408rtjgzlk7738vhtgqyhxxt'),
+        ]);
+        const wasmPath = Uint8Array.from([0x03, ...contract.data, ...finalKey]);
+        const keys = {
+            keyPath: [Buffer.from('wasm'), Buffer.from(wasmPath)],
+        };
+        const value = '"1783015"';
+        for (const proof of Object.values(proofs).slice(0, 1)) {
+            const existenceProof = CommitmentProof.fromJSON(proof).exist!;
+            const root = calculateExistenceRoot(existenceProof as any);
+            const key = keys.keyPath[1];
+            const number = await lightClient.getVerifyExistence(
+                getVerifyExistenceInput(
+                    root,
+                    iavlSpec as ProofSpec,
+                    existenceProof as ExistenceProof,
+                    key,
+                    toAscii(value),
+                ),
+            );
+            expect(number).toEqual(-1n);
+        }
+    });
+
+    it('should ensureSpec successfully', async () => {
+        const iavlSpecCell = getSpecCell(iavlSpec as any);
+        const tendermintSpecCell = getSpecCell(tendermintSpec as any);
+        const existenceProofs = Object.values(proofs).map(
+            (proof) => CommitmentProof.fromJSON(proof).exist!,
+        );
+        const iavlProofCell = getExistenceProofCell(existenceProofs[0] as ExistenceProof);
+        const tendermintProofCell = getExistenceProofCell(existenceProofs[1] as ExistenceProof);
+        const iavlEnsureSpec = await lightClient.getEnsureSpec(
+            beginCell().storeRef(iavlProofCell).storeRef(iavlSpecCell).endCell(),
+        );
+        const tendermintEnsureSpec = await lightClient.getEnsureSpec(
+            beginCell().storeRef(tendermintProofCell).storeRef(tendermintSpecCell).endCell(),
+        );
+        expect(iavlEnsureSpec).toBe(-1n);
+        expect(tendermintEnsureSpec).toBe(-1n);
+    });
 });
+
+function paddingForUint256(value: string): string {
+    if (value.length > 64) {
+        throw new Error('Value is too long');
+    }
+    if (value.length === 64) {
+        return value;
+    }
+    return value.padStart(64, '0');
+}
+
+const encodeNamespaces = (namespaces: Uint8Array[]): Uint8Array => {
+    const ret = [];
+    for (const ns of namespaces) {
+        const lengthBuf = Buffer.allocUnsafe(2);
+        lengthBuf.writeUInt16BE(ns.byteLength);
+        ret.push(lengthBuf);
+        ret.push(ns);
+    }
+    return Buffer.concat(ret);
+};

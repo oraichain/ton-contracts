@@ -7,8 +7,7 @@ slice do_hash_or_noop(int hash_op, slice preimage){
     if(hash_op == ics23::hashOp::NO_HASH){
         return preimage;
     }
-    tuple image_tuple = preimage.slice_ref_to_tuple();
-    int hash = digest_hash(image_tuple);
+    int hash = string_hash(preimage);
     return begin_cell().store_uint(hash, 256).end_cell().begin_parse(); 
 }
 
@@ -50,14 +49,128 @@ int apply_leaf(slice leaf, slice key, slice value){
 int apply_inner(slice inner, int child){
     slice prefix = inner~load_ref().begin_parse();
     slice suffix = inner~load_ref().begin_parse();
-    int inner_hash = inner~load_uint(8); ;; reduntdant cause spec of tendermint and iavl is sha256
-    slice data = begin_cell()
-                    .store_slice(prefix)
-                    .store_uint(child, 256)
-                    .store_slice(suffix)
-                    .end_cell().begin_parse();
-    return string_hash(data);
+    builder data = begin_cell();
+    if(prefix.slice_empty?() != -1){
+        data = data.store_slice(prefix);
+    }
+    data = data.store_uint(child, 256);
+
+    if(suffix.slice_empty?() != -1){
+        data = data.store_slice(suffix);
+    }
+                  
+    return string_hash(data.end_cell().begin_parse());
 }
+
+int ensure_prefix(slice leaf_prefix, slice spec_prefix){
+    if(spec_prefix.slice_empty?()){
+        return -1;
+    }
+   
+    if(leaf_prefix.slice_empty?()){
+        return 0;
+    }
+    int spec_prefix_len = slice_bits(spec_prefix);
+  
+    slice sub_leaf_prefix = leaf_prefix~load_slice(spec_prefix_len);
+    return sub_leaf_prefix.string_hash() == spec_prefix.string_hash();
+}
+
+int ensure_leaf(slice proof_leaf, slice spec){
+    int leaf_pre_hash_key = proof_leaf~load_uint(8);
+    int leaf_pre_hash_value = proof_leaf~load_uint(8);
+    int leaf_hash = proof_leaf~load_uint(8); 
+    int leaf_length_op = proof_leaf~load_uint(8);
+    slice leaf_prefix = proof_leaf~load_ref().begin_parse();
+
+    int spec_pre_hash_key = spec~load_uint(8);
+    int spec_pre_hash_value = spec~load_uint(8);
+    int spec_hash = spec~load_uint(8); 
+    int spec_length_op = spec~load_uint(8);
+    slice spec_prefix = spec~load_ref().begin_parse();
+    if(leaf_pre_hash_key != spec_pre_hash_key){
+        return 0;
+    }
+
+
+    if(leaf_pre_hash_value != spec_pre_hash_value){
+        return 0;
+    }
+
+    if(leaf_hash != spec_hash){
+        return 0;
+    }
+   
+    if(leaf_length_op != spec_length_op){
+        return 0;
+    }
+
+    return ensure_prefix(leaf_prefix, spec_prefix);
+}
+
+int ensure_inner(slice inner, slice prefix, slice spec){
+    int inner_hash = inner~load_uint(8);
+    slice inner_prefix = inner~load_ref().begin_parse();
+    int inner_prefix_len = slice_bits(inner_prefix) >> 3;
+
+    int spec_hash = spec~load_uint(8);
+    int spec_min_prefix_len = spec~load_uint(8);
+    int spec_max_prefix_len = spec~load_uint(8);
+    int spec_child_order_len = spec~load_uint(8);
+    int spec_child_size = spec~load_uint(8);
+    int prefix_len = slice_bits(prefix);
+    slice sub_prefix = inner_prefix~load_slice(prefix_len);
+
+    if(sub_prefix.equal_slice?(prefix) == -1){
+        return 0;
+    }
+
+    if(inner_prefix_len < spec_min_prefix_len){
+        return 0;
+    }
+    
+    int max_left_child_bytes = (spec_child_order_len - 1) * spec_child_size;
+    return inner_prefix_len <= (spec_max_prefix_len + max_left_child_bytes);
+}
+
+;; https://github.com/cosmos/ics23/blob/02f5aa596fe38272538b526a92d9ee4960a30382/js/src/proofs.ts#L174-L199
+int ensure_spec(slice proof, slice spec){
+    proof~load_ref(); ;;skip_value
+    slice leaf = proof~load_ref().begin_parse();
+    slice path = proof~load_ref().begin_parse();
+    slice leafSpec = spec~load_ref().begin_parse();
+    slice innerSpec = spec~load_ref().begin_parse();
+    (_, cell leafSpecPrefix) = leafSpec.load_ref();
+
+
+    if(leaf.ensure_leaf(leafSpec) != -1){
+        return 0;
+    }
+  
+
+    if(leaf.slice_empty?() & leaf.slice_refs_empty?()){
+        return 0;
+    }
+ 
+    if(leafSpec.slice_empty?() & leafSpec.slice_refs_empty?()){
+        return 0;
+    }
+   
+    if(innerSpec.slice_empty?() & innerSpec.slice_refs_empty?()){
+        return 0;
+    }
+ 
+    while(path.slice_refs_empty?() != -1){
+        slice next_ref = path~load_ref().begin_parse();
+        if(path.ensure_inner(leafSpecPrefix.begin_parse(), innerSpec) != -1){
+            return 0;
+        }
+        path = next_ref;
+    }
+
+    return -1;
+}
+
 
 ;; https://github.com/cosmos/ics23/blob/02f5aa596fe38272538b526a92d9ee4960a30382/js/src/proofs.ts#L155-L170
 ;; proof: https://github.com/cosmos/ics23/blob/c7c728879896fb260fe76b208ea6a17c2b0132a3/js/src/generated/codecimpl.d.ts#L37-L49
@@ -67,7 +180,6 @@ int calculate_existence_root(slice proof){
     slice path = proof~load_ref().begin_parse();
     slice key = proof;
     int res = apply_leaf(leaf, key, value);
-    ~dump(res);
     while(path.slice_refs_empty?() != -1) {
         slice next_ref = path~load_ref().begin_parse();
         res = apply_inner(path, res);
@@ -75,3 +187,33 @@ int calculate_existence_root(slice proof){
     }
     return res;
 }
+
+int verify_existance(int root, slice spec, slice proof, slice key, slice value){
+    if(ensure_spec(proof,spec) != -1){
+        return 0;
+    }
+    (_, cell cell_proof_value) = proof.load_ref();
+    slice proof_value = cell_proof_value.begin_parse();
+    slice proof_key = proof;
+    int calculated_root = calculate_existence_root(proof);
+    if(calculated_root != root){
+        return 0;
+    }
+   
+    if((proof_key.string_hash() == key.string_hash()) != -1){
+        return 0;
+    }
+
+    if(proof_value.equal_slice?(value) != -1){
+        return 0;
+    }
+
+    return -1;
+}
+;;https://github.com/cosmos/ics23/blob/02f5aa596fe38272538b526a92d9ee4960a30382/js/src/ics23.ts#L29-L50
+;; skip decompress and getExistsForkey cause we only using existence mode not batch mode
+int verify_membership(int root, slice spec, slice proof, slice key, slice value){
+    return verify_existance(root, spec, proof, key, value);
+}
+
+
