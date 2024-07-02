@@ -1,10 +1,20 @@
 const log::verify_receipt = 1;
+const log::confirm_tx = 2;
 
+;; Light Client
 const op::verify_block_hash = "op::verify_block_hash"c;
 const op::store_untrusted_validators = "op::store_untrusted_validators"c;
 const op::verify_untrusted_validators = "op::verify_untrusted_validators"c;
-const op::verify_sigs = "op::verify_sigs"c; 
-const op::verify_receipt = "op::verify_receipt"c; 
+
+const op::verify_on_untrusted_sigs = "op::verify_on_untrusted_sigs"c; 
+const op::verify_on_trusted_sigs = "op::verify_on_trusted_sigs"c; 
+const op::verify_receipt = "op::verify_receipt"c;
+const op::create_new_light_client = "op::create_new_light_client"c; 
+const op::update_light_client_state = "op::update_light_client_state"c; 
+const op::finalize_verify_light_client = "op::finalize_verify_light_client"c; 
+const op::provide_light_client_address = "op::provide_light_client_address"c;
+const op::response_light_client_address = "op::response_light_client_address"c;
+const op::proxy_forward_msg = "op::proxy_forward_msg"c;
 
 
 ;; bridge adapter
@@ -26,6 +36,13 @@ const op::set_admin_address = "op::set_admin_address"c;
 const op::set_denom = "op::set_denom"c;
 const op::query_denom = "op::query_denom"c;
 const op::callback_denom = "op::callback_denom"c;
+
+;; packet prefix
+const op::send_to_ton = "op::send_to_ton"c;
+const op::ack_send_to_ton = "op::ack_send_to_ton"c;
+const op::ack_timeout_send_to_cosmos = "op::ack_timeout_send_to_cosmos";
+const op::receive_packet = "op::receive_packet"c;
+const op::timeout_send_packet = "op::timeout_send_packet"c;
 
 
 

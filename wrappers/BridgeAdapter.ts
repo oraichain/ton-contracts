@@ -16,7 +16,7 @@ import { ValueOps } from './@types';
 
 export type BridgeAdapterConfig = {
     bridge_wasm_smart_contract: string;
-    light_client: Address;
+    light_client_master: Address;
     whitelist_denom: Address;
     jetton_wallet_code: Cell;
 };
@@ -69,8 +69,9 @@ export function sliceRefToJson(cell: Cell): Object {
 
 export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
     return beginCell()
-        .storeAddress(config.light_client)
+        .storeAddress(config.light_client_master)
         .storeAddress(config.whitelist_denom)
+        .storeUint(0, 64)
         .storeRef(beginCell().storeBuffer(Buffer.from(config.bridge_wasm_smart_contract)).endCell())
         .storeRef(config.jetton_wallet_code)
         .storeRef(beginCell().storeDict(Dictionary.empty()).endCell()) // empty dict

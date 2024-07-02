@@ -16,12 +16,21 @@ slice get_validator_hash(slice header) inline_ref {
     slice time = inner_header~load_ref().begin_parse();
     slice block_id = inner_header~load_ref().begin_parse();
     slice first_hashes = header~load_ref().begin_parse();
-    slice last_commit_hash = first_hashes~load_ref().begin_parse();
-    slice data_hash = first_hashes~load_ref().begin_parse();
+    first_hashes~load_ref();
+    first_hashes~load_ref();
     slice validators_hash = first_hashes~load_ref().begin_parse();
-    return (height, chain_id, data_hash, validators_hash);
+    slice second_hashes = header~load_ref().begin_parse();
+    second_hashes~load_ref();
+    slice app_hash = second_hashes~load_ref().begin_parse();
+    return (height, chain_id, app_hash, validators_hash);
 }
 
+(cell, cell, cell) parse_verify_light_client_body(slice ds) inline_ref {
+    cell header = ds~load_ref();
+    cell validators_cell = ds~load_ref();
+    cell commit = ds~load_ref();
+    return (header, validators_cell, commit);
+}
 
 int equal_slice? (slice a, slice b) {
     return a.slice_hash() == b.slice_hash();
