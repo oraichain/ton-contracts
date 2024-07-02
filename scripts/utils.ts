@@ -57,7 +57,5 @@ export async function createTonWallet() {
 }
 
 export const calculateIbcTimeoutTimestamp = (timeout: number, dateNow?: number) => {
-    return Long.fromNumber(Math.floor((dateNow ?? Date.now()) / 1000) + timeout)
-        .multiply(1000000000)
-        .toString();
+    return Math.floor((dateNow ?? Date.now()) / 1000 + timeout);
 };

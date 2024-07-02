@@ -13,6 +13,7 @@ export async function updateClient() {
     const usdtJettonWallet = JettonWallet.createFromAddress(usdtWalletAddress);
     const usdtJettonWalletContract = client.open(usdtJettonWallet);
 
+    console.log(BigInt(calculateIbcTimeoutTimestamp(3600)));
     await usdtJettonWalletContract.sendTransfer(
         walletContract.sender(key.secretKey),
         {
