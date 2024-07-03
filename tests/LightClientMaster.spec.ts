@@ -3,10 +3,50 @@ import { beginCell, Cell, toNano } from '@ton/core';
 import { LightClientMaster, LightClientMasterOpcodes } from '../wrappers/LightClientMaster';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import { createUpdateClientData, deserializeCommit, deserializeHeader, deserializeValidator } from '../wrappers/utils';
+import {
+    createUpdateClientData,
+    deserializeCommit,
+    deserializeHeader,
+    deserializeValidator,
+    getSpecCell,
+} from '../wrappers/utils';
+import { HashOp, LengthOp, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 
 describe('LightClientMaster', () => {
     let code: Cell;
+    const iavlSpec = {
+        leafSpec: {
+            prefix: Uint8Array.from([0]),
+            hash: HashOp.SHA256,
+            prehashValue: HashOp.SHA256,
+            prehashKey: HashOp.NO_HASH,
+            length: LengthOp.VAR_PROTO,
+        },
+        innerSpec: {
+            childOrder: [0, 1],
+            minPrefixLength: 4,
+            maxPrefixLength: 12,
+            childSize: 33,
+            hash: HashOp.SHA256,
+        },
+    };
+
+    const tendermintSpec = {
+        leafSpec: {
+            prefix: Uint8Array.from([0]),
+            hash: HashOp.SHA256,
+            prehashValue: HashOp.SHA256,
+            prehashKey: HashOp.NO_HASH,
+            length: LengthOp.VAR_PROTO,
+        },
+        innerSpec: {
+            childOrder: [0, 1],
+            minPrefixLength: 1,
+            maxPrefixLength: 1,
+            childSize: 32,
+            hash: HashOp.SHA256,
+        },
+    };
     beforeAll(async () => {
         code = await compile('LightClientMaster');
     });
@@ -17,6 +57,22 @@ describe('LightClientMaster', () => {
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
+        const specs = [iavlSpec, tendermintSpec];
+        let cellSpecs;
+        for (let i = specs.length - 1; i >= 0; i--) {
+            const innerCell = getSpecCell(specs[i] as ProofSpec);
+            if (!cellSpecs) {
+                cellSpecs = beginCell()
+                    .storeRef(beginCell().endCell())
+                    .storeSlice(innerCell.beginParse())
+                    .endCell();
+            } else {
+                cellSpecs = beginCell()
+                    .storeRef(cellSpecs)
+                    .storeSlice(innerCell.beginParse())
+                    .endCell();
+            }
+        }
         blockchain.verbosity = {
             ...blockchain.verbosity,
             // vmLogs: 'vm_logs_gas',
@@ -28,6 +84,7 @@ describe('LightClientMaster', () => {
                     lightClientCode: await compile('LightClient'),
                     trustedHeight: 0,
                     trustingPeriod: 14 * 86400,
+                    specs: cellSpecs!,
                 },
                 code,
             ),
@@ -35,7 +92,10 @@ describe('LightClientMaster', () => {
 
         deployer = await blockchain.treasury('deployer');
 
-        const deployResult = await lightClientMaster.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployResult = await lightClientMaster.sendDeploy(
+            deployer.getSender(),
+            toNano('0.05'),
+        );
 
         expect(deployResult.transactions).toHaveTransaction({
             from: deployer.address,
@@ -47,7 +107,10 @@ describe('LightClientMaster', () => {
 
     it('test light client master verify block hash', async () => {
         const testcase = async (blockNumber: any) => {
-            const { header, lastCommit, validators } = await createUpdateClientData('https://rpc.orai.io', blockNumber);
+            const { header, lastCommit, validators } = await createUpdateClientData(
+                'https://rpc.orai.io',
+                blockNumber,
+            );
             const user = await blockchain.treasury('user');
             let result = await lightClientMaster.sendVerifyBlockHash(
                 user.getSender(),

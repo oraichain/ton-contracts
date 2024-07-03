@@ -1,0 +1,4 @@
+int get_timeout(slice packet) {
+    slice timeout = packet.slice_last(64);
+    return timeout.load_uint(64);
+}

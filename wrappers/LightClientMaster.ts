@@ -21,6 +21,7 @@ export type LightClientMasterConfig = {
     trustedHeight: number;
     chainId: string;
     lightClientCode: Cell;
+    specs: Cell;
 };
 
 export interface SendVerifyBlockHashInterface {
@@ -35,6 +36,7 @@ export function lightClientMasterConfigToCell(config: LightClientMasterConfig): 
         .storeUint(config.trustedHeight, 64)
         .storeBuffer(Buffer.from(config.chainId))
         .storeRef(config.lightClientCode)
+        .storeRef(config.specs)
         .endCell();
 }
 

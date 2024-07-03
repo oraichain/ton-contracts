@@ -1,0 +1,4 @@
+const int error::invalid_sender = 3000;
+const int error::already_process_packet = 3001;
+const int error::unsupport_this_denom = 3002;
+const int error::packet_timeout = 3003;

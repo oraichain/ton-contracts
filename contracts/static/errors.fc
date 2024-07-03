@@ -1,39 +1,3 @@
-const int error::invalid_block_header = 401;
-const int error::invalid_untrusted_validators = 402;
-const int error::invalid_verify_sigs = 403;
-const int error::invalid_verify_validators_set = 404;
-const int error::invalid_verify_receipt = 405;
-const int error::invalid_height = 406;
-const int error::not_match_address = 407;
-const int error::not_match_chain_id = 408;
-const int error::invalid_state = 4001;
-
-;; Bridge error 3xxx - is Bridge Error
-const int error::empty_tx = 3000;
-const int error::empty_auth_info = 3001;
-const int error::empty_tx_body = 3002;
-const int error::empty_tx_signatures = 3002;
-const int error::invalid_contract_address = 3003;
-const int error::unsupported_type_url = 3004;
-const int error::unsupported_wasm_message = 3005;
-const int error::invalid_sender = 3006;
-const int error::already_process_data = 3007;
-const int error::unsupport_this_denom = 3008;
-const int error::packet_timeout = 3009;
-
-
-
 ;; Whitelist denom error 5xxx
 const int error::same_admin_address = 5000;
 const int error::not_admin_address = 5001;
-
-;; ics23 Proof error 6xxx
-const int error::existence_root_empty_key_or_value = 6000;
-const int error::existence_root_empty_leaf = 6001;
-const int error::ensure_spec_empty_leaf_spec = 6002;
-const int error::ensure_spec_empty_inner_spec = 6003;
-
-
-
-
-

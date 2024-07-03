@@ -1,17 +1,15 @@
 #include "imports/stdlib.fc";
 #include "utils/verify.fc";
-#include "static/errors.fc";
-#include "static/op_codes.fc";
 #include "utils/messages.fc";
 #include "utils/helper.fc";
-#include "static/state.fc";
 #include "utils/validator_hash_input.fc";
-#include "utils/merkleize.fc";
-#include "utils/tx_raw.fc";
 #include "utils/light_client.fc";
 #include "common/messages.fc";
 #include "common/address.fc";
 #include "imports/op-codes.fc";
+#include "light_client/constants.fc";
+#include "light_client/errors.fc";
+#include "light_client/opcodes.fc";
 
 ;; store in a header_ref
 global int trusting_period;
@@ -20,12 +18,13 @@ global slice chain_id;
 global cell light_client_code;
 ;; proofSpecs 
 ;; https://github.com/cosmos/ics23/blob/c7c728879896fb260fe76b208ea6a17c2b0132a3/js/src/generated/codecimpl.d.ts#L705
-global slice specs;
+global cell specs;
 
 () preload_data(slice ds) impure {
     trusting_period = ds~load_uint(32);
     trusted_height = ds~load_uint(64);
     light_client_code = ds~load_ref();
+    specs = ds~load_ref();
     chain_id = ds;
 }
 
@@ -39,8 +38,9 @@ global slice specs;
     return begin_cell()
             .store_uint(trusting_period, 32)
             .store_uint(trusted_height, 64)
-            .store_ref(light_client_code)
             .store_slice(chain_id)
+            .store_ref(light_client_code)
+            .store_ref(specs)
         .end_cell();
 }
 
@@ -246,14 +246,15 @@ global slice specs;
     if (op == op::forward_verify_receipt) {
         cell body = in_msg_body~load_ref();
         slice ds = body.begin_parse();
-        int height = ds~load_uint(64);
-        slice light_client_address = calculate_specific_light_client_address(height, chain_id, my_address(), trusting_period,light_client_code);
+        int proven_height = ds~load_uint(64);
+        slice light_client_address = calculate_specific_light_client_address(proven_height, chain_id, my_address(), trusting_period,light_client_code);
         builder body_builder = begin_cell();
         body_builder = body_builder 
                     .store_uint(op::verify_receipt, 32)
                     .store_uint(query_id, 64)
                     .store_ref(begin_cell()
                         .store_slice(sender_address) ;; this is bridge adapter address
+                        .store_ref(specs) ;; bring proofSpecs
                         .store_ref(body)
                         .end_cell());
         cell builder_cell = body_builder.end_cell();

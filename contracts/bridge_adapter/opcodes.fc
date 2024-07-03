@@ -1,0 +1,3 @@
+const op::send_tx = "op::send_tx"c;
+const bridge_packet = "bridge_packet"c;
+const ack_timeout = "ack_timeout"c;
