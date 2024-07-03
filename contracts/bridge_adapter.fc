@@ -63,6 +63,8 @@ global cell processed_txs;
 () confirm_tx (slice in_msg_body, int msg_value) impure {
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
     slice body = in_msg_body~load_ref().begin_parse();
+    slice response_address = body~load_msg_addr();
+
     slice data = body~load_ref().begin_parse();
     int data_hash = data.slice_hash();
 
@@ -70,7 +72,16 @@ global cell processed_txs;
     throw_unless(error::already_process_data, exist == 0); ;; doesn't process the same data twice
 
     (int op_codes, int packet_seq, int timeout, slice to, slice jetton_master, int amount, int src) = (data~load_uint(32), data~load_uint(64), data~load_uint(64), data~load_msg_addr(), data~load_msg_addr(), data~load_uint(128), data~load_uint(32));
-    slice response_address = body~load_msg_addr();
+    ~dump(to.slice_hash());
+
+    ~dump(null());
+    ~dump(op_codes);
+    ~dump(packet_seq);
+    ~dump(timeout);
+    ~dump(to);
+    ~dump(jetton_master);
+    ~dump(amount);
+    ~dump(src);
 
     if (op_codes == op::send_to_ton & (now() > timeout)) {
         cell emit_data = begin_cell()
@@ -176,44 +187,21 @@ global cell processed_txs;
         in_msg_body~load_ref();
         cell data = in_msg_body~load_ref(); ;; this is bit string
         slice data_slice = data.begin_parse();
-        
-        builder forward_msg = begin_cell();
-        forward_msg = forward_msg
-                        .store_slice(sender_address)
-                        .store_ref(data);
-        cell forward_msg_cell = forward_msg.end_cell();
 
         builder bodyBuilder = begin_cell();
         bodyBuilder = bodyBuilder 
-            .store_uint(op::provide_light_client_address, 32)
-            .store_uint(query_id, 64)
-            .store_ref(
-            begin_cell()
-                .store_uint(height, 64)
-                .store_ref(forward_msg_cell)
-                .end_cell()
-        );
+                    .store_uint(op::forward_verify_receipt, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(begin_cell()
+                                .store_uint(height, 64)
+                                .store_slice(sender_address)
+                                .store_ref(data)
+                                .end_cell());
         cell body = bodyBuilder.end_cell();
         send_simple_message(0, light_client_master, body, CARRY_REMAINING_GAS);
         return ();
     } 
 
-    if (op == op::response_light_client_address) {
-        throw_unless(error::invalid_sender, compare_address(sender_address, light_client_master));
-        int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
-        slice ds = in_msg_body~load_ref().begin_parse();
-        slice light_client_address = ds~load_msg_addr();
-        cell forward_msg = ds~load_ref();
-        ;; should send verify receipt here
-        builder bodyBuilder = begin_cell();
-        bodyBuilder = bodyBuilder 
-                    .store_uint(op::verify_receipt, 32)
-                    .store_uint(query_id, 64)
-                    .store_ref(forward_msg);
-        send_simple_message(0, light_client_address, bodyBuilder.end_cell(), CARRY_REMAINING_GAS);      
-        return ();
-    }
-    
     if(op == op::confirm_tx){
         throw_unless(error::invalid_sender, compare_address(sender_address, light_client_master));
         confirm_tx(in_msg_body, msg_value); 
