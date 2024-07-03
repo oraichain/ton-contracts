@@ -1,8 +1,8 @@
 #include "./constants.fc";
+#include "./errors.fc";
 #include "../utils/helper.fc";
 #include "../imports/stdlib.fc";
 #include "../utils/varint.fc";
-#include "../static/errors.fc";
 
 slice do_hash_or_noop(int hash_op, slice preimage){
     if(hash_op == ics23::hashOp::NO_HASH){

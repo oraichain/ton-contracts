@@ -243,34 +243,36 @@ global slice specs;
         return ();
     }
 
-    if (op == op::provide_light_client_address) {
+    if (op == op::forward_verify_receipt) {
         cell body = in_msg_body~load_ref();
         slice ds = body.begin_parse();
         int height = ds~load_uint(64);
-        cell forward_msg = ds~load_ref();
         slice light_client_address = calculate_specific_light_client_address(height, chain_id, my_address(), trusting_period,light_client_code);
         builder body_builder = begin_cell();
         body_builder = body_builder 
-                    .store_uint(op::response_light_client_address, 32)
+                    .store_uint(op::verify_receipt, 32)
                     .store_uint(query_id, 64)
                     .store_ref(begin_cell()
-                                .store_slice(light_client_address)
-                                .store_ref(forward_msg)
-                                .end_cell());
+                        .store_slice(sender_address) ;; this is bridge adapter address
+                        .store_ref(body)
+                        .end_cell());
         cell builder_cell = body_builder.end_cell();
-        send_simple_message(0, sender_address, builder_cell, CARRY_REMAINING_GAS);
+        send_simple_message(0, light_client_address, builder_cell, CARRY_REMAINING_GAS);
         return ();
     }
 
     if (op == op::proxy_forward_msg) {
         cell body = in_msg_body~load_ref();
         slice ds = body.begin_parse();
+
         int height = ds~load_uint(64);
-        slice response_address = ds~load_msg_addr();
+        slice bridge_adapter_address = ds~load_msg_addr();
         cell forward_msg = ds~load_ref();
-        slice light_client_address = calculate_specific_light_client_address(height, chain_id, my_address(), trusting_period,light_client_code);
+
+        slice light_client_address = calculate_specific_light_client_address(height, chain_id, my_address(), trusting_period, light_client_code);
         throw_unless(error::invalid_sender, compare_address(light_client_address, sender_address));
-        send_simple_message(0, response_address, forward_msg, CARRY_REMAINING_GAS);
+
+        send_simple_message(0, bridge_adapter_address, forward_msg, CARRY_REMAINING_GAS);
         return ();
     }
 

@@ -366,10 +366,20 @@ describe('BridgeAdapter', () => {
         );
         const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
         const wallet = blockchain.openContract(userJettonWalletBalance);
-        console.log(BigInt('0x' + beginCell().storeAddress(wallet.address).endCell().hash().toString('hex')));
         const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
 
         console.log((await blockchain.getContract(jettonMinterSrcCosmos.address)).balance);
+        console.log(
+            'LALA:',
+            BigInt(
+                '0x' +
+                    beginCell()
+                        .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
+                        .endCell()
+                        .hash()
+                        .toString('hex'),
+            ),
+        );
 
         const result = await bridgeAdapter.sendTx(
             relayer.getSender(),
@@ -381,7 +391,7 @@ describe('BridgeAdapter', () => {
                 data: beginCell()
                     .storeBuffer(
                         Buffer.from(
-                            '946282250000000000000000000000006683B8CD80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830039BAC56451CE935A1A352F045C6D06B5AA1A26EC3C88F6031824C2A4DB7024C7C000000000000000000000009502F9000139517D2',
+                            '946282250000000000000000000000006684D75D80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830024EE7B2F18B6C6E1DB9C4264A2E3075411A2454F2E05BECF8BB3FD31CE67B4214000000000000000000000009502F9000139517D2',
                             'hex',
                         ),
                     )
@@ -391,14 +401,19 @@ describe('BridgeAdapter', () => {
                 value: toNano('5'),
             },
         );
+
         printTransactionFees(result.transactions);
         prettyLogTransactions(result.transactions);
-        // expect(result.transactions).toHaveTransaction({
-        //     op: LightClientOpcodes.verify_receipt,
-        //     success: true,
-        // });
-
-        // expect((await wallet.getBalance()).amount).toBe(toNano(10));
+        console.log('Bridge Adapter:', bridgeAdapter.address);
+        expect(result.transactions).toHaveTransaction({
+            op: LightClientOpcodes.verify_receipt,
+            success: true,
+        });
+        expect(result.transactions).toHaveTransaction({
+            op: BridgeAdapterOpcodes.confirmTx,
+            success: true,
+        });
+        expect((await wallet.getBalance()).amount).toBe(toNano(10));
     });
 
     it('successfully transfer jetton to user if coming from src::ton', async () => {
@@ -437,9 +452,6 @@ describe('BridgeAdapter', () => {
 
         console.log(
             BigInt('0x' + beginCell().storeAddress(bridgeJettonWalletSrcTon.address).endCell().hash().toString('hex')),
-        );
-        console.log(
-            BigInt('0x' + beginCell().storeAddress(jettonMinterSrcTon.address).endCell().hash().toString('hex')),
         );
 
         const result = await bridgeAdapter.sendTx(

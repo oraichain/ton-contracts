@@ -9,6 +9,7 @@ const op::verify_untrusted_validators = "op::verify_untrusted_validators"c;
 const op::verify_on_untrusted_sigs = "op::verify_on_untrusted_sigs"c; 
 const op::verify_on_trusted_sigs = "op::verify_on_trusted_sigs"c; 
 const op::verify_receipt = "op::verify_receipt"c;
+const op::forward_verify_receipt = "op::forward_verify_receipt"c;
 const op::create_new_light_client = "op::create_new_light_client"c; 
 const op::update_light_client_state = "op::update_light_client_state"c; 
 const op::finalize_verify_light_client = "op::finalize_verify_light_client"c; 
@@ -39,8 +40,8 @@ const op::callback_denom = "op::callback_denom"c;
 
 ;; packet prefix
 const op::send_to_ton = "op::send_to_ton"c;
-const op::ack_send_to_ton = "op::ack_send_to_ton"c;
-const op::ack_timeout_send_to_cosmos = "op::ack_timeout_send_to_cosmos";
+const op::ack_refund = "op::ack_refund"c;
+const op::ack_timeout = "op::ack_timeout"c;
 const op::receive_packet = "op::receive_packet"c;
 const op::timeout_send_packet = "op::timeout_send_packet"c;
 
