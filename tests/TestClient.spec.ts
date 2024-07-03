@@ -404,5 +404,29 @@ describe('TestClient', () => {
             );
             expect(result).toEqual(-1n);
         });
+
+        it('should build commitment path successfully', async () => {
+            const contract = fromBech32(
+                'orai15un8msx3n5zf9ahlxmfeqd2kwa5wm0nrpxer304m9nd5q6qq0g6sku5pdd',
+            );
+            const key = encodeNamespaces([Buffer.from('balance')]);
+            const finalKey = Buffer.concat([
+                key,
+                Buffer.from('orai1mycmhyrmd6dusp408rtjgzlk7738vhtgqyhxxt'),
+            ]);
+            const wasmPath = Uint8Array.from([0x03, ...contract.data, ...finalKey]);
+            const path = await lightClient.getCommitmentPath(
+                beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from('balance')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from(contract.data)).endCell())
+                    .storeRef(
+                        beginCell()
+                            .storeBuffer(Buffer.from('orai1mycmhyrmd6dusp408rtjgzlk7738vhtgqyhxxt'))
+                            .endCell(),
+                    )
+                    .endCell(),
+            );
+            expect(Buffer.compare(path, Buffer.from(wasmPath))).toBe(0);
+        });
     });
 });

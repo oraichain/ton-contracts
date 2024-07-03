@@ -18,7 +18,9 @@ global int trusting_period;
 global int trusted_height;
 global slice chain_id;
 global cell light_client_code;
-
+;; proofSpecs 
+;; https://github.com/cosmos/ics23/blob/c7c728879896fb260fe76b208ea6a17c2b0132a3/js/src/generated/codecimpl.d.ts#L705
+global slice specs;
 
 () preload_data(slice ds) impure {
     trusting_period = ds~load_uint(32);

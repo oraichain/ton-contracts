@@ -1478,6 +1478,17 @@ export class TestClient implements Contract {
 
         return result.stack.readBigNumber();
     }
+
+    async getCommitmentPath(provider: ContractProvider, ds: Cell) {
+        const result = await provider.get('get_commitment_path', [
+            {
+                type: 'slice',
+                cell: ds,
+            },
+        ]);
+
+        return result.stack.readBuffer();
+    }
 }
 
 export function getAuthInfoInput(data: AuthInfo) {

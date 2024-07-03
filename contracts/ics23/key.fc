@@ -1,0 +1,19 @@
+builder encode_namespace(slice namespace){
+    int len = slice_bits(namespace) >> 3;
+    return begin_cell()
+            .store_uint(len, 16)
+            .store_slice(namespace);
+}
+
+builder packet_commitment_path(builder contract_path, slice namespace, slice sequence){
+    return begin_cell()
+            .store_builder(contract_path)
+            .store_builder(encode_namespace(namespace))
+            .store_slice(sequence);
+}
+
+builder append_prefix(slice prefix, builder commitment_path){
+    return begin_cell()
+            .store_builder(commitment_path)
+            .store_ref(begin_cell().store_slice(prefix).end_cell());
+}
