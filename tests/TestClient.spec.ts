@@ -349,6 +349,36 @@ describe('TestClient', () => {
             }
         });
 
+        it('should calculateExistenceProof throw empty value error', async () => {
+            for (const proof of Object.values(proofs).slice(0, 2)) {
+                let existenceProof = ics23.CommitmentProof.fromObject(proof).exist!;
+                existenceProof.value = new Uint8Array();
+                try {
+                    await lightClient.getCalculateExistenceRoot(
+                        getExistenceProofCell(existenceProof as ExistenceProof),
+                    );
+                } catch (error) {
+                    const err = JSON.parse(JSON.stringify(error));
+                    expect(err.exitCode).toEqual(6000);
+                }
+            }
+        });
+
+        it('should calculateExistenceProof throw empty leaf error', async () => {
+            for (const proof of Object.values(proofs).slice(0, 2)) {
+                let existenceProof = ics23.CommitmentProof.fromObject(proof).exist!;
+                existenceProof.leaf = new ics23.LeafOp();
+                try {
+                    await lightClient.getCalculateExistenceRoot(
+                        getExistenceProofCell(existenceProof as ExistenceProof),
+                    );
+                } catch (error) {
+                    const err = JSON.parse(JSON.stringify(error));
+                    expect(err.exitCode).toEqual(6001);
+                }
+            }
+        });
+
         it('should ensureSpec successfully', async () => {
             const iavlSpecCell = getSpecCell(iavlSpec as any);
             const tendermintSpecCell = getSpecCell(tendermintSpec as any);
@@ -368,21 +398,20 @@ describe('TestClient', () => {
         });
 
         it('should verifyExistence successfully', async () => {
-            for (const proof of Object.values(proofs).slice(0, 1)) {
-                const existenceProof = CommitmentProof.fromJSON(proof).exist!;
-                const root = calculateExistenceRoot(existenceProof as any);
-                const key = keys.keyPath[1];
-                const number = await lightClient.getVerifyExistence(
-                    getVerifyExistenceInput(
-                        root,
-                        existenceProof as ExistenceProof,
-                        iavlSpec as ProofSpec,
-                        key,
-                        toAscii(value),
-                    ),
-                );
-                expect(number).toEqual(-1n);
-            }
+            const proof = Object.values(proofs)[0];
+            const existenceProof = CommitmentProof.fromJSON(proof).exist!;
+            const root = calculateExistenceRoot(existenceProof as any);
+            const key = keys.keyPath[1];
+            const number = await lightClient.getVerifyExistence(
+                getVerifyExistenceInput(
+                    root,
+                    existenceProof as ExistenceProof,
+                    iavlSpec as ProofSpec,
+                    key,
+                    toAscii(value),
+                ),
+            );
+            expect(number).toEqual(-1n);
         });
 
         it('should verifyChainedMembership successfully', async () => {
