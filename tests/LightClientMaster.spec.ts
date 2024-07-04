@@ -11,6 +11,7 @@ import {
     getSpecCell,
 } from '../wrappers/utils';
 import { HashOp, LengthOp, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
+import { crc32 } from '../crc32';
 
 describe('LightClientMaster', () => {
     let code: Cell;
@@ -134,7 +135,7 @@ describe('LightClientMaster', () => {
             console.log(`blockhash:`, LightClientMasterOpcodes.verify_block_hash);
             expect(await lightClientMaster.getTrustedHeight()).toBe(blockNumber);
         };
-        await testcase(26073868);
-        await testcase(26083868);
+        await testcase(26185906);
+        await testcase(26265993);
     });
 });

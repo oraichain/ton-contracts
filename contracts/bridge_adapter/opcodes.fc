@@ -1,3 +1,4 @@
-const op::send_tx = "op::send_tx"c;
-const bridge_packet = "bridge_packet"c;
-const ack_timeout = "ack_timeout"c;
+const op::bridge_recv_packet = "op::bridge_recv_packet"c;
+const op::send_to_ton = "op::send_to_ton"c;
+const op::ack_refund = "op::ack_refund"c;
+const op::send_to_cosmos = "op::send_to_cosmos"c;

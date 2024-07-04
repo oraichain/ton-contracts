@@ -243,14 +243,14 @@ global cell specs;
         return ();
     }
 
-    if (op == op::forward_verify_receipt) {
+    if (op == op::receive_packet) {
         cell body = in_msg_body~load_ref();
         slice ds = body.begin_parse();
         int proven_height = ds~load_uint(64);
         slice light_client_address = calculate_specific_light_client_address(proven_height, chain_id, my_address(), trusting_period,light_client_code);
         builder body_builder = begin_cell();
         body_builder = body_builder 
-                    .store_uint(op::verify_receipt, 32)
+                    .store_uint(op::verify_packet_commitment, 32)
                     .store_uint(query_id, 64)
                     .store_ref(begin_cell()
                         .store_slice(sender_address) ;; this is bridge adapter address

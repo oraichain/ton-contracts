@@ -143,7 +143,7 @@ global slice light_client_master_address;
         return();
     }
 
-    if (op == op::verify_receipt) {
+    if (op == op::verify_packet_commitment) {
         throw_unless(error::invalid_sender, compare_address(sender_address, light_client_master_address));
         cell body = in_msg_body~load_ref();
         slice body_cs = body.begin_parse();

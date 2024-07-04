@@ -22,7 +22,12 @@ import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
 import { getMerkleProofs } from '../wrappers/TestClient';
 import { JettonWallet } from '../wrappers/JettonWallet';
 import { crc32 } from '../crc32';
-import { createUpdateClientData, deserializeCommit, deserializeHeader, deserializeValidator } from '../wrappers/utils';
+import {
+    createUpdateClientData,
+    deserializeCommit,
+    deserializeHeader,
+    deserializeValidator,
+} from '../wrappers/utils';
 import { calculateIbcTimeoutTimestamp } from '../scripts/utils';
 import { LightClientMaster, LightClientMasterOpcodes } from '../wrappers/LightClientMaster';
 
@@ -34,7 +39,10 @@ describe('BridgeAdapter', () => {
     let whitelistDenomCode: Cell;
 
     const bridgeWasmAddress = 'orai1pq2nfsylg344z6fwxkyzu0twmvr4mdrwc2zm4frynlcteypjt82sm2k2fu';
-    const updateBlock = async (blockNumber: number, relayer: SandboxContract<TreasuryContract>): Promise<string[]> => {
+    const updateBlock = async (
+        blockNumber: number,
+        relayer: SandboxContract<TreasuryContract>,
+    ): Promise<string[]> => {
         const { header, lastCommit, validators, txs } = await createUpdateClientData(
             'https://rpc.orai.io',
             blockNumber,
@@ -56,7 +64,10 @@ describe('BridgeAdapter', () => {
             op: LightClientMasterOpcodes.verify_block_hash,
         });
 
-        console.log('finalize_verify_light_client', LightClientMasterOpcodes.finalize_verify_light_client);
+        console.log(
+            'finalize_verify_light_client',
+            LightClientMasterOpcodes.finalize_verify_light_client,
+        );
         expect(result.transactions).toHaveTransaction({
             success: true,
             op: LightClientMasterOpcodes.finalize_verify_light_client,
@@ -109,9 +120,12 @@ describe('BridgeAdapter', () => {
                 jettonMinterCode,
             ),
         );
-        const deployUsdtMinterResult = await usdtMinterContract.sendDeploy(usdtDeployer.getSender(), {
-            value: toNano('1000'),
-        });
+        const deployUsdtMinterResult = await usdtMinterContract.sendDeploy(
+            usdtDeployer.getSender(),
+            {
+                value: toNano('1000'),
+            },
+        );
 
         expect(deployUsdtMinterResult.transactions).toHaveTransaction({
             from: usdtDeployer.address,
@@ -143,7 +157,10 @@ describe('BridgeAdapter', () => {
                 whitelistDenomCode,
             ),
         );
-        const deployWhitelistResult = await whitelistDenom.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployWhitelistResult = await whitelistDenom.sendDeploy(
+            deployer.getSender(),
+            toNano('0.05'),
+        );
 
         expect(deployWhitelistResult.transactions).toHaveTransaction({
             from: deployer.address,
@@ -165,7 +182,10 @@ describe('BridgeAdapter', () => {
             ),
         );
 
-        const deployLightClientResult = await lightClientMaster.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployLightClientResult = await lightClientMaster.sendDeploy(
+            deployer.getSender(),
+            toNano('0.05'),
+        );
 
         expect(deployLightClientResult.transactions).toHaveTransaction({
             from: deployer.address,
@@ -210,9 +230,12 @@ describe('BridgeAdapter', () => {
             ),
         );
 
-        const deployJettonMinterResult = await jettonMinterSrcCosmos.sendDeploy(deployer.getSender(), {
-            value: toNano('0.05'),
-        });
+        const deployJettonMinterResult = await jettonMinterSrcCosmos.sendDeploy(
+            deployer.getSender(),
+            {
+                value: toNano('0.05'),
+            },
+        );
 
         expect(deployJettonMinterResult.transactions).toHaveTransaction({
             from: deployer.address,
@@ -286,9 +309,14 @@ describe('BridgeAdapter', () => {
     it('successfully deploy BridgeAdapter contract', async () => {
         console.log('bridgeAdapterCode', bridgeAdapterCode.toBoc().toString('hex'));
         console.log('successfully deploy');
-        console.log('msg_prefix', Buffer.from('{"submit_bridge_to_ton_info":{"data":').toString('hex'));
+        console.log(
+            'msg_prefix',
+            Buffer.from('{"submit_bridge_to_ton_info":{"data":').toString('hex'),
+        );
         const stack = await bridgeAdapter.getBridgeData();
-        expect(stack.readCell().toBoc()).toEqual(beginCell().storeAddress(lightClientMaster.address).endCell().toBoc());
+        expect(stack.readCell().toBoc()).toEqual(
+            beginCell().storeAddress(lightClientMaster.address).endCell().toBoc(),
+        );
         expect(stack.readCell().toBoc()).toEqual(
             beginCell().storeBuffer(Buffer.from(bridgeWasmAddress)).endCell().toBoc(),
         );
@@ -318,7 +346,9 @@ describe('BridgeAdapter', () => {
             .storeUint(Src.TON, 32)
             .endCell()
             .bits.toString();
-        console.log({ memoJettonSrcTON: Buffer.from(memoJettonSrcTON, 'hex').toString('hex').toUpperCase() });
+        console.log({
+            memoJettonSrcTON: Buffer.from(memoJettonSrcTON, 'hex').toString('hex').toUpperCase(),
+        });
 
         const memoSrcTONNative = beginCell()
             .storeUint(BridgeAdapterOpcodes.sendTx, 32)
@@ -330,7 +360,9 @@ describe('BridgeAdapter', () => {
             .storeUint(Src.TON, 32)
             .endCell()
             .bits.toString();
-        console.log({ memoSrcTONNative: Buffer.from(memoSrcTONNative, 'hex').toString('hex').toUpperCase() });
+        console.log({
+            memoSrcTONNative: Buffer.from(memoSrcTONNative, 'hex').toString('hex').toUpperCase(),
+        });
     });
 
     it('successfully mint token to the user if coming from src::cosmos', async () => {
@@ -338,7 +370,9 @@ describe('BridgeAdapter', () => {
         const height = 26083868;
         const txs = await updateBlock(height, relayer);
         const chosenIndex = 0; // hardcode the txs with custom memo
-        const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
+        const leaves = txs.map((tx: string) =>
+            createHash('sha256').update(Buffer.from(tx, 'base64')).digest(),
+        );
         const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
 
         const registry = new Registry(defaultRegistryTypes);
@@ -374,7 +408,9 @@ describe('BridgeAdapter', () => {
             BigInt(
                 '0x' +
                     beginCell()
-                        .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
+                        .storeAddress(
+                            Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
+                        )
                         .endCell()
                         .hash()
                         .toString('hex'),
@@ -421,7 +457,9 @@ describe('BridgeAdapter', () => {
         const height = 25370383;
         const txs = await updateBlock(height, relayer);
         const chosenIndex = 0; // hardcode the txs with custom memo
-        const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
+        const leaves = txs.map((tx: string) =>
+            createHash('sha256').update(Buffer.from(tx, 'base64')).digest(),
+        );
         const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
 
         const registry = new Registry(defaultRegistryTypes);
@@ -451,7 +489,14 @@ describe('BridgeAdapter', () => {
         const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
 
         console.log(
-            BigInt('0x' + beginCell().storeAddress(bridgeJettonWalletSrcTon.address).endCell().hash().toString('hex')),
+            BigInt(
+                '0x' +
+                    beginCell()
+                        .storeAddress(bridgeJettonWalletSrcTon.address)
+                        .endCell()
+                        .hash()
+                        .toString('hex'),
+            ),
         );
 
         const result = await bridgeAdapter.sendTx(
@@ -482,7 +527,9 @@ describe('BridgeAdapter', () => {
         });
 
         expect((await wallet.getBalance()).amount).toBe(toNano(10));
-        expect((await bridgeJettonWalletSrcTon.getBalance()).amount).toBe(toNano(1000000000) - toNano(10));
+        expect((await bridgeJettonWalletSrcTon.getBalance()).amount).toBe(
+            toNano(1000000000) - toNano(10),
+        );
     });
 
     it('successfully transfer to user if coming from src::ton', async () => {
@@ -491,7 +538,9 @@ describe('BridgeAdapter', () => {
         const height = 25370496;
         const txs = await updateBlock(height, relayer);
         const chosenIndex = 0; // hardcode the txs with custom memo
-        const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
+        const leaves = txs.map((tx: string) =>
+            createHash('sha256').update(Buffer.from(tx, 'base64')).digest(),
+        );
         const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
 
         const registry = new Registry(defaultRegistryTypes);
@@ -513,21 +562,39 @@ describe('BridgeAdapter', () => {
                 nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
             },
         };
-        const userWallet = blockchain.provider(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'));
+        const userWallet = blockchain.provider(
+            Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
+        );
 
         const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
 
         console.log(
-            BigInt('0x' + beginCell().storeAddress(bridgeJettonWalletSrcTon.address).endCell().hash().toString('hex')),
-        );
-        console.log(
-            BigInt('0x' + beginCell().storeAddress(jettonMinterSrcTon.address).endCell().hash().toString('hex')),
+            BigInt(
+                '0x' +
+                    beginCell()
+                        .storeAddress(bridgeJettonWalletSrcTon.address)
+                        .endCell()
+                        .hash()
+                        .toString('hex'),
+            ),
         );
         console.log(
             BigInt(
                 '0x' +
                     beginCell()
-                        .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
+                        .storeAddress(jettonMinterSrcTon.address)
+                        .endCell()
+                        .hash()
+                        .toString('hex'),
+            ),
+        );
+        console.log(
+            BigInt(
+                '0x' +
+                    beginCell()
+                        .storeAddress(
+                            Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
+                        )
                         .endCell()
                         .hash()
                         .toString('hex'),
@@ -588,7 +655,7 @@ describe('BridgeAdapter', () => {
 
         // expect prevent exitCode
         expect(replayTx.transactions).toHaveTransaction({
-            op: crc32('op::send_tx'),
+            op: crc32('op::bridge_recv_packet'),
             exitCode: 3200,
         });
     });
@@ -606,7 +673,8 @@ describe('BridgeAdapter', () => {
             success: true,
         });
 
-        const senderBeforeBalance = (await blockchain.getContract(usdtDeployer.getSender().address)).balance;
+        const senderBeforeBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
+            .balance;
         result = await usdtDeployerJettonWallet.sendTransfer(
             usdtDeployer.getSender(),
             {
@@ -620,7 +688,9 @@ describe('BridgeAdapter', () => {
                     .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
                     .storeRef(
-                        beginCell().storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx')).endCell(),
+                        beginCell()
+                            .storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx'))
+                            .endCell(),
                     )
                     .endCell(),
             },
@@ -631,12 +701,16 @@ describe('BridgeAdapter', () => {
         );
         printTransactionFees(result.transactions);
 
-        console.log('Bridge adapter balance:', (await blockchain.getContract(bridgeAdapter.address)).balance);
+        console.log(
+            'Bridge adapter balance:',
+            (await blockchain.getContract(bridgeAdapter.address)).balance,
+        );
         expect(result.transactions).toHaveTransaction({
             op: BridgeAdapterOpcodes.callbackDenom,
             success: true,
         });
-        const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address)).balance;
+        const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
+            .balance;
         expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
     });
 
@@ -646,7 +720,9 @@ describe('BridgeAdapter', () => {
             const height = 25370955;
             const txs = await updateBlock(height, relayer);
             const chosenIndex = 0; // hardcode the txs with custom memo
-            const leaves = txs.map((tx: string) => createHash('sha256').update(Buffer.from(tx, 'base64')).digest());
+            const leaves = txs.map((tx: string) =>
+                createHash('sha256').update(Buffer.from(tx, 'base64')).digest(),
+            );
             const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
 
             const registry = new Registry(defaultRegistryTypes);
@@ -674,7 +750,12 @@ describe('BridgeAdapter', () => {
             );
             const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
             const wallet = blockchain.openContract(userJettonWalletBalance);
-            console.log(BigInt('0x' + beginCell().storeAddress(wallet.address).endCell().hash().toString('hex')));
+            console.log(
+                BigInt(
+                    '0x' +
+                        beginCell().storeAddress(wallet.address).endCell().hash().toString('hex'),
+                ),
+            );
 
             const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
 

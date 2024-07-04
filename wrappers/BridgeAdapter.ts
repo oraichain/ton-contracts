@@ -79,7 +79,7 @@ export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
 }
 
 export const BridgeAdapterOpcodes = {
-    sendTx: crc32('op::send_tx'),
+    sendTx: crc32('op::bridge_recv_packet'),
     confirmTx: crc32('op::confirm_tx'),
     callbackDenom: crc32('op::callback_denom'),
 };
@@ -121,7 +121,10 @@ export class BridgeAdapter implements Contract {
                 .storeRef(beginCell().storeBuffer(Buffer.from(signature)).endCell())
                 .endCell();
             if (!signatureCell) {
-                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+                signatureCell = beginCell()
+                    .storeRef(beginCell().endCell())
+                    .storeRef(cell)
+                    .endCell();
             } else {
                 signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
             }
