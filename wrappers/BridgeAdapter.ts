@@ -82,6 +82,7 @@ export const BridgeAdapterOpcodes = {
     bridgeRecvPacket: crc32('op::bridge_recv_packet'),
     onRecvPacket: crc32('op::on_recv_packet'),
     callbackDenom: crc32('op::callback_denom'),
+    bridgeTon: crc32('op::bridge_ton'),
 };
 
 export const Src = {
@@ -93,6 +94,12 @@ export interface BridgeRecvPacket {
     proofs: Cell;
     packet: Cell;
     provenHeight: number;
+}
+
+export interface BridgeTon {
+    amount: bigint;
+    timeout: bigint;
+    memo: Cell;
 }
 
 export class BridgeAdapter implements Contract {
@@ -126,6 +133,24 @@ export class BridgeAdapter implements Contract {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             ...ops,
             body: beginCell().endCell(),
+        });
+    }
+
+    async sendBridgeTon(provider: ContractProvider, via: Sender, data: BridgeTon, ops: ValueOps) {
+        const body = beginCell()
+            .storeCoins(data.amount)
+            .storeUint(data.timeout, 64)
+            .storeRef(data.memo)
+            .endCell();
+
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
+            body: beginCell()
+                .storeUint(BridgeAdapterOpcodes.bridgeTon, 32)
+                .storeUint(ops.queryId || 0, 64)
+                .storeRef(body)
+                .endCell(),
         });
     }
 

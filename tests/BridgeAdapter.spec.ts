@@ -354,6 +354,31 @@ describe('BridgeAdapter', () => {
         });
     });
 
+    it('try bridge ton to cosmos', async () => {
+        const bridger = await blockchain.treasury('bridger');
+        let result = await bridgeAdapter.sendBridgeTon(
+            bridger.getSender(),
+            {
+                amount: toNano(5),
+                memo: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(
+                        beginCell()
+                            .storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx'))
+                            .endCell(),
+                    )
+                    .endCell(),
+                timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
+            },
+            {
+                value: toNano(7),
+            },
+        );
+        printTransactionFees(result.transactions);
+    });
+
     // it('Test send jetton token from ton to bridge adapter', async () => {
     //     let result = await whitelistDenom.sendSetDenom(
     //         deployer.getSender(),
