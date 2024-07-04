@@ -1,5 +1,5 @@
 #include "imports/stdlib.fc";
-#include "static/op_codes.fc";
+#include "whitelist/opcodes.fc";
 #include "common/messages.fc";
 #include "common/address.fc";
 #include "static/errors.fc";

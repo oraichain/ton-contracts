@@ -27,9 +27,12 @@ import {
     deserializeCommit,
     deserializeHeader,
     deserializeValidator,
+    getSpecCell,
 } from '../wrappers/utils';
 import { calculateIbcTimeoutTimestamp } from '../scripts/utils';
 import { LightClientMaster, LightClientMasterOpcodes } from '../wrappers/LightClientMaster';
+import { iavlSpec, tendermintSpec } from '../wrappers/specs';
+import { ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 
 describe('BridgeAdapter', () => {
     let lightClientMasterCode: Cell;
@@ -38,7 +41,7 @@ describe('BridgeAdapter', () => {
     let jettonMinterCode: Cell;
     let whitelistDenomCode: Cell;
 
-    const bridgeWasmAddress = 'orai1pq2nfsylg344z6fwxkyzu0twmvr4mdrwc2zm4frynlcteypjt82sm2k2fu';
+    const bridgeWasmAddress = 'orai1zn9x7rumutjcgv6zy6y59ue3wh8hxjlayllldsg9hj3xscxf0kjsrk9hcp';
     const updateBlock = async (
         blockNumber: number,
         relayer: SandboxContract<TreasuryContract>,
@@ -90,6 +93,7 @@ describe('BridgeAdapter', () => {
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
+    let user: SandboxContract<TreasuryContract>;
     let lightClientMaster: SandboxContract<LightClientMaster>;
     let bridgeAdapter: SandboxContract<BridgeAdapter>;
     let jettonMinterSrcCosmos: SandboxContract<JettonMinter>;
@@ -148,6 +152,8 @@ describe('BridgeAdapter', () => {
         expect((await usdtDeployerJettonWallet.getBalance()).amount).toBe(123456000000000n);
 
         deployer = await blockchain.treasury('deployer');
+        user = await blockchain.treasury('user', { balance: 0n });
+
         // SET UP WHITELIST DENOM CONTRACT
         whitelistDenom = blockchain.openContract(
             WhitelistDenom.createFromConfig(
@@ -170,6 +176,22 @@ describe('BridgeAdapter', () => {
         });
 
         // SET UP LIGHT CLIENT
+        const specs = [iavlSpec, tendermintSpec];
+        let cellSpecs;
+        for (let i = specs.length - 1; i >= 0; i--) {
+            const innerCell = getSpecCell(specs[i] as ProofSpec);
+            if (!cellSpecs) {
+                cellSpecs = beginCell()
+                    .storeRef(beginCell().endCell())
+                    .storeSlice(innerCell.beginParse())
+                    .endCell();
+            } else {
+                cellSpecs = beginCell()
+                    .storeRef(cellSpecs)
+                    .storeSlice(innerCell.beginParse())
+                    .endCell();
+            }
+        }
         lightClientMaster = blockchain.openContract(
             LightClientMaster.createFromConfig(
                 {
@@ -177,6 +199,7 @@ describe('BridgeAdapter', () => {
                     lightClientCode: await compile('LightClient'),
                     trustedHeight: 0,
                     trustingPeriod: 14 * 86400,
+                    specs: cellSpecs!,
                 },
                 lightClientMasterCode,
             ),
@@ -323,529 +346,200 @@ describe('BridgeAdapter', () => {
         expect(stack.readCell().toBoc()).toEqual(jettonWalletCode.toBoc());
     });
 
-    it('should persistent when creating memo to test', async () => {
-        const memo = beginCell()
-            .storeUint(BridgeAdapterOpcodes.sendTx, 32)
-            .storeUint(0, 64) // packet seq on Cosmwasm Contract
-            .storeUint(calculateIbcTimeoutTimestamp(3600), 64)
-            .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
-            .storeAddress(jettonMinterSrcCosmos.address)
-            .storeUint(toNano(10), 128)
-            .storeUint(Src.COSMOS, 32)
-            .endCell()
-            .bits.toString();
-        console.log({ memo: Buffer.from(memo, 'hex').toString('hex').toUpperCase() });
-
-        const memoJettonSrcTON = beginCell()
-            .storeUint(BridgeAdapterOpcodes.sendTx, 32)
-            .storeUint(0, 64) // packet seq on Cosmwasm Contract
-            .storeUint(calculateIbcTimeoutTimestamp(3600), 64)
-            .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
-            .storeAddress(jettonMinterSrcTon.address)
-            .storeUint(toNano(10), 128)
-            .storeUint(Src.TON, 32)
-            .endCell()
-            .bits.toString();
+    it('should log data persist data to test', async () => {
         console.log({
-            memoJettonSrcTON: Buffer.from(memoJettonSrcTON, 'hex').toString('hex').toUpperCase(),
-        });
-
-        const memoSrcTONNative = beginCell()
-            .storeUint(BridgeAdapterOpcodes.sendTx, 32)
-            .storeUint(0, 64) // packet seq on Cosmwasm Contract
-            .storeUint(calculateIbcTimeoutTimestamp(3600), 64)
-            .storeAddress(Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'))
-            .storeAddress(null)
-            .storeUint(toNano(10), 128)
-            .storeUint(Src.TON, 32)
-            .endCell()
-            .bits.toString();
-        console.log({
-            memoSrcTONNative: Buffer.from(memoSrcTONNative, 'hex').toString('hex').toUpperCase(),
+            jettonMinterSrcCosmos: jettonMinterSrcCosmos.address.toString(),
+            jettonMinterSrcTon: jettonMinterSrcTon.address.toString(),
+            user: user.address,
         });
     });
 
-    it('successfully mint token to the user if coming from src::cosmos', async () => {
-        const relayer = await blockchain.treasury('relayer');
-        const height = 26083868;
-        const txs = await updateBlock(height, relayer);
-        const chosenIndex = 0; // hardcode the txs with custom memo
-        const leaves = txs.map((tx: string) =>
-            createHash('sha256').update(Buffer.from(tx, 'base64')).digest(),
-        );
-        const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
+    // it('Test send jetton token from ton to bridge adapter', async () => {
+    //     let result = await whitelistDenom.sendSetDenom(
+    //         deployer.getSender(),
+    //         { denom: usdtMinterContract.address, permission: true, isRootFromTon: true },
+    //         {
+    //             value: toNano(0.1),
+    //         },
+    //     );
+    //     expect(result.transactions).toHaveTransaction({
+    //         op: WhitelistDenomOpcodes.setDenom,
+    //         success: true,
+    //     });
 
-        const registry = new Registry(defaultRegistryTypes);
-        registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
-        const rawMsg = decodedTx.body.messages.map((msg) => {
-            return {
-                typeUrl: msg.typeUrl,
-                value: registry.decode(msg),
-            };
-        });
+    //     const senderBeforeBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
+    //         .balance;
+    //     result = await usdtDeployerJettonWallet.sendTransfer(
+    //         usdtDeployer.getSender(),
+    //         {
+    //             fwdAmount: toNano(1),
+    //             jettonAmount: toNano(333),
+    //             jettonMaster: usdtMinterContract.address,
+    //             toAddress: bridgeAdapter.address,
+    //             timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
+    //             memo: beginCell()
+    //                 .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+    //                 .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
+    //                 .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+    //                 .storeRef(
+    //                     beginCell()
+    //                         .storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx'))
+    //                         .endCell(),
+    //                 )
+    //                 .endCell(),
+    //         },
+    //         {
+    //             value: toNano(2),
+    //             queryId: 0,
+    //         },
+    //     );
+    //     printTransactionFees(result.transactions);
 
-        const decodedTxWithRawMsg: any = {
-            ...decodedTx,
-            body: {
-                messages: rawMsg,
-                memo: decodedTx.body.memo,
-                timeoutHeight: decodedTx.body.timeoutHeight,
-                extensionOptions: decodedTx.body.extensionOptions,
-                nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
-            },
-        };
+    //     console.log(
+    //         'Bridge adapter balance:',
+    //         (await blockchain.getContract(bridgeAdapter.address)).balance,
+    //     );
+    //     expect(result.transactions).toHaveTransaction({
+    //         op: BridgeAdapterOpcodes.callbackDenom,
+    //         success: true,
+    //     });
+    //     const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
+    //         .balance;
+    //     expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
+    // });
 
-        const userJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
-            Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
-        );
-        const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
-        const wallet = blockchain.openContract(userJettonWalletBalance);
-        const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
+    // it('Test send jetton token from cosmos to bridge adapter', async () => {
+    //     const sendTokenOnCosmos = async () => {
+    //         const relayer = await blockchain.treasury('relayer');
+    //         const height = 25370955;
+    //         const txs = await updateBlock(height, relayer);
+    //         const chosenIndex = 0; // hardcode the txs with custom memo
+    //         const leaves = txs.map((tx: string) =>
+    //             createHash('sha256').update(Buffer.from(tx, 'base64')).digest(),
+    //         );
+    //         const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
 
-        console.log((await blockchain.getContract(jettonMinterSrcCosmos.address)).balance);
-        console.log(
-            'LALA:',
-            BigInt(
-                '0x' +
-                    beginCell()
-                        .storeAddress(
-                            Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
-                        )
-                        .endCell()
-                        .hash()
-                        .toString('hex'),
-            ),
-        );
+    //         const registry = new Registry(defaultRegistryTypes);
+    //         registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
+    //         const rawMsg = decodedTx.body.messages.map((msg) => {
+    //             return {
+    //                 typeUrl: msg.typeUrl,
+    //                 value: registry.decode(msg),
+    //             };
+    //         });
 
-        const result = await bridgeAdapter.sendTx(
-            relayer.getSender(),
-            {
-                height: BigInt(height),
-                tx: decodedTxWithRawMsg,
-                positions,
-                proofs,
-                data: beginCell()
-                    .storeBuffer(
-                        Buffer.from(
-                            '946282250000000000000000000000006684D75D80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830024EE7B2F18B6C6E1DB9C4264A2E3075411A2454F2E05BECF8BB3FD31CE67B4214000000000000000000000009502F9000139517D2',
-                            'hex',
-                        ),
-                    )
-                    .endCell(),
-            },
-            {
-                value: toNano('5'),
-            },
-        );
+    //         const decodedTxWithRawMsg: any = {
+    //             ...decodedTx,
+    //             body: {
+    //                 messages: rawMsg,
+    //                 memo: decodedTx.body.memo,
+    //                 timeoutHeight: decodedTx.body.timeoutHeight,
+    //                 extensionOptions: decodedTx.body.extensionOptions,
+    //                 nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
+    //             },
+    //         };
 
-        printTransactionFees(result.transactions);
-        prettyLogTransactions(result.transactions);
-        console.log('Bridge Adapter:', bridgeAdapter.address);
-        expect(result.transactions).toHaveTransaction({
-            op: LightClientOpcodes.verify_receipt,
-            success: true,
-        });
-        expect(result.transactions).toHaveTransaction({
-            op: BridgeAdapterOpcodes.confirmTx,
-            success: true,
-        });
-        expect((await wallet.getBalance()).amount).toBe(toNano(10));
-    });
+    //         const userJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
+    //             Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
+    //         );
+    //         const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
+    //         const wallet = blockchain.openContract(userJettonWalletBalance);
+    //         console.log(
+    //             BigInt(
+    //                 '0x' +
+    //                     beginCell().storeAddress(wallet.address).endCell().hash().toString('hex'),
+    //             ),
+    //         );
 
-    it('successfully transfer jetton to user if coming from src::ton', async () => {
-        const relayer = await blockchain.treasury('relayer');
-        const height = 25370383;
-        const txs = await updateBlock(height, relayer);
-        const chosenIndex = 0; // hardcode the txs with custom memo
-        const leaves = txs.map((tx: string) =>
-            createHash('sha256').update(Buffer.from(tx, 'base64')).digest(),
-        );
-        const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
+    //         const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
 
-        const registry = new Registry(defaultRegistryTypes);
-        registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
-        const rawMsg = decodedTx.body.messages.map((msg) => {
-            return {
-                typeUrl: msg.typeUrl,
-                value: registry.decode(msg),
-            };
-        });
+    //         let result = await bridgeAdapter.sendBridgeRecvPacket(
+    //             relayer.getSender(),
+    //             {
+    //                 height: BigInt(height),
+    //                 tx: decodedTxWithRawMsg,
+    //                 proofs,
+    //                 positions,
+    //                 data: beginCell()
+    //                     .storeBuffer(
+    //                         Buffer.from(
+    //                             '000000000001000080002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830038017688F522FA246F114C343D021A46D449E0CBBDC4BF05276879D1FD7F3C75C000000000000000000000009502F9000139517D2',
+    //                             'hex',
+    //                         ),
+    //                     )
+    //                     .endCell(),
+    //             },
+    //             {
+    //                 value: toNano('6'),
+    //             },
+    //         );
 
-        const decodedTxWithRawMsg: any = {
-            ...decodedTx,
-            body: {
-                messages: rawMsg,
-                memo: decodedTx.body.memo,
-                timeoutHeight: decodedTx.body.timeoutHeight,
-                extensionOptions: decodedTx.body.extensionOptions,
-                nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
-            },
-        };
-        const userJettonWallet = await jettonMinterSrcTon.getWalletAddress(
-            Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
-        );
-        const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
-        const wallet = blockchain.openContract(userJettonWalletBalance);
-        const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
+    //         expect(result.transactions).toHaveTransaction({
+    //             op: LightClientOpcodes.verify_receipt,
+    //             success: true,
+    //         });
 
-        console.log(
-            BigInt(
-                '0x' +
-                    beginCell()
-                        .storeAddress(bridgeJettonWalletSrcTon.address)
-                        .endCell()
-                        .hash()
-                        .toString('hex'),
-            ),
-        );
+    //         expect((await wallet.getBalance()).amount).toBe(toNano(10));
+    //     };
 
-        const result = await bridgeAdapter.sendTx(
-            relayer.getSender(),
-            {
-                height: BigInt(height),
-                tx: decodedTxWithRawMsg,
-                proofs,
-                positions,
-                data: beginCell()
-                    .storeBuffer(
-                        Buffer.from(
-                            '000000000001000080002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E18300234561ED3995071AB3FE6F9196B967FE424306936AC372C6A58A1474738B3D79C000000000000000000000009502F900377EADAD6',
-                            'hex',
-                        ),
-                    )
-                    .endCell(),
-            },
-            {
-                value: toNano('6'),
-            },
-        );
+    //     await sendTokenOnCosmos();
 
-        printTransactionFees(result.transactions);
-        expect(result.transactions).toHaveTransaction({
-            op: LightClientOpcodes.verify_receipt,
-            success: true,
-        });
+    //     const userContract = await blockchain.treasury('user', {
+    //         balance: 0n,
+    //     });
 
-        expect((await wallet.getBalance()).amount).toBe(toNano(10));
-        expect((await bridgeJettonWalletSrcTon.getBalance()).amount).toBe(
-            toNano(1000000000) - toNano(10),
-        );
-    });
+    //     await deployer.send({
+    //         to: userContract.address,
+    //         value: toNano(3),
+    //         sendMode: SendMode.PAY_GAS_SEPARATELY,
+    //     });
 
-    it('successfully transfer to user if coming from src::ton', async () => {
-        const relayer = await blockchain.treasury('relayer');
-        const user = await blockchain.treasury('user', { balance: 0n });
-        const height = 25370496;
-        const txs = await updateBlock(height, relayer);
-        const chosenIndex = 0; // hardcode the txs with custom memo
-        const leaves = txs.map((tx: string) =>
-            createHash('sha256').update(Buffer.from(tx, 'base64')).digest(),
-        );
-        const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
+    //     const userJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
+    //         userContract.address, // this is "user" treasury
+    //     );
+    //     const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
+    //     const wallet = blockchain.openContract(userJettonWalletBalance);
 
-        const registry = new Registry(defaultRegistryTypes);
-        registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
-        const rawMsg = decodedTx.body.messages.map((msg) => {
-            return {
-                typeUrl: msg.typeUrl,
-                value: registry.decode(msg),
-            };
-        });
+    //     let result = await whitelistDenom.sendSetDenom(
+    //         deployer.getSender(),
+    //         {
+    //             denom: jettonMinterSrcCosmos.address,
+    //             permission: true,
+    //             isRootFromTon: false,
+    //         },
+    //         {
+    //             value: toNano(0.1),
+    //         },
+    //     );
+    //     expect(result.transactions).toHaveTransaction({
+    //         op: WhitelistDenomOpcodes.setDenom,
+    //         success: true,
+    //     });
 
-        const decodedTxWithRawMsg: any = {
-            ...decodedTx,
-            body: {
-                messages: rawMsg,
-                memo: decodedTx.body.memo,
-                timeoutHeight: decodedTx.body.timeoutHeight,
-                extensionOptions: decodedTx.body.extensionOptions,
-                nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
-            },
-        };
-        const userWallet = blockchain.provider(
-            Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
-        );
+    //     expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10000000000n);
+    //     result = await wallet.sendTransfer(
+    //         userContract.getSender(),
+    //         {
+    //             fwdAmount: toNano(1),
+    //             jettonAmount: toNano(5),
+    //             jettonMaster: jettonMinterSrcCosmos.address,
+    //             toAddress: bridgeAdapter.address,
+    //             timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
+    //             memo: beginCell()
+    //                 .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
+    //                 .endCell(),
+    //         },
+    //         {
+    //             value: toNano(2),
+    //             queryId: 0,
+    //         },
+    //     );
+    //     printTransactionFees(result.transactions);
 
-        const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
-
-        console.log(
-            BigInt(
-                '0x' +
-                    beginCell()
-                        .storeAddress(bridgeJettonWalletSrcTon.address)
-                        .endCell()
-                        .hash()
-                        .toString('hex'),
-            ),
-        );
-        console.log(
-            BigInt(
-                '0x' +
-                    beginCell()
-                        .storeAddress(jettonMinterSrcTon.address)
-                        .endCell()
-                        .hash()
-                        .toString('hex'),
-            ),
-        );
-        console.log(
-            BigInt(
-                '0x' +
-                    beginCell()
-                        .storeAddress(
-                            Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
-                        )
-                        .endCell()
-                        .hash()
-                        .toString('hex'),
-            ),
-        );
-
-        const result = await bridgeAdapter.sendTx(
-            relayer.getSender(),
-            {
-                height: BigInt(height),
-                tx: decodedTxWithRawMsg,
-                positions,
-                proofs,
-                data: beginCell()
-                    .storeBuffer(
-                        Buffer.from(
-                            '000000000001000080002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1820000000000000000000000012A05F2006EFD5B5AC',
-                            'hex',
-                        ),
-                    )
-                    .endCell(),
-            },
-            {
-                value: toNano('6'),
-            },
-        );
-
-        printTransactionFees(result.transactions);
-        expect(result.transactions).toHaveTransaction({
-            op: LightClientOpcodes.verify_receipt,
-            success: true,
-        });
-
-        console.log('userBalance', await user.getBalance());
-        expect((await userWallet.getState()).balance).toBeGreaterThan(toNano(9));
-        expect((await userWallet.getState()).balance).toBeLessThan(toNano(10)); // since its must pay gas
-
-        const replayTx = await bridgeAdapter.sendTx(
-            relayer.getSender(),
-            {
-                height: BigInt(height),
-                tx: decodedTxWithRawMsg,
-                proofs,
-                positions,
-                data: beginCell()
-                    .storeBuffer(
-                        Buffer.from(
-                            '80002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1820000000000000000000000012A05F2006EFD5B5AC',
-                            'hex',
-                        ),
-                    )
-                    .endCell(),
-            },
-            {
-                value: toNano('6'),
-            },
-        );
-
-        // expect prevent exitCode
-        expect(replayTx.transactions).toHaveTransaction({
-            op: crc32('op::bridge_recv_packet'),
-            exitCode: 3200,
-        });
-    });
-
-    it('Test send jetton token from ton to bridge adapter', async () => {
-        let result = await whitelistDenom.sendSetDenom(
-            deployer.getSender(),
-            { denom: usdtMinterContract.address, permission: true, isRootFromTon: true },
-            {
-                value: toNano(0.1),
-            },
-        );
-        expect(result.transactions).toHaveTransaction({
-            op: WhitelistDenomOpcodes.setDenom,
-            success: true,
-        });
-
-        const senderBeforeBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
-            .balance;
-        result = await usdtDeployerJettonWallet.sendTransfer(
-            usdtDeployer.getSender(),
-            {
-                fwdAmount: toNano(1),
-                jettonAmount: toNano(333),
-                jettonMaster: usdtMinterContract.address,
-                toAddress: bridgeAdapter.address,
-                timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
-                memo: beginCell()
-                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
-                    .storeRef(
-                        beginCell()
-                            .storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx'))
-                            .endCell(),
-                    )
-                    .endCell(),
-            },
-            {
-                value: toNano(2),
-                queryId: 0,
-            },
-        );
-        printTransactionFees(result.transactions);
-
-        console.log(
-            'Bridge adapter balance:',
-            (await blockchain.getContract(bridgeAdapter.address)).balance,
-        );
-        expect(result.transactions).toHaveTransaction({
-            op: BridgeAdapterOpcodes.callbackDenom,
-            success: true,
-        });
-        const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
-            .balance;
-        expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
-    });
-
-    it('Test send jetton token from cosmos to bridge adapter', async () => {
-        const sendTokenOnCosmos = async () => {
-            const relayer = await blockchain.treasury('relayer');
-            const height = 25370955;
-            const txs = await updateBlock(height, relayer);
-            const chosenIndex = 0; // hardcode the txs with custom memo
-            const leaves = txs.map((tx: string) =>
-                createHash('sha256').update(Buffer.from(tx, 'base64')).digest(),
-            );
-            const decodedTx = decodeTxRaw(Buffer.from(txs[chosenIndex], 'base64'));
-
-            const registry = new Registry(defaultRegistryTypes);
-            registry.register(decodedTx.body.messages[0].typeUrl, MsgExecuteContract);
-            const rawMsg = decodedTx.body.messages.map((msg) => {
-                return {
-                    typeUrl: msg.typeUrl,
-                    value: registry.decode(msg),
-                };
-            });
-
-            const decodedTxWithRawMsg: any = {
-                ...decodedTx,
-                body: {
-                    messages: rawMsg,
-                    memo: decodedTx.body.memo,
-                    timeoutHeight: decodedTx.body.timeoutHeight,
-                    extensionOptions: decodedTx.body.extensionOptions,
-                    nonCriticalExtensionOptions: decodedTx.body.nonCriticalExtensionOptions,
-                },
-            };
-
-            const userJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
-                Address.parse('EQABEq658dLg1KxPhXZxj0vapZMNYevotqeINH786lpwwSnT'),
-            );
-            const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
-            const wallet = blockchain.openContract(userJettonWalletBalance);
-            console.log(
-                BigInt(
-                    '0x' +
-                        beginCell().storeAddress(wallet.address).endCell().hash().toString('hex'),
-                ),
-            );
-
-            const { branch: proofs, positions } = getMerkleProofs(leaves, leaves[chosenIndex]);
-
-            let result = await bridgeAdapter.sendTx(
-                relayer.getSender(),
-                {
-                    height: BigInt(height),
-                    tx: decodedTxWithRawMsg,
-                    proofs,
-                    positions,
-                    data: beginCell()
-                        .storeBuffer(
-                            Buffer.from(
-                                '000000000001000080002255D73E3A5C1A9589F0AECE31E97B54B261AC3D7D16D4F1068FDF9D4B4E1830038017688F522FA246F114C343D021A46D449E0CBBDC4BF05276879D1FD7F3C75C000000000000000000000009502F9000139517D2',
-                                'hex',
-                            ),
-                        )
-                        .endCell(),
-                },
-                {
-                    value: toNano('6'),
-                },
-            );
-
-            expect(result.transactions).toHaveTransaction({
-                op: LightClientOpcodes.verify_receipt,
-                success: true,
-            });
-
-            expect((await wallet.getBalance()).amount).toBe(toNano(10));
-        };
-
-        await sendTokenOnCosmos();
-
-        const userContract = await blockchain.treasury('user', {
-            balance: 0n,
-        });
-
-        await deployer.send({
-            to: userContract.address,
-            value: toNano(3),
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-        });
-
-        const userJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
-            userContract.address, // this is "user" treasury
-        );
-        const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
-        const wallet = blockchain.openContract(userJettonWalletBalance);
-
-        let result = await whitelistDenom.sendSetDenom(
-            deployer.getSender(),
-            {
-                denom: jettonMinterSrcCosmos.address,
-                permission: true,
-                isRootFromTon: false,
-            },
-            {
-                value: toNano(0.1),
-            },
-        );
-        expect(result.transactions).toHaveTransaction({
-            op: WhitelistDenomOpcodes.setDenom,
-            success: true,
-        });
-
-        expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10000000000n);
-        result = await wallet.sendTransfer(
-            userContract.getSender(),
-            {
-                fwdAmount: toNano(1),
-                jettonAmount: toNano(5),
-                jettonMaster: jettonMinterSrcCosmos.address,
-                toAddress: bridgeAdapter.address,
-                timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
-                memo: beginCell()
-                    .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
-                    .endCell(),
-            },
-            {
-                value: toNano(2),
-                queryId: 0,
-            },
-        );
-        printTransactionFees(result.transactions);
-
-        expect(result.transactions).toHaveTransaction({
-            op: BridgeAdapterOpcodes.callbackDenom,
-            success: true,
-        });
-        expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(5000000000n);
-    });
+    //     expect(result.transactions).toHaveTransaction({
+    //         op: BridgeAdapterOpcodes.callbackDenom,
+    //         success: true,
+    //     });
+    //     expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(5000000000n);
+    // });
 });

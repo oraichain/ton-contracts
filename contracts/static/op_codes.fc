@@ -1,20 +1,12 @@
 const log::verify_receipt = 1;
 const log::confirm_tx = 2;
 
-
-
 ;; Minter
 int op::mint() asm "21 PUSHINT";
 const cosmos = "src::cosmos"c;
 
 ;; Burner
 int op::burn() asm "0x595f07bc PUSHINT";
-
-;; Whitelist Denom
-const op::set_admin_address = "op::set_admin_address"c;
-const op::set_denom = "op::set_denom"c;
-const op::query_denom = "op::query_denom"c;
-const op::callback_denom = "op::callback_denom"c;
 
 ;; packet prefix
 const op::timeout_send_packet = "op::timeout_send_packet"c;

@@ -12,42 +12,11 @@ import {
 } from '../wrappers/utils';
 import { HashOp, LengthOp, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { crc32 } from '../crc32';
+import { iavlSpec, tendermintSpec } from '../wrappers/specs';
 
 describe('LightClientMaster', () => {
     let code: Cell;
-    const iavlSpec = {
-        leafSpec: {
-            prefix: Uint8Array.from([0]),
-            hash: HashOp.SHA256,
-            prehashValue: HashOp.SHA256,
-            prehashKey: HashOp.NO_HASH,
-            length: LengthOp.VAR_PROTO,
-        },
-        innerSpec: {
-            childOrder: [0, 1],
-            minPrefixLength: 4,
-            maxPrefixLength: 12,
-            childSize: 33,
-            hash: HashOp.SHA256,
-        },
-    };
 
-    const tendermintSpec = {
-        leafSpec: {
-            prefix: Uint8Array.from([0]),
-            hash: HashOp.SHA256,
-            prehashValue: HashOp.SHA256,
-            prehashKey: HashOp.NO_HASH,
-            length: LengthOp.VAR_PROTO,
-        },
-        innerSpec: {
-            childOrder: [0, 1],
-            minPrefixLength: 1,
-            maxPrefixLength: 1,
-            childSize: 32,
-            hash: HashOp.SHA256,
-        },
-    };
     beforeAll(async () => {
         code = await compile('LightClientMaster');
     });
