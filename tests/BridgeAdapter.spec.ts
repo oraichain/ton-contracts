@@ -399,8 +399,8 @@ describe('BridgeAdapter', () => {
             .endCell();
         const packet_cell = packet.hash();
         console.log(packet_cell.toString('base64'));
-        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
-        const queryClient = new QueryClient(tendermint37 as any);
+        // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await getPacketProofs(
         //     queryClient,
         //     'orai1f3sgqnj7z7sk7fwak3wa6kx7xlamzmdqse3a886rpvtg9pl2xrxqtffnk6',

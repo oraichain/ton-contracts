@@ -4,3 +4,4 @@ const op::ack_refund = "op::ack_refund"c;
 const op::ack_timeout = "op::timeout_send_packet"c;
 const op::send_to_cosmos = "op::send_to_cosmos"c;
 const op::timeout_send_packet = "op::timeout_send_packet"c;
+const op::bridge_ton = "op::bridge_ton"c;

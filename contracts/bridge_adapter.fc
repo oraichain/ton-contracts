@@ -278,6 +278,44 @@ global cell counterparty_seq_receipt;
         return ();
     }
 
+    if (op == op::bridge_ton) {
+        int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
+        slice ds = in_msg_body~load_ref().begin_parse();
+        int min_ton_for_execute = 20000000;
+        int amount = ds~load_coins();
+        int timeout = ds~load_uint(64);
+        cell memo = ds~load_ref();
+        throw_unless(error::invalid_native_amount, msg_value > amount + min_ton_for_execute);
+        int remaining_gas = msg_value - amount - min_ton_for_execute;
+        
+        cell emit_data = begin_cell()
+                            .store_uint(op::send_to_cosmos, 32)
+                            .store_uint(next_packet_seq, 64)
+                            .store_uint(timeout, 64)
+                            .store_uint(0, 2)
+                            .store_slice(sender_address)
+                            .store_uint(0, 16) ;; channel-id => update soon when have this feature
+                            .store_coins(amount)
+                            .store_ref(memo)
+                            .end_cell();
+        next_packet_seq = next_packet_seq + 1;
+
+        emit_log_simple(my_address().slice_hash(), emit_data, query_id);
+
+        var msg = begin_cell()
+            .store_uint(0x10, 6)
+            .store_slice(sender_address)
+            .store_coins(remaining_gas)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op::excesses(), 32)
+            .store_uint(query_id, 64);
+        send_raw_message(msg.end_cell(), IGNORE_ERRORS + NORMAL);
+        
+        save_data();
+        return ();
+    }
+
+
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
 }
 
