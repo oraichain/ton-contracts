@@ -28,6 +28,7 @@
 #include "utils/helper.fc";
 #include "ics23/proof.fc";
 #include "ics23/key.fc";
+#include "bridge_adapter/helper.fc";
 
 ;; storage variables
 
@@ -360,11 +361,11 @@ int verify_tx(slice ds) method_id {
 }
 
 int memo_parse(slice ds) method_id {
-    ~dump(ds~load_msg_addr());
-    ~dump(ds~load_msg_addr());
-    ~dump(ds~load_uint(128));
-    ~dump(ds~load_uint(32));
-    ~dump(src::cosmos);
+    ;; ~dump(ds~load_msg_addr());
+    ;; ~dump(ds~load_msg_addr());
+    ;; ~dump(ds~load_uint(128));
+    ;; ~dump(ds~load_uint(32));
+    ;; ~dump(src::cosmos);
     return 1;
 }
 
@@ -424,4 +425,12 @@ slice get_commitment_path(slice ds) method_id {
                                 .store_uint(0x03, 8)
                                 .store_slice(contract);
     return packet_commitment_path(contract_path, namespace, sequence).end_cell().begin_parse();
+}
+
+slice get_int_to_string(int number) method_id {
+    return number.int_to_string().end_cell().begin_parse();
+}
+
+slice get_packet_commitment(int number) method_id {
+    return number.packet_commitment().end_cell().begin_parse();
 }

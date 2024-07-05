@@ -8,8 +8,6 @@ const cosmos = "src::cosmos"c;
 ;; Burner
 int op::burn() asm "0x595f07bc PUSHINT";
 
-;; packet prefix
-const op::timeout_send_packet = "op::timeout_send_packet"c;
 
 
 

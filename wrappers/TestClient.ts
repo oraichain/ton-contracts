@@ -1489,6 +1489,28 @@ export class TestClient implements Contract {
 
         return result.stack.readBuffer();
     }
+
+    async getIntToString(provider: ContractProvider, number: bigint) {
+        const result = await provider.get('get_int_to_string', [
+            {
+                type: 'int',
+                value: number,
+            },
+        ]);
+
+        return result.stack.readBuffer();
+    }
+
+    async getPacketCommitment(provider: ContractProvider, number: bigint) {
+        const result = await provider.get('get_packet_commitment', [
+            {
+                type: 'int',
+                value: number,
+            },
+        ]);
+
+        return result.stack.readBuffer();
+    }
 }
 
 export function getAuthInfoInput(data: AuthInfo) {

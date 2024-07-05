@@ -23,6 +23,7 @@ import {
 } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { verifyMembership, calculateExistenceRoot, ics23 } from '@confio/ics23';
 import {
+    encodeNamespaces,
     getExistenceProofCell,
     getSpecCell,
     getVerifyChainedMembershipProof,
@@ -73,17 +74,6 @@ function paddingForUint256(value: string): string {
     }
     return value.padStart(64, '0');
 }
-
-const encodeNamespaces = (namespaces: Uint8Array[]): Uint8Array => {
-    const ret = [];
-    for (const ns of namespaces) {
-        const lengthBuf = Buffer.allocUnsafe(2);
-        lengthBuf.writeUInt16BE(ns.byteLength);
-        ret.push(lengthBuf);
-        ret.push(ns);
-    }
-    return Buffer.concat(ret);
-};
 
 describe('TestClient', () => {
     let code: Cell;
@@ -323,6 +313,29 @@ describe('TestClient', () => {
         await lightClient.getBuffParse(msgSlice ?? beginCell().endCell(), buffer);
     });
 
+    it('should getIntToString', async () => {
+        const result =
+            await lightClient.getIntToString(
+                52248677847378735994971370904173880278927895846726102394870472142661306263165n,
+            );
+        console.log(Uint8Array.from(Buffer.from(`"${result}"`)));
+        expect(result).toEqual(
+            52248677847378735994971370904173880278927895846726102394870472142661306263165n.toString(),
+        );
+    });
+
+    it('should getPacketCommitment', async () => {
+        const expectedResult = Buffer.from(
+            `"${52248677847378735994971370904173880278927895846726102394870472142661306263165n.toString()}"`,
+        );
+
+        const result =
+            await lightClient.getPacketCommitment(
+                52248677847378735994971370904173880278927895846726102394870472142661306263165n,
+            );
+
+        expect(Buffer.compare(result, expectedResult)).toBe(0);
+    });
     describe('ics23', () => {
         const contract = fromBech32(
             'orai15un8msx3n5zf9ahlxmfeqd2kwa5wm0nrpxer304m9nd5q6qq0g6sku5pdd',

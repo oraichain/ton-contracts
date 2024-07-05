@@ -265,7 +265,6 @@ global cell specs;
     if (op == op::proxy_forward_msg) {
         cell body = in_msg_body~load_ref();
         slice ds = body.begin_parse();
-
         int height = ds~load_uint(64);
         slice bridge_adapter_address = ds~load_msg_addr();
         cell forward_msg = ds~load_ref();

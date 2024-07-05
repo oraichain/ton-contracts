@@ -182,7 +182,6 @@ int calculate_existence_root(slice proof){
     slice value = proof~load_ref().begin_parse();
     slice leaf = proof~load_ref().begin_parse();
     slice path = proof~load_ref().begin_parse();
-  
     slice key = proof;
     throw_if(error::existence_root_empty_key_or_value, key.slice_empty?());
     throw_if(error::existence_root_empty_key_or_value, value.slice_empty?());
@@ -205,10 +204,11 @@ int verify_existance(int root, slice spec, slice proof, slice key, slice value){
     slice proof_value = cell_proof_value.begin_parse();
     slice proof_key = proof;
     int calculated_root = calculate_existence_root(proof);
+   
     if(calculated_root != root){
         return 0;
     }
-   
+    
     if((proof_key.string_hash() == key.string_hash()) != -1){
         return 0;
     }
@@ -227,7 +227,7 @@ int verify_membership(int root, slice spec, slice proof, slice key, slice value)
 
 int verify_chained_membership(int root, slice specs, slice proofs, slice keys, slice value){
     int subroot = 0;
-  
+
     while(specs.slice_refs_empty?() != -1){
         slice next_spec = specs~load_ref().begin_parse();
         slice next_proof = proofs~load_ref().begin_parse();
@@ -241,6 +241,7 @@ int verify_chained_membership(int root, slice specs, slice proofs, slice keys, s
         proofs = next_proof;
         keys = next_key;
     }
+
     if(subroot != root){
         return 0;
     }

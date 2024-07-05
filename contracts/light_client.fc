@@ -5,7 +5,6 @@
 #include "static/state.fc";
 #include "utils/validator_hash_input.fc";
 #include "utils/merkleize.fc";
-#include "utils/tx_raw.fc";
 #include "common/messages.fc";
 #include "common/address.fc";
 #include "ics23/proof.fc";
@@ -13,6 +12,7 @@
 #include "light_client/constants.fc";
 #include "light_client/errors.fc";
 #include "light_client/opcodes.fc";
+#include "bridge_adapter/helper.fc";
 
 ;; store in a header_ref
 global int height;
@@ -156,24 +156,22 @@ global slice light_client_master_address;
         slice response_address = ds~load_msg_addr();
         (cell bridge_wasm_smart_contract, cell proofs, cell data) = (ds~load_ref(), ds~load_ref(), ds~load_ref());
         slice data_cs = data.begin_parse();
-        slice seq = data_cs.preload_bits(64); 
+        int seq = data_cs.preload_uint(64); 
         ;; build merklePath
         builder contract_path = begin_cell()
                                 .store_uint(contract_store_prefix, 8)
                                 .store_slice(bridge_wasm_smart_contract.begin_parse());
-        builder keys = packet_commitment_path(contract_path, send_packet_commitment, seq);
+        builder keys = packet_commitment_path(contract_path, send_packet_commitment, seq.int_to_string().end_cell().begin_parse());
         keys = keys.append_prefix(module_prefix);
-        
-        slice commitment = begin_cell().store_uint(data.cell_hash(),256).end_cell().begin_parse();
-
-        int ack = verify_chained_membership(app_hash.preload_uint(256), proofs.begin_parse(), specs, keys.end_cell().begin_parse(), commitment);
+        slice commitment = data.cell_hash().packet_commitment().end_cell().begin_parse();
+        int is_packet_existed = verify_chained_membership(app_hash.preload_uint(256),  specs, proofs.begin_parse(), keys.end_cell().begin_parse(), commitment);
         builder forward_builder = begin_cell();
         ;; should forward to light_client_master and this master will forward light client message
         forward_builder = forward_builder
                     .store_uint(op::on_recv_packet, 32)
                     .store_uint(query_id, 64)
-                    .store_uint(ack, 1)
                     .store_ref(begin_cell()
+                        .store_uint(is_packet_existed, 1)
                         .store_slice(response_address)
                         .store_ref(data)
                         .end_cell());

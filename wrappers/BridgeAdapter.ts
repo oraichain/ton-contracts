@@ -13,6 +13,7 @@ import { getAuthInfoInput, txBodyWasmToRef } from './utils';
 import { TxWasm } from './@types';
 import { crc32 } from '../crc32';
 import { ValueOps } from './@types';
+import { fromBech32 } from '@cosmjs/encoding';
 
 export type BridgeAdapterConfig = {
     light_client_master: Address;
@@ -72,7 +73,11 @@ export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
         .storeAddress(config.light_client_master)
         .storeAddress(config.whitelist_denom)
         .storeUint(1, 64) // next_packet_seq initial value = 1
-        .storeRef(beginCell().storeBuffer(Buffer.from(config.bridge_wasm_smart_contract)).endCell())
+        .storeRef(
+            beginCell()
+                .storeBuffer(Buffer.from(fromBech32(config.bridge_wasm_smart_contract).data))
+                .endCell(),
+        )
         .storeRef(config.jetton_wallet_code)
         .storeRef(beginCell().storeDict(Dictionary.empty()).endCell()) // empty dict
         .endCell();
@@ -105,9 +110,13 @@ export class BridgeAdapter implements Contract {
         return beginCell()
             .storeUint(BridgeAdapterOpcodes.bridgeRecvPacket, 32)
             .storeUint(queryId, 64)
-            .storeUint(bridgeRecvPacketData.provenHeight, 64)
-            .storeRef(bridgeRecvPacketData.proofs)
-            .storeRef(bridgeRecvPacketData.packet)
+            .storeRef(
+                beginCell()
+                    .storeUint(bridgeRecvPacketData.provenHeight, 64)
+                    .storeRef(bridgeRecvPacketData.proofs)
+                    .storeRef(bridgeRecvPacketData.packet)
+                    .endCell(),
+            )
             .endCell();
     }
 
@@ -139,7 +148,7 @@ export class BridgeAdapter implements Contract {
 
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            ...ops,
+            value: ops.value,
             body: sendTxBody,
         });
     }

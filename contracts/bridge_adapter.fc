@@ -8,6 +8,7 @@
 #include "bridge_adapter/opcodes.fc";
 #include "bridge_adapter/errors.fc";
 #include "bridge_adapter/state.fc";
+#include "bridge_adapter/helper.fc";
 #include "light_client/opcodes.fc";
 #include "whitelist/opcodes.fc";
 
@@ -50,22 +51,33 @@ global cell counterparty_seq_receipt;
 () on_recv_packet (slice in_msg_body, int msg_value) impure {
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
     slice body = in_msg_body~load_ref().begin_parse();
+    int is_packet_existed = body~load_uint(1);
     slice response_address = body~load_msg_addr();
-
     slice data = body~load_ref().begin_parse();
-    int data_hash = data.slice_hash();
 
-    (int op_codes, int counterparty_packet_seq, int timeout, slice to, slice jetton_master, int amount, int src) = (data~load_uint(32), data~load_uint(64), data~load_uint(64), data~load_msg_addr(), data~load_msg_addr(), data~load_uint(128), data~load_uint(32));
-   
-    if (op_codes == op::ack_timeout) {
+    (int counterparty_packet_seq, int op_codes, int src, slice to, slice jetton_master, int amount, int timeout) = (data~load_uint(64), data~load_uint(32), data~load_uint(32), data~load_msg_addr(), data~load_msg_addr(), data~load_uint(128), data~load_uint(64));
+
+    if(is_packet_existed == 0){
         cell emit_data = begin_cell()
-                            .store_uint(op::ack_refund, 32)
-                            .store_uint(counterparty_packet_seq, 64)
-                            .store_uint(0, 16) ;; channel-id => update soon when have this feature
-                            .end_cell();
+                        .store_uint(is_packet_existed, 1)
+                        .store_uint(op_codes, 32)
+                        .store_uint(counterparty_packet_seq, 64)
+                        .store_uint(0, 16) ;; channel-id => update soon when have this feature
+                        .end_cell();
+                        
         emit_log_simple(my_address().slice_hash(), emit_data ,query_id);
+        return ();
     }
 
+    cell emit_data = begin_cell()
+                        .store_uint(op_codes, 32)
+                        .store_uint(is_packet_existed, 1)
+                        .store_uint(counterparty_packet_seq, 64)
+                        .store_uint(0, 16) ;; channel-id => update soon when have this feature
+                        .end_cell();
+                        
+    emit_log_simple(my_address().slice_hash(), emit_data ,query_id);
+  
     if(src == src::cosmos){
         cell mint_msg = begin_cell()
                     .store_uint(op::internal_transfer(), 32)
@@ -133,16 +145,25 @@ global cell counterparty_seq_receipt;
 
     if (op == op::bridge_recv_packet) {
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
-        int proven_height = in_msg_body~load_uint(64);
-        cell proofs = in_msg_body~load_ref();
-        cell packet = in_msg_body~load_ref(); ;; this is bit string
+        slice body = in_msg_body~load_ref().begin_parse();
+        int proven_height = body~load_uint(64);
+        cell proofs = body~load_ref();
+        cell packet = body~load_ref(); 
         slice packet_slice = packet.begin_parse();
         int timeout = packet_slice.get_timeout();
-        throw_unless(error::packet_timeout, now() < timeout);
+        if(now() >= timeout){
+            cell emit_data = begin_cell()
+                            .store_uint(op::timeout_send_packet, 32)
+                            .store_uint(packet_slice.preload_uint(64), 64)
+                            .store_uint(0, 16) ;; channel-id => update soon when have this feature
+                            .end_cell();
+            emit_log_simple(my_address().slice_hash(), emit_data ,query_id);
+            return ();
+        }
         int counterparty_packet_seq = packet_slice.preload_uint(64);
         (_, int exist) = counterparty_seq_receipt.udict_get?(64, counterparty_packet_seq);
         throw_unless(error::processed_packet, exist == 0);
-        counterparty_seq_receipt.udict_set(64, counterparty_packet_seq, packet_slice);
+        counterparty_seq_receipt~udict_set(64, counterparty_packet_seq, packet_slice);
         builder bodyBuilder = begin_cell();
         bodyBuilder = bodyBuilder 
                     .store_uint(op::receive_packet, 32)
@@ -157,13 +178,15 @@ global cell counterparty_seq_receipt;
         cell body = bodyBuilder.end_cell();
         send_simple_message(0, light_client_master, body, CARRY_REMAINING_GAS);
         ;; prune all timeout packet
-        (int key, slice packet, int flag) = counterparty_seq_receipt.udict_get_min?(256);
+        (int key, slice packet, int flag) = counterparty_seq_receipt.udict_get_min?(64);
         int current_time = now();
-        while(flags){
-             (key, packet, flag) = counterparty_seq_receipt.udict_get_next?(256, key);
-             int timeout = packet.get_timeout();
-             if(current_time >= timeout){
-                    counterparty_seq_receipt.udict_delete?(256, key);
+        while(flag){
+             (key, packet, flag) = counterparty_seq_receipt.udict_get_next?(64, key);
+             if(flag == -1) {
+                int timeout = packet.get_timeout();
+                if(current_time >= timeout){
+                    counterparty_seq_receipt.udict_delete?(64, key);
+                }
              }
         }
         save_data();

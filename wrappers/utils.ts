@@ -33,8 +33,19 @@ import {
     fromRfc3339WithNanoseconds,
     Tendermint34Client,
 } from '@cosmjs/tendermint-rpc';
-import { ExistenceProof, InnerOp, LeafOp, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
+import {
+    CommitmentProof,
+    ExistenceProof,
+    InnerOp,
+    LeafOp,
+    ProofSpec,
+} from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { calculateExistenceRoot, ics23, verifyMembership } from '@confio/ics23';
+import { QueryClient } from '@cosmjs/stargate';
+import { fromBech32, toAscii } from '@cosmjs/encoding';
+import { writeFileSync } from 'fs';
+import { resolve } from 'path';
+import { iavlSpec, tendermintSpec } from './specs';
 
 export type TestClientConfig = {
     id: number;
@@ -853,23 +864,9 @@ export const getVerifyChainedMembershipProof = (
     keys: { keyPath: Uint8Array[] },
     value: Uint8Array,
 ) => {
-    let cellProofs;
     let cellSpecs;
     let cellKeys;
-    for (let i = proofs.length - 1; i >= 0; i--) {
-        const innerCell = getExistenceProofCell(proofs[i]);
-        if (!cellProofs) {
-            cellProofs = beginCell()
-                .storeRef(beginCell().endCell())
-                .storeSlice(innerCell.beginParse())
-                .endCell();
-        } else {
-            cellProofs = beginCell()
-                .storeRef(cellProofs)
-                .storeSlice(innerCell.beginParse())
-                .endCell();
-        }
-    }
+    let cellProofs = getExistenceProofSnakeCell(proofs);
 
     for (let i = specs.length - 1; i >= 0; i--) {
         const innerCell = getSpecCell(specs[i]);
@@ -908,6 +905,25 @@ export const getVerifyChainedMembershipProof = (
         .storeRef(cellKeys!)
         .endCell();
 };
+
+export function getExistenceProofSnakeCell(proofs: ExistenceProof[]) {
+    let cellProofs;
+    for (let i = proofs.length - 1; i >= 0; i--) {
+        const innerCell = getExistenceProofCell(proofs[i]);
+        if (!cellProofs) {
+            cellProofs = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeSlice(innerCell.beginParse())
+                .endCell();
+        } else {
+            cellProofs = beginCell()
+                .storeRef(cellProofs)
+                .storeSlice(innerCell.beginParse())
+                .endCell();
+        }
+    }
+    return cellProofs;
+}
 
 export function verifyChainedMembershipProof(
     root: Uint8Array,
@@ -956,6 +972,38 @@ export function verifyChainedMembershipProof(
     }
     console.log('Root match');
     return null;
+}
+
+export const encodeNamespaces = (namespaces: Uint8Array[]): Uint8Array => {
+    const ret = [];
+    for (const ns of namespaces) {
+        const lengthBuf = Buffer.allocUnsafe(2);
+        lengthBuf.writeUInt16BE(ns.byteLength);
+        ret.push(lengthBuf);
+        ret.push(ns);
+    }
+    return Buffer.concat(ret);
+};
+
+export async function getPacketProofs(
+    queryClient: QueryClient,
+    contract: string,
+    proven_height: number,
+    seq: bigint,
+) {
+    const wasm = toAscii('wasm');
+    const contractBech = fromBech32(contract);
+    const namespace = encodeNamespaces([Buffer.from('send_packet_commitment')]);
+    const bufferSeq = Buffer.from(`channel-0/${seq}`);
+    const key = Buffer.concat([namespace, bufferSeq]);
+    const path = Buffer.concat([Buffer.from([0x03]), Buffer.from(contractBech.data), key]);
+    const res = await queryClient.queryRawProof('wasm', path, proven_height);
+    console.log(res.value);
+    const existProofs = res.proof.ops.slice(0, 2).map((op) => {
+        const commitmentProof = CommitmentProof.decode(op.data);
+        return ExistenceProof.toJSON(commitmentProof?.exist!);
+    });
+    return existProofs;
 }
 
 export const createUpdateClientData = async (
