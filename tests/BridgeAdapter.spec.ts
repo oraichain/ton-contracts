@@ -19,6 +19,8 @@ import { LightClientMaster, LightClientMasterOpcodes } from '../wrappers/LightCl
 import { iavlSpec, tendermintSpec } from '../wrappers/specs';
 import { ExistenceProof, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { Tendermint37Client } from '@cosmjs/tendermint-rpc';
+import * as lightClient26380740 from './fixtures/light_client_26380740.json';
+import * as lightClient26460742 from './fixtures/light_client_26460742.json';
 import * as bridgeToTonProofsSrcCosmos from './fixtures/bridgeToTonProofs.json';
 import * as bridgeToTonProofsSrcTon from './fixtures/bridgeToTonProofs2.json';
 import * as bridgeToTonProofsTon from './fixtures/bridgeToTonProofs3.json';
@@ -28,6 +30,7 @@ import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { fromBech32, toAscii } from '@cosmjs/encoding';
 import { QueryClient } from '@cosmjs/stargate';
+import { SerializedCommit, SerializedHeader, SerializedValidator } from '../wrappers/@types';
 
 describe('BridgeAdapter', () => {
     let lightClientMasterCode: Cell;
@@ -37,11 +40,26 @@ describe('BridgeAdapter', () => {
     let whitelistDenomCode: Cell;
 
     const bridgeWasmAddress = 'orai1f3sgqnj7z7sk7fwak3wa6kx7xlamzmdqse3a886rpvtg9pl2xrxqtffnk6';
-    const updateBlock = async (blockNumber: number, relayer: SandboxContract<TreasuryContract>) => {
-        const { header, lastCommit, validators } = await createUpdateClientData(
-            'https://rpc.orai.io',
-            blockNumber,
-        );
+    const updateBlock = async (
+        {
+            header,
+            validators,
+            lastCommit,
+        }: {
+            header: SerializedHeader;
+            validators: SerializedValidator[];
+            lastCommit: SerializedCommit;
+        },
+        relayer: SandboxContract<TreasuryContract>,
+    ) => {
+        // const { header, lastCommit, validators } = await createUpdateClientData(
+        //     'https://rpc.orai.io',
+        //     blockNumber,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, `./fixtures/light_client_${blockNumber}.json`),
+        //     JSON.stringify({ header, lastCommit, validators }),
+        // );
         let result = await lightClientMaster.sendVerifyBlockHash(
             relayer.getSender(),
             {
@@ -58,8 +76,7 @@ describe('BridgeAdapter', () => {
             op: LightClientMasterOpcodes.verify_block_hash,
             success: true,
         });
-        console.log(`blockhash:`, LightClientMasterOpcodes.verify_block_hash);
-        expect(await lightClientMaster.getTrustedHeight()).toBe(blockNumber);
+        expect(await lightClientMaster.getTrustedHeight()).toBe(header.height);
     };
 
     beforeAll(async () => {
@@ -88,7 +105,6 @@ describe('BridgeAdapter', () => {
     const timeout = 1751623658;
     beforeEach(async () => {
         blockchain = await Blockchain.create();
-
         blockchain.verbosity = {
             ...blockchain.verbosity,
             // vmLogs: 'vm_logs_gas',
@@ -112,7 +128,6 @@ describe('BridgeAdapter', () => {
                 value: toNano('1000'),
             },
         );
-
         expect(deployUsdtMinterResult.transactions).toHaveTransaction({
             from: usdtDeployer.address,
             to: usdtMinterContract.address,
@@ -325,7 +340,7 @@ describe('BridgeAdapter', () => {
         expect(stack.readCell().toBoc()).toEqual(jettonWalletCode.toBoc());
     });
 
-    it('should log data persist data to test', async () => {
+    xit('should log data persist data to test', async () => {
         console.log({
             jettonMinterSrcCosmos: jettonMinterSrcCosmos.address,
             jettonMinterSrcTon: jettonMinterSrcTon.address,
@@ -364,7 +379,7 @@ describe('BridgeAdapter', () => {
         //     resolve(__dirname, './fixtures/bridgeToTonProofs.json'),
         //     JSON.stringify(data),
         // );
-        await updateBlock(26380740, deployer);
+        await updateBlock(lightClient26380740 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsSrcCosmos)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -415,7 +430,7 @@ describe('BridgeAdapter', () => {
         //     resolve(__dirname, './fixtures/bridgeToTonProofs2.json'),
         //     JSON.stringify(data),
         // );
-        await updateBlock(26380740, deployer);
+        await updateBlock(lightClient26380740 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsSrcTon)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -468,7 +483,7 @@ describe('BridgeAdapter', () => {
         //     JSON.stringify(data),
         // );
         // provenBlockHeight = proofHeight + 1
-        await updateBlock(26460742, deployer);
+        await updateBlock(lightClient26460742 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsTon)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -565,7 +580,7 @@ describe('BridgeAdapter', () => {
         //#endregion
 
         // provenBlockHeight = proofHeight + 1
-        await updateBlock(26460742, deployer);
+        await updateBlock(lightClient26460742 as any, deployer);
         const existenceProofs = Object.values(multiplePacketProofs)
             .slice(0, 3) // cut the default property
             .flat()
