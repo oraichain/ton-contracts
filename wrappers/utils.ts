@@ -998,7 +998,6 @@ export async function getPacketProofs(
     const key = Buffer.concat([namespace, bufferSeq]);
     const path = Buffer.concat([Buffer.from([0x03]), Buffer.from(contractBech.data), key]);
     const res = await queryClient.queryRawProof('wasm', path, proven_height);
-    console.log(res.value);
     const existProofs = res.proof.ops.slice(0, 2).map((op) => {
         const commitmentProof = CommitmentProof.decode(op.data);
         return ExistenceProof.toJSON(commitmentProof?.exist!);
