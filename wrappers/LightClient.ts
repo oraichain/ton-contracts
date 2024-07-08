@@ -97,68 +97,6 @@ export class LightClient implements Contract {
         });
     }
 
-    async sendVerifyReceipt(
-        provider: ContractProvider,
-        via: Sender,
-        data: {
-            height: string;
-            tx: TxWasm;
-            leaves: Buffer[];
-            leafData: Buffer;
-        },
-        opts: ValueOps,
-    ) {
-        const { height, tx, leaves, leafData } = data;
-        const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
-        const authInfo = beginCell()
-            .storeRef(signInfos || beginCell().endCell())
-            .storeRef(fee)
-            .storeRef(tip)
-            .endCell();
-
-        const txBody = txBodyWasmToRef(tx.body);
-        let signatureCell: Cell | undefined;
-
-        for (let i = tx.signatures.length - 1; i >= 0; i--) {
-            let signature = tx.signatures[i];
-            let cell = beginCell()
-                .storeRef(beginCell().storeBuffer(Buffer.from(signature)).endCell())
-                .endCell();
-            if (!signatureCell) {
-                signatureCell = beginCell()
-                    .storeRef(beginCell().endCell())
-                    .storeRef(cell)
-                    .endCell();
-            } else {
-                signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
-            }
-        }
-        const txRaw = beginCell()
-            .storeRef(authInfo)
-            .storeRef(txBody)
-            .storeRef(signatureCell || beginCell().endCell())
-            .endCell();
-
-        const { branch: proofs, positions } = getMerkleProofs(leaves, leafData);
-
-        await provider.internal(via, {
-            value: opts.value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(LightClientOpcodes.verify_receipt, 32)
-                .storeUint(opts.queryId || 0, 64)
-                .storeRef(
-                    beginCell()
-                        .storeUint(BigInt(height), 64)
-                        .storeRef(txRaw)
-                        .storeRef(proofs || beginCell().endCell())
-                        .storeRef(positions)
-                        .endCell(),
-                )
-                .endCell(),
-        });
-    }
-
     async getHeight(provider: ContractProvider) {
         const result = await provider.get('get_height', []);
         return result.stack.readNumber();
