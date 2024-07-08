@@ -122,7 +122,7 @@ global cell specs;
     if (op == op::verify_untrusted_validators) {
         throw_if(error::invalid_sender, sender_address.equal_slice?(my_address()) != -1);
         slice msg = in_msg_body~load_ref().begin_parse();
-        slice sender_address = msg~load_msg_addr();
+        slice response_address = msg~load_msg_addr();
         cell ds = msg~load_ref();
         slice cs = ds.begin_parse();
 
@@ -143,7 +143,7 @@ global cell specs;
         bodyBuilder = bodyBuilder 
                     .store_uint(op::verify_on_untrusted_sigs, 32)
                     .store_uint(query_id, 64)
-                    .store_ref(begin_cell().store_slice(sender_address).store_ref(ds).end_cell());
+                    .store_ref(begin_cell().store_slice(response_address).store_ref(ds).end_cell());
         cell body = bodyBuilder.end_cell();
         send_simple_message(0, my_address(), body, CARRY_REMAINING_GAS);
         return ();
@@ -213,7 +213,7 @@ global cell specs;
                     .store_uint(op::update_light_client_state, 32)
                     .store_uint(query_id, 64)
                     .store_ref(begin_cell()
-                        .store_slice(sender_address)
+                        .store_slice(response_address)
                         .store_ref(ds)
                     .end_cell());
         cell body = bodyBuilder.end_cell();
