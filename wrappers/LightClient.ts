@@ -24,12 +24,6 @@ export type LightClientConfig = {
     nextValidatorHashSet: string;
 };
 
-export interface SendVerifyBlockHashInterface {
-    header: Header;
-    validators: Validator[];
-    commit: Commit;
-}
-
 export function lightClientConfigToCell(config: LightClientConfig): Cell {
     return beginCell()
         .storeUint(0, 1)
