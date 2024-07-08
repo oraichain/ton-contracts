@@ -46,9 +46,9 @@ async function deploy() {
             await compile('LightClientMaster'),
         ),
     );
-    await lightClientMaster.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
-    await waitSeqno(walletContract, await walletContract.getSeqno());
-    console.log('Success deploy light client at address: ', lightClientMaster.address);
+    // await lightClientMaster.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
+    // console.log('Success deploy light client at address: ', lightClientMaster.address);
 
     // USDT
     // const usdtMinterContract = client.open(
@@ -88,7 +88,7 @@ async function deploy() {
         ),
     );
 
-    await whitelistContract.sendDeploy(walletContract.sender(key.secretKey), toNano('0.05'));
+    await whitelistContract.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
     await waitSeqno(walletContract, await walletContract.getSeqno());
     console.log('Success deploy whitelistContract at address: ', whitelistContract.address);
 

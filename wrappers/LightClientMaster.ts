@@ -46,6 +46,7 @@ export const LightClientMasterOpcodes = {
     verify_on_untrusted_sigs: crc32('op::verify_on_untrusted_sigs'),
     create_new_light_client: crc32('op::create_new_light_client'),
     finalize_verify_light_client: crc32('op::finalize_verify_light_client'),
+    receive_packet: crc32('op::receive_packet'),
 };
 
 export class LightClientMaster implements Contract {

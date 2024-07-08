@@ -66,7 +66,7 @@ export function lightClientConfigToCell(config: LightClientConfig): Cell {
 export const LightClientOpcodes = {
     verify_block_hash: crc32('op::verify_block_hash'),
     verify_sigs: crc32('op::verify_sigs'),
-    verify_receipt: crc32('op::verify_receipt'),
+    verify_packet_commitment: crc32('op::verify_packet_commitment'),
     verify_untrusted_validators: crc32('op::verify_untrusted_validators'),
     verify_on_trusted_sigs: crc32('op:verify_on_trusted_sigs'),
     update_light_client_state: crc32('op:update_light_client_state'),
@@ -125,7 +125,10 @@ export class LightClient implements Contract {
                 .storeRef(beginCell().storeBuffer(Buffer.from(signature)).endCell())
                 .endCell();
             if (!signatureCell) {
-                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
+                signatureCell = beginCell()
+                    .storeRef(beginCell().endCell())
+                    .storeRef(cell)
+                    .endCell();
             } else {
                 signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
             }
