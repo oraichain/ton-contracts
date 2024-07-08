@@ -80,6 +80,7 @@ export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
         )
         .storeRef(config.jetton_wallet_code)
         .storeRef(beginCell().storeDict(Dictionary.empty()).endCell()) // empty dict
+        .storeRef(beginCell().storeDict(Dictionary.empty()).endCell()) // empty dict
         .endCell();
 }
 

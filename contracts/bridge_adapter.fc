@@ -20,6 +20,7 @@ global int next_packet_seq;
 global cell bridge_wasm_smart_contract;
 global cell jetton_wallet_code;
 global cell counterparty_seq_receipt;
+global cell send_packets_from_ton;
 
 ;; load_data populates storage variables using stored data
 () load_data() impure {
@@ -31,6 +32,8 @@ global cell counterparty_seq_receipt;
     jetton_wallet_code = ds~load_ref();
     slice dict_cs = ds~load_ref().begin_parse();
     counterparty_seq_receipt = dict_cs~load_dict();
+    slice spft_dict_cs = ds~load_ref().begin_parse();
+    send_packets_from_ton =  spft_dict_cs~load_dict();
     ds.end_parse();
 }
 
@@ -44,6 +47,7 @@ global cell counterparty_seq_receipt;
         .store_ref(bridge_wasm_smart_contract)
         .store_ref(jetton_wallet_code)
         .store_ref(begin_cell().store_dict(counterparty_seq_receipt).end_cell())
+        .store_ref(begin_cell().store_dict(send_packets_from_ton).end_cell())
         .end_cell()
     );
 }
@@ -53,10 +57,24 @@ global cell counterparty_seq_receipt;
     slice body = in_msg_body~load_ref().begin_parse();
     int is_packet_existed = body~load_uint(1);
     slice response_address = body~load_msg_addr();
-    slice data = body~load_ref().begin_parse();
+    cell data_cell = body~load_ref();
+    slice data = data_cell.begin_parse();
 
     (int counterparty_packet_seq, int op_codes, int src, slice to, slice jetton_master, int amount, int timeout) = (data~load_uint(64), data~load_uint(32), data~load_uint(32), data~load_msg_addr(), data~load_msg_addr(), data~load_uint(128), data~load_uint(64));
 
+    if(now() >= timeout){
+        cell emit_data = begin_cell()
+                        .store_uint(op::timeout_send_packet, 32)
+                        .store_uint(counterparty_packet_seq, 64)
+                        .store_uint(0, 16) ;; channel-id => update soon when have this feature
+                        .end_cell();
+        emit_log_simple(my_address().slice_hash(), emit_data ,query_id);
+        return ();
+    }
+    (_, int exist) = counterparty_seq_receipt.udict_get?(64, counterparty_packet_seq);
+    throw_unless(error::processed_packet, exist == 0);
+    counterparty_seq_receipt~udict_set(64, counterparty_packet_seq, data_cell.begin_parse());
+    
     if(is_packet_existed == 0){
         cell emit_data = begin_cell()
                         .store_uint(is_packet_existed, 1)
@@ -70,8 +88,8 @@ global cell counterparty_seq_receipt;
     }
 
     cell emit_data = begin_cell()
-                        .store_uint(op_codes, 32)
                         .store_uint(is_packet_existed, 1)
+                        .store_uint(op_codes, 32)
                         .store_uint(counterparty_packet_seq, 64)
                         .store_uint(0, 16) ;; channel-id => update soon when have this feature
                         .end_cell();
@@ -149,21 +167,7 @@ global cell counterparty_seq_receipt;
         int proven_height = body~load_uint(64);
         cell proofs = body~load_ref();
         cell packet = body~load_ref(); 
-        slice packet_slice = packet.begin_parse();
-        int timeout = packet_slice.get_timeout();
-        if(now() >= timeout){
-            cell emit_data = begin_cell()
-                            .store_uint(op::timeout_send_packet, 32)
-                            .store_uint(packet_slice.preload_uint(64), 64)
-                            .store_uint(0, 16) ;; channel-id => update soon when have this feature
-                            .end_cell();
-            emit_log_simple(my_address().slice_hash(), emit_data ,query_id);
-            return ();
-        }
-        int counterparty_packet_seq = packet_slice.preload_uint(64);
-        (_, int exist) = counterparty_seq_receipt.udict_get?(64, counterparty_packet_seq);
-        throw_unless(error::processed_packet, exist == 0);
-        counterparty_seq_receipt~udict_set(64, counterparty_packet_seq, packet_slice);
+
         builder bodyBuilder = begin_cell();
         bodyBuilder = bodyBuilder 
                     .store_uint(op::receive_packet, 32)
@@ -250,6 +254,7 @@ global cell counterparty_seq_receipt;
                             .store_coins(amount)
                             .store_ref(memo_cell)
                             .end_cell();
+        send_packets_from_ton~udict_set(64, next_packet_seq, emit_data.begin_parse());
         next_packet_seq = next_packet_seq + 1;
         ;; execute burn if not from ton
         if (is_root_from_ton == 0) {
@@ -273,8 +278,8 @@ global cell counterparty_seq_receipt;
             send_raw_message(msg.end_cell(), IGNORE_ERRORS + CARRY_REMAINING_GAS);
         }
 
-        save_data();
         emit_log_simple(my_address().slice_hash(), emit_data ,query_id);
+        save_data();
         return ();
     }
 
@@ -298,6 +303,7 @@ global cell counterparty_seq_receipt;
                             .store_coins(amount)
                             .store_ref(memo)
                             .end_cell();
+        send_packets_from_ton~udict_set(64, next_packet_seq, emit_data.begin_parse());
         next_packet_seq = next_packet_seq + 1;
 
         emit_log_simple(my_address().slice_hash(), emit_data, query_id);
