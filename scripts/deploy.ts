@@ -46,8 +46,8 @@ async function deploy() {
             await compile('LightClientMaster'),
         ),
     );
-    // await lightClientMaster.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
-    // await waitSeqno(walletContract, await walletContract.getSeqno());
+    await lightClientMaster.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
+    await waitSeqno(walletContract, await walletContract.getSeqno());
     console.log('Success deploy light client at address: ', lightClientMaster.address);
 
     // USDT
@@ -88,8 +88,8 @@ async function deploy() {
         ),
     );
 
-    // await whitelistContract.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
-    // await waitSeqno(walletContract, await walletContract.getSeqno());
+    await whitelistContract.sendDeploy(walletContract.sender(key.secretKey), toNano('0.05'));
+    await waitSeqno(walletContract, await walletContract.getSeqno());
     console.log('Success deploy whitelistContract at address: ', whitelistContract.address);
 
     // await whitelistContract.sendSetDenom(
@@ -156,7 +156,7 @@ async function deploy() {
             permission: true,
         },
         {
-            value: toNano('1'),
+            value: toNano('0.1'),
         },
     );
     await waitSeqno(walletContract, await walletContract.getSeqno());
@@ -168,7 +168,7 @@ async function deploy() {
             permission: true,
         },
         {
-            value: toNano('1'),
+            value: toNano('0.1'),
         },
     );
     await waitSeqno(walletContract, await walletContract.getSeqno());

@@ -90,6 +90,10 @@ export const BridgeAdapterOpcodes = {
     bridgeTon: crc32('op::bridge_ton'),
 };
 
+export const BridgeAdapterPacketOpcodes = {
+    sendToTon: crc32('op::send_to_ton'),
+};
+
 export const Src = {
     COSMOS: crc32('src::cosmos'),
     TON: crc32('src::ton'),
