@@ -276,7 +276,7 @@ global cell send_packets_from_ton;
         cell emit_data = begin_cell()
                             .store_uint(op::send_to_cosmos, 32)
                             .store_uint(next_packet_seq, 64)
-                            .store_uint(is_root_from_ton ? src::ton : src::cosmos, 32)
+                            .store_uint(is_root_from_ton ? token_origin::ton : token_origin::cosmos, 32)
                             .store_uint(amount, 128)
                             .store_uint(timeout, 64)
                             .store_uint(remote_receiver_byte_len, 8)
