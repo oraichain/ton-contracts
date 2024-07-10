@@ -1007,6 +1007,27 @@ export async function getPacketProofs(
     return existProofs;
 }
 
+export async function getAckPacketProofs(
+    queryClient: QueryClient,
+    contract: string,
+    proven_height: number,
+    seq: bigint,
+) {
+    const contractBech = fromBech32(contract);
+    const namespace = encodeNamespaces([Buffer.from('ack_commitment')]);
+    const bufferSeq = Buffer.from(`${seq}`);
+    const key = Buffer.concat([namespace, bufferSeq]);
+    const path = Buffer.concat([Buffer.from([0x03]), Buffer.from(contractBech.data), key]);
+    const res = await queryClient.queryRawProof('wasm', path, proven_height);
+    console.log(Buffer.from(res.value).toString());
+    const existProofs = res.proof.ops.slice(0, 2).map((op) => {
+        const commitmentProof = CommitmentProof.decode(op.data);
+        console.log(Buffer.from(commitmentProof?.exist?.key as any).toString());
+        return ExistenceProof.toJSON(commitmentProof?.exist!);
+    });
+    return existProofs;
+}
+
 export const createUpdateClientData = async (
     rpcUrl: string,
     height: number,

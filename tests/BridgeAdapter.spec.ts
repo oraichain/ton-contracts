@@ -11,6 +11,7 @@ import {
     deserializeCommit,
     deserializeHeader,
     deserializeValidator,
+    getAckPacketProofs,
     getExistenceProofSnakeCell,
     getPacketProofs,
     getSpecCell,
@@ -696,6 +697,84 @@ describe('BridgeAdapter', () => {
             success: true,
         });
 
+        const senderBeforeBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
+            .balance;
+        result = await usdtDeployerJettonWallet.sendTransfer(
+            usdtDeployer.getSender(),
+            {
+                fwdAmount: toNano(1),
+                jettonAmount: toNano(333),
+                jettonMaster: usdtMinterContract.address,
+                toAddress: bridgeAdapter.address,
+                timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
+                remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
+                memo: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(
+                        beginCell()
+                            .storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx'))
+                            .endCell(),
+                    )
+                    .endCell(),
+            },
+            {
+                value: toNano(2),
+                queryId: 0,
+            },
+        );
+        printTransactionFees(result.transactions);
+
+        const bodyCell = result.transactions[result.transactions.length - 2].externals[0].body;
+        expect(BigInt(bodyCell.asSlice().loadUint(32))).toBe(BigInt('0xa64c12a3'));
+
+        console.log(
+            'Bridge adapter balance:',
+            (await blockchain.getContract(bridgeAdapter.address)).balance,
+        );
+        expect(result.transactions).toHaveTransaction({
+            op: BridgeAdapterOpcodes.callbackDenom,
+            success: true,
+        });
+        const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
+            .balance;
+        expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
+    });
+
+    it('Test timeout send jetton token from ton to bridge adapter', async () => {
+        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        const queryClient = new QueryClient(tendermint37 as any);
+        const data = await getAckPacketProofs(
+            queryClient,
+            'orai16xfkjn7exdkzpl2jdu655qlzwjluyrld308c54jf4etyss73dt6qftt30h',
+            26883252,
+            0n,
+        );
+        console.log(data);
+        writeFileSync(
+            resolve(__dirname, './fixtures/sendToCosmosTimeoutProof.json'),
+            JSON.stringify(data),
+        );
+
+        console.log(usdtDeployer.getSender());
+        let result = await whitelistDenom.sendSetDenom(
+            deployer.getSender(),
+            {
+                denom: usdtMinterContract.address,
+                permission: true,
+                isRootFromTon: true,
+            },
+            {
+                value: toNano(0.1),
+            },
+        );
+        expect(result.transactions).toHaveTransaction({
+            op: WhitelistDenomOpcodes.setDenom,
+            success: true,
+        });
+
+        console.log(usdtMinterContract.address);
         const senderBeforeBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
             .balance;
         result = await usdtDeployerJettonWallet.sendTransfer(
