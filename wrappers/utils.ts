@@ -993,7 +993,8 @@ export async function getPacketProofs(
 ) {
     const contractBech = fromBech32(contract);
     const namespace = encodeNamespaces([Buffer.from('send_packet_commitment')]);
-    const bufferSeq = Buffer.from(`channel-0/${seq}`);
+    const bufferSeq = Buffer.alloc(8);
+    bufferSeq.writeBigUInt64BE(seq);
     const key = Buffer.concat([namespace, bufferSeq]);
     const path = Buffer.concat([Buffer.from([0x03]), Buffer.from(contractBech.data), key]);
     const res = await queryClient.queryRawProof('wasm', path, proven_height);

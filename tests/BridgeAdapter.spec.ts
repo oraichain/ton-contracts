@@ -19,8 +19,10 @@ import { LightClientMaster, LightClientMasterOpcodes } from '../wrappers/LightCl
 import { iavlSpec, tendermintSpec } from '../wrappers/specs';
 import { ExistenceProof, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { Tendermint37Client } from '@cosmjs/tendermint-rpc';
-import * as lightClient26380740 from './fixtures/light_client_26380740.json';
-import * as lightClient26460742 from './fixtures/light_client_26460742.json';
+import * as lightClient_26877876 from './fixtures/light_client_26877876.json';
+import * as lightClient_26877882 from './fixtures/light_client_26877882.json';
+import * as lightClient_26877891 from './fixtures/light_client_26877891.json';
+
 import * as bridgeToTonProofsSrcCosmos from './fixtures/bridgeToTonProofs.json';
 import * as bridgeToTonProofsSrcTon from './fixtures/bridgeToTonProofs2.json';
 import * as bridgeToTonProofsTon from './fixtures/bridgeToTonProofs3.json';
@@ -40,7 +42,8 @@ describe('BridgeAdapter', () => {
     let jettonMinterCode: Cell;
     let whitelistDenomCode: Cell;
 
-    const bridgeWasmAddress = 'orai1f3sgqnj7z7sk7fwak3wa6kx7xlamzmdqse3a886rpvtg9pl2xrxqtffnk6';
+    const bridgeWasmAddress = 'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse';
+    const bech32Address = fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data;
     const updateBlock = async (
         {
             header,
@@ -53,14 +56,6 @@ describe('BridgeAdapter', () => {
         },
         relayer: SandboxContract<TreasuryContract>,
     ) => {
-        // const { header, lastCommit, validators } = await createUpdateClientData(
-        //     'https://rpc.orai.io',
-        //     blockNumber,
-        // );
-        // writeFileSync(
-        //     resolve(__dirname, `./fixtures/light_client_${blockNumber}.json`),
-        //     JSON.stringify({ header, lastCommit, validators }),
-        // );
         let result = await lightClientMaster.sendVerifyBlockHash(
             relayer.getSender(),
             {
@@ -352,35 +347,55 @@ describe('BridgeAdapter', () => {
     });
 
     it('should send jetton token_origin::cosmos to TON', async () => {
+        console.log({
+            remoteDenom: jettonMinterSrcCosmos.address,
+            remoteReceiver: user.address,
+            localSender: Buffer.from(
+                fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data,
+            ).toString('base64'),
+        });
         const packet = beginCell()
-            .storeUint(1, 64) // seq
             .storeUint(0xae89be5b, 32) // op
-            .storeUint(TokenOrigin.COSMOS, 32) // crcSrc
+            .storeUint(1, 64) // seq
+            .storeUint(TokenOrigin.COSMOS, 32) // token_origin
+            .storeUint(transferAmount, 128) // remote_amount
+            .storeUint(timeout, 64) // timeout_timestamp
             .storeAddress(user.address) // remote_receiver
             .storeAddress(jettonMinterSrcCosmos.address) // remote_denom
-            .storeUint(transferAmount, 128) // amount
-            .storeUint(timeout, 64) // timeout
             .storeRef(
+                //  local_sender_ref
                 beginCell()
-                    .storeBuffer(Buffer.from('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c')) //  local_sender
+                    .storeUint(bech32Address.length, 8)
+                    .storeBuffer(Buffer.from(bech32Address))
                     .endCell(),
             )
             .endCell();
-        const packet_cell = packet.hash();
-        console.log(packet_cell.toString('base64'));
+        console.log(BigInt('0x' + packet.hash().toString('hex')));
+
+        // #region script fetch data
         // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
         // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await getPacketProofs(
         //     queryClient,
-        //     'orai1f3sgqnj7z7sk7fwak3wa6kx7xlamzmdqse3a886rpvtg9pl2xrxqtffnk6',
-        //     26380739,
+        //     'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
+        //     26877875,
         //     1n,
         // );
         // writeFileSync(
         //     resolve(__dirname, './fixtures/bridgeToTonProofs.json'),
         //     JSON.stringify(data),
         // );
-        await updateBlock(lightClient26380740 as any, deployer);
+        // const { header, lastCommit, validators } = await createUpdateClientData(
+        //     'https://rpc.orai.io',
+        //     26877876,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, `./fixtures/light_client_${26877876}.json`),
+        //     JSON.stringify({ header, lastCommit, validators }),
+        // );
+        // #endregion
+
+        await updateBlock(lightClient_26877876 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsSrcCosmos)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -390,7 +405,7 @@ describe('BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet,
-                provenHeight: 26380740,
+                provenHeight: 26877876,
             },
             { value: toNano('1') },
         );
@@ -404,34 +419,47 @@ describe('BridgeAdapter', () => {
 
     it('should send jetton token_origin::ton to TON', async () => {
         const packet = beginCell()
-            .storeUint(2, 64) // seq
-            .storeUint(0xae89be5b, 32) // op
-            .storeUint(3724195509, 32) // crcSrc
-            .storeAddress(user.address) // remote_receiver
-            .storeAddress(jettonMinterSrcTon.address) // remote_denom
-            .storeUint(transferAmount, 128) // amount
-            .storeUint(timeout, 64) // timeout
+            .storeUint(0xae89be5b, 32)
+            .storeUint(2, 64)
+            .storeUint(TokenOrigin.TON, 32)
+            .storeUint(transferAmount, 128)
+            .storeUint(timeout, 64)
+            .storeAddress(user.address)
+            .storeAddress(jettonMinterSrcTon.address)
             .storeRef(
                 beginCell()
-                    .storeBuffer(Buffer.from('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c')) //  local_sender
+                    .storeUint(bech32Address.length, 8)
+                    .storeBuffer(Buffer.from(bech32Address))
                     .endCell(),
             )
             .endCell();
         const packet_cell = packet.hash();
-        console.log(packet_cell.toString('base64'));
+        console.log(BigInt('0x' + packet_cell.toString('hex')));
+
+        //#region script fetch data
         // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
         // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await getPacketProofs(
         //     queryClient,
-        //     'orai1f3sgqnj7z7sk7fwak3wa6kx7xlamzmdqse3a886rpvtg9pl2xrxqtffnk6',
-        //     26380739,
+        //     'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
+        //     26877881,
         //     2n,
         // );
         // writeFileSync(
         //     resolve(__dirname, './fixtures/bridgeToTonProofs2.json'),
         //     JSON.stringify(data),
         // );
-        await updateBlock(lightClient26380740 as any, deployer);
+        // const { header, lastCommit, validators } = await createUpdateClientData(
+        //     'https://rpc.orai.io',
+        //     26877882,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, `./fixtures/light_client_${26877882}.json`),
+        //     JSON.stringify({ header, lastCommit, validators }),
+        // );
+        //#endregion
+
+        await updateBlock(lightClient_26877882 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsSrcTon)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -441,7 +469,7 @@ describe('BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet,
-                provenHeight: 26380740,
+                provenHeight: 26877882,
             },
             { value: toNano('1') },
         );
@@ -455,36 +483,48 @@ describe('BridgeAdapter', () => {
 
     it('should send ton to TON', async () => {
         const packet = beginCell()
-            .storeUint(4, 64) // seq
-            .storeUint(0xae89be5b, 32) // op
-            .storeUint(3724195509, 32) // crcSrc
-            .storeAddress(user.address) // remote_receiver
-            .storeAddress(null) // remote_denom
+            .storeUint(0xae89be5b, 32)
+            .storeUint(3, 64)
+            .storeUint(TokenOrigin.TON, 32) // crcSrc
             .storeUint(transferAmount, 128) // amount
             .storeUint(timeout, 64) // timeout
+            .storeAddress(user.address) // remote_receiver
+            .storeAddress(null) // remote_denom
             .storeRef(
                 beginCell()
-                    .storeBuffer(Buffer.from('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c')) //  local_sender
+                    .storeUint(bech32Address.length, 8)
+                    .storeBuffer(Buffer.from(bech32Address))
                     .endCell(),
             )
             .endCell();
         const packet_cell = packet.hash();
-        console.log(packet_cell.toString('base64'));
-        // console.log(packet_cell.toString('base64'));
+        console.log(BigInt('0x' + packet_cell.toString('hex')));
+
+        //#region script fetch data
         // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
         // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await getPacketProofs(
         //     queryClient,
-        //     'orai1f3sgqnj7z7sk7fwak3wa6kx7xlamzmdqse3a886rpvtg9pl2xrxqtffnk6',
-        //     26460741,
-        //     4n,
+        //     'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
+        //     26877890,
+        //     3n,
         // );
         // writeFileSync(
         //     resolve(__dirname, './fixtures/bridgeToTonProofs3.json'),
         //     JSON.stringify(data),
         // );
-        // provenBlockHeight = proofHeight + 1
-        await updateBlock(lightClient26460742 as any, deployer);
+        // const { header, lastCommit, validators } = await createUpdateClientData(
+        //     'https://rpc.orai.io',
+        //     26877891,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, `./fixtures/light_client_${26877891}.json`),
+        //     JSON.stringify({ header, lastCommit, validators }),
+        // );
+        //#endregion
+
+        // provenBlockHeight = proofHeight + 1;
+        await updateBlock(lightClient_26877891 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsTon)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -494,11 +534,10 @@ describe('BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet,
-                provenHeight: 26460742,
+                provenHeight: 26877891,
             },
             { value: toNano('1') },
         );
-
         printTransactionFees(sendRecvResult.transactions);
         const userTonBalance = await user.getBalance();
         expect(userTonBalance).toBeGreaterThan(9000000n);
@@ -507,71 +546,74 @@ describe('BridgeAdapter', () => {
 
     it('should send multiple packet to TON', async () => {
         const sendJettonSrcCosmosPacket = beginCell()
-            .storeUint(1, 64) // seq
             .storeUint(0xae89be5b, 32) // op
-            .storeUint(TokenOrigin.COSMOS, 32) // crcSrc
+            .storeUint(1, 64) // seq
+            .storeUint(TokenOrigin.COSMOS, 32) // token_origin
+            .storeUint(transferAmount, 128) // remote_amount
+            .storeUint(timeout, 64) // timeout_timestamp
             .storeAddress(user.address) // remote_receiver
             .storeAddress(jettonMinterSrcCosmos.address) // remote_denom
-            .storeUint(transferAmount, 128) // amount
-            .storeUint(timeout, 64) // timeout
             .storeRef(
+                //  local_sender_ref
                 beginCell()
-                    .storeBuffer(Buffer.from('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c')) //  local_sender
+                    .storeUint(bech32Address.length, 8)
+                    .storeBuffer(Buffer.from(bech32Address))
                     .endCell(),
             )
             .endCell();
 
         const sendJettonSrcTonPacket = beginCell()
-            .storeUint(2, 64) // seq
-            .storeUint(0xae89be5b, 32) // op
-            .storeUint(3724195509, 32) // crcSrc
-            .storeAddress(user.address) // remote_receiver
-            .storeAddress(jettonMinterSrcTon.address) // remote_denom
-            .storeUint(transferAmount, 128) // amount
-            .storeUint(timeout, 64) // timeout
+            .storeUint(0xae89be5b, 32)
+            .storeUint(2, 64)
+            .storeUint(TokenOrigin.TON, 32)
+            .storeUint(transferAmount, 128)
+            .storeUint(timeout, 64)
+            .storeAddress(user.address)
+            .storeAddress(jettonMinterSrcTon.address)
             .storeRef(
                 beginCell()
-                    .storeBuffer(Buffer.from('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c')) //  local_sender
+                    .storeUint(bech32Address.length, 8)
+                    .storeBuffer(Buffer.from(bech32Address))
                     .endCell(),
             )
             .endCell();
 
         const sendTonPacket = beginCell()
-            .storeUint(4, 64) // seq
-            .storeUint(0xae89be5b, 32) // op
-            .storeUint(3724195509, 32) // crcSrc
-            .storeAddress(user.address) // remote_receiver
-            .storeAddress(null) // remote_denom
+            .storeUint(0xae89be5b, 32)
+            .storeUint(3, 64)
+            .storeUint(TokenOrigin.TON, 32) // crcSrc
             .storeUint(transferAmount, 128) // amount
             .storeUint(timeout, 64) // timeout
+            .storeAddress(user.address) // remote_receiver
+            .storeAddress(null) // remote_denom
             .storeRef(
                 beginCell()
-                    .storeBuffer(Buffer.from('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c')) //  local_sender
+                    .storeUint(bech32Address.length, 8)
+                    .storeBuffer(Buffer.from(bech32Address))
                     .endCell(),
             )
             .endCell();
-
         //#region script getProofs
         // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
         // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await Promise.all([
         //     getPacketProofs(
         //         queryClient,
-        //         'orai1f3sgqnj7z7sk7fwak3wa6kx7xlamzmdqse3a886rpvtg9pl2xrxqtffnk6',
-        //         26460741,
+        //         'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
+        //         26877890,
         //         1n,
         //     ),
         //     getPacketProofs(
         //         queryClient,
-        //         'orai1f3sgqnj7z7sk7fwak3wa6kx7xlamzmdqse3a886rpvtg9pl2xrxqtffnk6',
-        //         26460741,
+        //         'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
+        //         26877890,
         //         2n,
         //     ),
         //     getPacketProofs(
         //         queryClient,
-        //         'orai1f3sgqnj7z7sk7fwak3wa6kx7xlamzmdqse3a886rpvtg9pl2xrxqtffnk6',
-        //         26460741,
-        //         4n,
+        //         'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
+        //         26877890,
+        //         3n,
         //     ),
         // ]);
         // writeFileSync(
@@ -580,8 +622,8 @@ describe('BridgeAdapter', () => {
         // );
         //#endregion
 
-        // provenBlockHeight = proofHeight + 1
-        await updateBlock(lightClient26460742 as any, deployer);
+        // provenBlockHeight = proofHeight + 1;
+        await updateBlock(lightClient_26877891 as any, deployer);
         const existenceProofs = Object.values(multiplePacketProofs)
             .slice(0, 3) // cut the default property
             .flat()
@@ -595,7 +637,7 @@ describe('BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(proofSendJettonSrcCosmos)!,
                 packet: sendJettonSrcCosmosPacket,
-                provenHeight: 26460742,
+                provenHeight: 26877891,
             },
             { value: toNano('1') },
         );
@@ -604,7 +646,7 @@ describe('BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(proofSendJettonSrcTon)!,
                 packet: sendJettonSrcTonPacket,
-                provenHeight: 26460742,
+                provenHeight: 26877891,
             },
             { value: toNano('1') },
         );
@@ -613,7 +655,7 @@ describe('BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(proofSendTon)!,
                 packet: sendTonPacket,
-                provenHeight: 26460742,
+                provenHeight: 26877891,
             },
             { value: toNano('1') },
         );
@@ -635,59 +677,6 @@ describe('BridgeAdapter', () => {
         const userTonBalance = await user.getBalance();
         expect(userTonBalance).toBeGreaterThan(9000000n);
         expect(userTonBalance).toBeLessThan(transferAmount);
-    });
-
-    it('test', async () => {
-        const sendJettonSrcTonPacket = beginCell()
-            .storeUint(8, 64) // seq
-            .storeUint(0xae89be5b, 32) // op
-            .storeUint(3724195509, 32) // crcSrc
-            .storeAddress(Address.parse('EQAW5Tsp2mMja-syAH_jw9j7a4dFICcaHHcq8xu0k-_Yzs_T')) // remote_receiver
-            .storeAddress(Address.parse('EQB-MPwrd1G6WKNkLz_VnV6WqBDd142KMQv-g1O-8QUA3728')) // remote denom
-            .storeUint(1000, 128) // amount
-            .storeUint(1720576691, 64) // timeout
-            .storeRef(
-                beginCell()
-                    .storeBuffer(Buffer.from('orai1mycmhyrmd6dusp408rtjgzlk7738vhtgqyhxxt')) //  local_sender
-                    .endCell(),
-            )
-            .endCell();
-        console.log(BigInt('0x' + sendJettonSrcTonPacket.hash().toString('hex')));
-        // #region script getProofs
-        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
-        const queryClient = new QueryClient(tendermint37 as any);
-        const data = await getPacketProofs(
-            queryClient,
-            'orai1pump92q0m7y3p8zx3c9yfxh0uzk8gl8v8pmmxmmyv6pewe2cjpsqfl2md0',
-            26748848,
-            8n,
-        );
-
-        // writeFileSync(
-        //     resolve(__dirname, './fixtures/multiplePacketProofs.json'),
-        //     JSON.stringify(data),
-        // );
-        // #endregion
-
-        // provenBlockHeight = proofHeight + 1
-        // await updateBlock(lightClient26460742 as any, deployer);
-        // const existenceProofs = Object.values(multiplePacketProofs)
-        //     .slice(0, 3) // cut the default property
-        //     .flat()
-        //     .map(ExistenceProof.fromJSON);
-        // const proofSendJettonSrcCosmos = existenceProofs.slice(0, 2);
-        // const proofSendJettonSrcTon = existenceProofs.slice(2, 4);
-        // const proofSendTon = existenceProofs.slice(4, 6);
-
-        // await bridgeAdapter.sendBridgeRecvPacket(
-        //     deployer.getSender(),
-        //     {
-        //         proofs: getExistenceProofSnakeCell(proofSendJettonSrcTon)!,
-        //         packet: sendJettonSrcTonPacket,
-        //         provenHeight: 26460742,
-        //     },
-        //     { value: toNano('1') },
-        // );
     });
 
     it('Test send jetton token from ton to bridge adapter', async () => {
