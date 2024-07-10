@@ -89,6 +89,7 @@ export class JettonWallet implements Contract {
                 .storeAddress(via.address) // response address
                 .storeDict(Dictionary.empty())
                 .storeCoins(data.fwdAmount)
+                .storeUint(Buffer.from(remoteCosmosData).length, 8)
                 .storeBuffer(Buffer.from(remoteCosmosData))
                 .storeRef(
                     beginCell()

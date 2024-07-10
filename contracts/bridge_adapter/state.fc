@@ -1,6 +1,7 @@
-const token_origin::cosmos = "token_origin::cosmos"c;
-const token_origin::ton = "token_origin::ton"c;
 
 const ack::success = 0;
 const ack::error = 1;
 const ack::timeout = 2;
+
+const token_origin::cosmos = "token_origin::cosmos"c;
+const token_origin::ton = "token_origin::ton"c;

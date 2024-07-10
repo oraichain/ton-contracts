@@ -23,11 +23,15 @@ import { Tendermint37Client } from '@cosmjs/tendermint-rpc';
 import * as lightClient_26877876 from './fixtures/light_client_26877876.json';
 import * as lightClient_26877882 from './fixtures/light_client_26877882.json';
 import * as lightClient_26877891 from './fixtures/light_client_26877891.json';
+import * as lightClient_26912809 from './fixtures/light_client_26912809.json';
+import * as lightClient_26918592 from './fixtures/light_client_26918592.json';
 
 import * as bridgeToTonProofsSrcCosmos from './fixtures/bridgeToTonProofs.json';
 import * as bridgeToTonProofsSrcTon from './fixtures/bridgeToTonProofs2.json';
 import * as bridgeToTonProofsTon from './fixtures/bridgeToTonProofs3.json';
 import * as multiplePacketProofs from './fixtures/multiplePacketProofs.json';
+import * as sendToCosmosTimeoutProof from './fixtures/sendToCosmosTimeoutProof.json';
+import * as sendToCosmosTimeoutOtherProof from './fixtures/sendToCosmosTimeoutOtherProof.json';
 
 import { writeFileSync } from 'fs';
 import { resolve } from 'path';
@@ -43,7 +47,7 @@ describe('BridgeAdapter', () => {
     let jettonMinterCode: Cell;
     let whitelistDenomCode: Cell;
 
-    const bridgeWasmAddress = 'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse';
+    const bridgeWasmAddress = 'orai16xfkjn7exdkzpl2jdu655qlzwjluyrld308c54jf4etyss73dt6qftt30h';
     const bech32Address = fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data;
     const updateBlock = async (
         {
@@ -743,21 +747,9 @@ describe('BridgeAdapter', () => {
     });
 
     it('Test timeout send jetton token from ton to bridge adapter', async () => {
-        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
-        const queryClient = new QueryClient(tendermint37 as any);
-        const data = await getAckPacketProofs(
-            queryClient,
-            'orai16xfkjn7exdkzpl2jdu655qlzwjluyrld308c54jf4etyss73dt6qftt30h',
-            26883252,
-            0n,
-        );
-        console.log(data);
-        writeFileSync(
-            resolve(__dirname, './fixtures/sendToCosmosTimeoutProof.json'),
-            JSON.stringify(data),
-        );
+        const height = 26912808;
+        const timeout = 1720603835;
 
-        console.log(usdtDeployer.getSender());
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
             {
@@ -773,22 +765,33 @@ describe('BridgeAdapter', () => {
             op: WhitelistDenomOpcodes.setDenom,
             success: true,
         });
+        console.log(
+            Buffer.from(fromBech32('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx').data).toString(
+                'base64',
+            ),
+        );
 
-        console.log(usdtMinterContract.address);
         const senderBeforeBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
             .balance;
+        const usdtWalletAddress = await usdtMinterContract.getWalletAddress(
+            usdtDeployer.getSender().address,
+        );
+        const usdtJettonWallet = JettonWallet.createFromAddress(usdtWalletAddress);
+        usdtDeployerJettonWallet = blockchain.openContract(usdtJettonWallet);
+        const beforeJettonBalance = (await usdtDeployerJettonWallet.getBalance()).amount;
+
         result = await usdtDeployerJettonWallet.sendTransfer(
             usdtDeployer.getSender(),
             {
                 fwdAmount: toNano(1),
-                jettonAmount: toNano(333),
+                jettonAmount: 10_000_000n,
                 jettonMaster: usdtMinterContract.address,
                 toAddress: bridgeAdapter.address,
-                timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
-                remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
+                timeout: BigInt(timeout),
+                remoteReceiver: 'orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx',
                 memo: beginCell()
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-0')).endCell())
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
                     .storeRef(
                         beginCell()
@@ -804,6 +807,9 @@ describe('BridgeAdapter', () => {
         );
         printTransactionFees(result.transactions);
 
+        const afterJettonBalance = (await usdtDeployerJettonWallet.getBalance()).amount;
+        expect(-afterJettonBalance + beforeJettonBalance).toBe(10_000_000n);
+
         const bodyCell = result.transactions[result.transactions.length - 2].externals[0].body;
         expect(BigInt(bodyCell.asSlice().loadUint(32))).toBe(BigInt('0xa64c12a3'));
 
@@ -817,7 +823,30 @@ describe('BridgeAdapter', () => {
         });
         const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
             .balance;
-        expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
+        expect(-senderBeforeBalance + senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
+
+        await updateBlock(lightClient_26912809 as any, deployer);
+        const sendToCosmosPacket = beginCell()
+            .storeUint(0xa64c12a3, 32) // op
+            .storeUint(1, 64) // seq
+            .storeUint(timeout, 64)
+            .endCell();
+        const existenceProofs = Object.values(sendToCosmosTimeoutProof)
+            .slice(0, 2)
+            .map(ExistenceProof.fromJSON);
+        const result1 = await bridgeAdapter.sendBridgeRecvPacket(
+            deployer.getSender(),
+            {
+                proofs: getExistenceProofSnakeCell(existenceProofs)!,
+                packet: sendToCosmosPacket,
+                provenHeight: height + 1,
+            },
+            { value: toNano('3') },
+        );
+        printTransactionFees(result1.transactions);
+
+        const afterAfterJettonBalance = (await usdtDeployerJettonWallet.getBalance()).amount;
+        expect(afterAfterJettonBalance - beforeJettonBalance).toBe(0n);
     });
 
     it('Test send jetton token from cosmos to bridge adapter', async () => {
@@ -904,5 +933,109 @@ describe('BridgeAdapter', () => {
             success: true,
         });
         expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(5000000000n);
+    });
+
+    it('Test timeout send jetton token from cosmos to bridge adapter', async () => {
+        // 26918591
+        const height = 26918591;
+        const timeout = 1720603835;
+
+        const jettonMinterSrcCosmos = blockchain.openContract(
+            JettonMinter.createFromConfig(
+                {
+                    adminAddress: deployer.address,
+                    content: beginCell().storeUint(10, 8).endCell(),
+                    jettonWalletCode,
+                },
+                jettonMinterCode,
+            ),
+        );
+        await jettonMinterSrcCosmos.sendDeploy(deployer.getSender(), { value: toNano('0.5') });
+
+        const userJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
+            deployer.address, // this is "user" treasury
+        );
+        const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
+        const wallet = blockchain.openContract(userJettonWalletBalance);
+
+        console.log(deployer.getSender().address);
+        console.log(jettonMinterSrcCosmos.address);
+        await jettonMinterSrcCosmos.sendMint(
+            deployer.getSender(),
+            {
+                toAddress: deployer.getSender().address,
+                jettonAmount: 10_000_000_000n,
+                amount: toNano('0.01'),
+            },
+            {
+                value: toNano(1),
+            },
+        );
+        // change admin to bridge
+        await jettonMinterSrcCosmos.sendChangeAdmin(deployer.getSender(), bridgeAdapter.address);
+
+        let result = await whitelistDenom.sendSetDenom(
+            deployer.getSender(),
+            {
+                denom: jettonMinterSrcCosmos.address,
+                permission: true,
+                isRootFromTon: false,
+            },
+            {
+                value: toNano(0.1),
+            },
+        );
+        expect(result.transactions).toHaveTransaction({
+            op: WhitelistDenomOpcodes.setDenom,
+            success: true,
+        });
+
+        expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10_000_000_000n);
+        result = await wallet.sendTransfer(
+            deployer.getSender(),
+            {
+                fwdAmount: toNano(1),
+                jettonAmount: 10_000_000n,
+                jettonMaster: jettonMinterSrcCosmos.address,
+                toAddress: bridgeAdapter.address,
+                timeout: BigInt(timeout),
+                remoteReceiver: 'orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx',
+                memo: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
+                    .endCell(),
+            },
+            {
+                value: toNano(2),
+                queryId: 0,
+            },
+        );
+        printTransactionFees(result.transactions);
+
+        expect(result.transactions).toHaveTransaction({
+            op: BridgeAdapterOpcodes.callbackDenom,
+            success: true,
+        });
+        expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10_000_000_000n - 10_000_000n);
+
+        await updateBlock(lightClient_26918592 as any, deployer);
+        const sendToCosmosPacket = beginCell()
+            .storeUint(0xa64c12a3, 32) // op
+            .storeUint(1, 64) // seq
+            .storeUint(timeout, 64)
+            .endCell();
+        const existenceProofs = Object.values(sendToCosmosTimeoutOtherProof)
+            .slice(0, 2)
+            .map(ExistenceProof.fromJSON);
+        const result1 = await bridgeAdapter.sendBridgeRecvPacket(
+            deployer.getSender(),
+            {
+                proofs: getExistenceProofSnakeCell(existenceProofs)!,
+                packet: sendToCosmosPacket,
+                provenHeight: height + 1,
+            },
+            { value: toNano('3') },
+        );
+        printTransactionFees(result1.transactions);
+        expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10_000_000_000n);
     });
 });
