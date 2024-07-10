@@ -1,8 +1,8 @@
 import { Blockchain, printTransactionFees, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import { beginCell, Cell, SendMode, toNano } from '@ton/core';
+import { Address, beginCell, Cell, SendMode, toNano } from '@ton/core';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import { BridgeAdapter, BridgeAdapterOpcodes, Src } from '../wrappers/BridgeAdapter';
+import { BridgeAdapter, BridgeAdapterOpcodes, TokenOrigin } from '../wrappers/BridgeAdapter';
 import { JettonMinter } from '../wrappers/JettonMinter';
 import { WhitelistDenom, WhitelistDenomOpcodes } from '../wrappers/WhitelistDenom';
 import { JettonWallet } from '../wrappers/JettonWallet';
@@ -346,16 +346,16 @@ describe('BridgeAdapter', () => {
             jettonMinterSrcCosmos: jettonMinterSrcCosmos.address,
             jettonMinterSrcTon: jettonMinterSrcTon.address,
             user: user.address,
-            srcCosmos: Src.COSMOS,
-            srcTon: Src.TON,
+            srcCosmos: TokenOrigin.COSMOS,
+            srcTon: TokenOrigin.TON,
         });
     });
 
-    it('should send jetton src::cosmos to TON', async () => {
+    it('should send jetton token_origin::cosmos to TON', async () => {
         const packet = beginCell()
             .storeUint(1, 64) // seq
             .storeUint(0xae89be5b, 32) // op
-            .storeUint(Src.COSMOS, 32) // crcSrc
+            .storeUint(TokenOrigin.COSMOS, 32) // crcSrc
             .storeAddress(user.address) // remote_receiver
             .storeAddress(jettonMinterSrcCosmos.address) // remote_denom
             .storeUint(transferAmount, 128) // amount
@@ -402,7 +402,7 @@ describe('BridgeAdapter', () => {
         expect(balance.amount).toBe(transferAmount);
     });
 
-    it('should send jetton src::ton to TON', async () => {
+    it('should send jetton token_origin::ton to TON', async () => {
         const packet = beginCell()
             .storeUint(2, 64) // seq
             .storeUint(0xae89be5b, 32) // op
@@ -509,7 +509,7 @@ describe('BridgeAdapter', () => {
         const sendJettonSrcCosmosPacket = beginCell()
             .storeUint(1, 64) // seq
             .storeUint(0xae89be5b, 32) // op
-            .storeUint(Src.COSMOS, 32) // crcSrc
+            .storeUint(TokenOrigin.COSMOS, 32) // crcSrc
             .storeAddress(user.address) // remote_receiver
             .storeAddress(jettonMinterSrcCosmos.address) // remote_denom
             .storeUint(transferAmount, 128) // amount
@@ -635,6 +635,59 @@ describe('BridgeAdapter', () => {
         const userTonBalance = await user.getBalance();
         expect(userTonBalance).toBeGreaterThan(9000000n);
         expect(userTonBalance).toBeLessThan(transferAmount);
+    });
+
+    it('test', async () => {
+        const sendJettonSrcTonPacket = beginCell()
+            .storeUint(8, 64) // seq
+            .storeUint(0xae89be5b, 32) // op
+            .storeUint(3724195509, 32) // crcSrc
+            .storeAddress(Address.parse('EQAW5Tsp2mMja-syAH_jw9j7a4dFICcaHHcq8xu0k-_Yzs_T')) // remote_receiver
+            .storeAddress(Address.parse('EQB-MPwrd1G6WKNkLz_VnV6WqBDd142KMQv-g1O-8QUA3728')) // remote denom
+            .storeUint(1000, 128) // amount
+            .storeUint(1720576691, 64) // timeout
+            .storeRef(
+                beginCell()
+                    .storeBuffer(Buffer.from('orai1mycmhyrmd6dusp408rtjgzlk7738vhtgqyhxxt')) //  local_sender
+                    .endCell(),
+            )
+            .endCell();
+        console.log(BigInt('0x' + sendJettonSrcTonPacket.hash().toString('hex')));
+        // #region script getProofs
+        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        const queryClient = new QueryClient(tendermint37 as any);
+        const data = await getPacketProofs(
+            queryClient,
+            'orai1pump92q0m7y3p8zx3c9yfxh0uzk8gl8v8pmmxmmyv6pewe2cjpsqfl2md0',
+            26748848,
+            8n,
+        );
+
+        // writeFileSync(
+        //     resolve(__dirname, './fixtures/multiplePacketProofs.json'),
+        //     JSON.stringify(data),
+        // );
+        // #endregion
+
+        // provenBlockHeight = proofHeight + 1
+        // await updateBlock(lightClient26460742 as any, deployer);
+        // const existenceProofs = Object.values(multiplePacketProofs)
+        //     .slice(0, 3) // cut the default property
+        //     .flat()
+        //     .map(ExistenceProof.fromJSON);
+        // const proofSendJettonSrcCosmos = existenceProofs.slice(0, 2);
+        // const proofSendJettonSrcTon = existenceProofs.slice(2, 4);
+        // const proofSendTon = existenceProofs.slice(4, 6);
+
+        // await bridgeAdapter.sendBridgeRecvPacket(
+        //     deployer.getSender(),
+        //     {
+        //         proofs: getExistenceProofSnakeCell(proofSendJettonSrcTon)!,
+        //         packet: sendJettonSrcTonPacket,
+        //         provenHeight: 26460742,
+        //     },
+        //     { value: toNano('1') },
+        // );
     });
 
     it('Test send jetton token from ton to bridge adapter', async () => {

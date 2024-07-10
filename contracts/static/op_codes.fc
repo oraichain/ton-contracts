@@ -3,7 +3,6 @@ const log::confirm_tx = 2;
 
 ;; Minter
 int op::mint() asm "21 PUSHINT";
-const cosmos = "src::cosmos"c;
 
 ;; Burner
 int op::burn() asm "0x595f07bc PUSHINT";

@@ -9,6 +9,7 @@ import { LightClientMaster } from '../wrappers/LightClientMaster';
 import { iavlSpec, tendermintSpec } from '../wrappers/specs';
 import { getSpecCell } from '../wrappers';
 import { ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
+import { fromBech32 } from '@cosmjs/encoding';
 
 async function deploy() {
     // =================== Setup TON Wallet ===================
@@ -46,9 +47,9 @@ async function deploy() {
             await compile('LightClientMaster'),
         ),
     );
-    // await lightClientMaster.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
-    // await waitSeqno(walletContract, await walletContract.getSeqno());
-    // console.log('Success deploy light client at address: ', lightClientMaster.address);
+    await lightClientMaster.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
+    await waitSeqno(walletContract, await walletContract.getSeqno());
+    console.log('Success deploy light client at address: ', lightClientMaster.address);
 
     // USDT
     // const usdtMinterContract = client.open(

@@ -1,5 +1,8 @@
-const int error::invalid_sender = 3000;
-const int error::processed_packet = 3001;
-const int error::unsupport_this_denom = 3002;
-const int error::packet_timeout = 3003;
-const int error::invalid_native_amount = 3004;
+const int error::invalid_packet_opcode = 3000;
+const int error::invalid_sender = 3001;
+const int error::processed_packet = 3002;
+const int error::unsupport_this_denom = 3003;
+const int error::packet_timeout = 3004;
+const int error::invalid_native_amount = 3005;
+const int error::packet_verified_exist_fail = 3006;
+

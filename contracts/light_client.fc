@@ -152,30 +152,26 @@ global slice light_client_master_address;
         slice bridge_adapter_address = body_cs~load_msg_addr();
         slice specs = body_cs~load_ref().begin_parse();
         slice ds = body_cs~load_ref().begin_parse();
-        ;; should get data from body and verify
+        ;; should get packet from body and verify
         int proven_height = ds~load_uint(64);
         throw_unless(error::invalid_height, proven_height == height);
         slice response_address = ds~load_msg_addr();
-        (cell bridge_wasm_smart_contract, cell proofs, cell data) = (ds~load_ref(), ds~load_ref(), ds~load_ref());
-        slice data_cs = data.begin_parse();
-        int seq = data_cs.preload_uint(64);
-        slice next_data_cs = data_cs.skip_bits(64);
-        int op_codes = next_data_cs.preload_uint(32);
-
+        (cell bridge_wasm_smart_contract, cell proofs, cell packet) = (ds~load_ref(), ds~load_ref(), ds~load_ref());
+        slice packet_cs = packet.begin_parse();
+        int opcode_packet = packet_cs~load_uint(32);
+        int seq = packet_cs~load_uint(64);
         ;; build merklePath
         builder contract_path = begin_cell()
                                 .store_uint(contract_store_prefix, 8)
                                 .store_slice(bridge_wasm_smart_contract.begin_parse());
-        
         builder keys = begin_cell();
-        if (op_codes == op::ack_timeout) {
-            keys =  packet_commitment_path(contract_path, ack_packet_commitment, seq.int_to_string().end_cell().begin_parse());
+        if (opcode_packet == op::send_to_cosmos) {
+            keys =  packet_commitment_path(contract_path, ack_packet_commitment, seq);
         } else {
-            keys =  packet_commitment_path(contract_path, send_packet_commitment, seq.int_to_string().end_cell().begin_parse());
+            keys =  packet_commitment_path(contract_path, send_packet_commitment, seq);
         }
         keys = keys.append_prefix(module_prefix);
-
-        slice commitment = data.cell_hash().packet_commitment().end_cell().begin_parse();
+        slice commitment = packet.cell_hash().packet_commitment().end_cell().begin_parse();
         int is_packet_existed = verify_chained_membership(app_hash.preload_uint(256),  specs, proofs.begin_parse(), keys.end_cell().begin_parse(), commitment);
         builder forward_builder = begin_cell();
         ;; should forward to light_client_master and this master will forward light client message
@@ -185,7 +181,7 @@ global slice light_client_master_address;
                     .store_ref(begin_cell()
                         .store_uint(is_packet_existed, 1)
                         .store_slice(response_address)
-                        .store_ref(data)
+                        .store_ref(packet)
                         .end_cell());
         cell forward_payload = forward_builder.end_cell();
         cell body_builder = begin_cell()

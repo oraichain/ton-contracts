@@ -95,9 +95,9 @@ export const BridgeAdapterPacketOpcodes = {
     sendToTon: crc32('op::send_to_ton'),
 };
 
-export const Src = {
-    COSMOS: crc32('src::cosmos'),
-    TON: crc32('src::ton'),
+export const TokenOrigin = {
+    COSMOS: crc32('token_origin::cosmos'),
+    TON: crc32('token_origin::ton'),
 };
 
 export interface BridgeRecvPacket {

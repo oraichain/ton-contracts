@@ -12,7 +12,7 @@ import { compile } from '@ton/blueprint';
 import { result as blockData } from './fixtures/block.json';
 import { result as validators } from './fixtures/validators.json';
 import { createHash } from 'crypto';
-import { Src } from '../wrappers/BridgeAdapter';
+import { TokenOrigin } from '../wrappers/BridgeAdapter';
 import * as proofs from './fixtures/proofs.json';
 import {
     CommitmentProof,
@@ -262,7 +262,7 @@ describe('TestClient', () => {
             Address.parse('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').toStringBuffer()
                 .length,
         );
-        console.log(Src.COSMOS);
+        console.log(TokenOrigin.COSMOS);
         const memo = beginCell()
             .storeAddress(
                 Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address,
@@ -271,7 +271,7 @@ describe('TestClient', () => {
                 Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address,
             )
             .storeUint(BigInt('10000000000000000'), 128)
-            .storeUint(Src.COSMOS, 32)
+            .storeUint(TokenOrigin.COSMOS, 32)
             .endCell()
             .beginParse();
         console.log(
@@ -281,7 +281,7 @@ describe('TestClient', () => {
             .storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex'))
             .endCell();
         const res = await lightClient.getMemo(buffer);
-        console.log(Src.COSMOS);
+        console.log(TokenOrigin.COSMOS);
     });
 
     it('should tuple of bits equal despite of the different element size', async () => {
@@ -293,7 +293,7 @@ describe('TestClient', () => {
                 Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address,
             )
             .storeUint(BigInt('10000000000000000'), 128)
-            .storeUint(Src.COSMOS, 32)
+            .storeUint(TokenOrigin.COSMOS, 32)
             .endCell()
             .beginParse();
         const data = Buffer.from(memo.asCell().bits.toString(), 'hex')

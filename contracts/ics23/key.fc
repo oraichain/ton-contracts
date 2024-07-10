@@ -1,5 +1,3 @@
-const channel = "channel-0";
-const delimiter = "/";
 builder encode_namespace(slice namespace){
     int len = slice_bits(namespace) >> 3;
     return begin_cell()
@@ -7,13 +5,11 @@ builder encode_namespace(slice namespace){
             .store_slice(namespace);
 }
 
-builder packet_commitment_path(builder contract_path, slice namespace, slice sequence){
+builder packet_commitment_path(builder contract_path, slice namespace, int sequence){
     return begin_cell()
             .store_builder(contract_path)
             .store_builder(encode_namespace(namespace))
-            .store_slice(channel)
-            .store_slice(delimiter)
-            .store_slice(sequence);
+            .store_uint(sequence, 64);
 }
 
 builder append_prefix(builder commitment_path, slice prefix){
