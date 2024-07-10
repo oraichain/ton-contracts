@@ -682,7 +682,11 @@ describe('BridgeAdapter', () => {
     it('Test send jetton token from ton to bridge adapter', async () => {
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
-            { denom: usdtMinterContract.address, permission: true, isRootFromTon: true },
+            {
+                denom: usdtMinterContract.address,
+                permission: true,
+                isRootFromTon: true,
+            },
             {
                 value: toNano(0.1),
             },
@@ -702,6 +706,7 @@ describe('BridgeAdapter', () => {
                 jettonMaster: usdtMinterContract.address,
                 toAddress: bridgeAdapter.address,
                 timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
+                remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
                 memo: beginCell()
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
                     .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
@@ -719,6 +724,9 @@ describe('BridgeAdapter', () => {
             },
         );
         printTransactionFees(result.transactions);
+
+        const bodyCell = result.transactions[result.transactions.length - 2].externals[0].body;
+        expect(BigInt(bodyCell.asSlice().loadUint(32))).toBe(BigInt('0xa64c12a3'));
 
         console.log(
             'Bridge adapter balance:',
@@ -800,6 +808,7 @@ describe('BridgeAdapter', () => {
                 jettonMaster: jettonMinterSrcCosmos.address,
                 toAddress: bridgeAdapter.address,
                 timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
+                remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
                 memo: beginCell()
                     .storeRef(beginCell().storeBuffer(Buffer.from('this is just a test')).endCell())
                     .endCell(),

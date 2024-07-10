@@ -222,9 +222,12 @@ global cell send_packets_from_ton;
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
         slice either_forward_payload = in_msg_body;
-        slice first_ref = either_forward_payload~load_ref().begin_parse();
-        slice jetton_master_address = first_ref~load_msg_addr();
-        int timeout = first_ref~load_uint(64);
+        slice ref_slice = either_forward_payload~load_ref().begin_parse();
+        slice jetton_master_address = ref_slice~load_msg_addr();
+        int timeout = ref_slice~load_uint(64);
+        slice remote_receiver = ref_slice;
+        int remote_receiver_bits_len = remote_receiver.slice_bits() >> 3;
+        int remote_receiver_byte_len = remote_receiver.slice_bits() >> 3;
         cell memo = either_forward_payload~load_ref();
         slice calculate_sender = calculate_user_jetton_wallet_address(my_address(), jetton_master_address, jetton_wallet_code);
         ;; validate jetton_master_address is valid
@@ -237,8 +240,13 @@ global cell send_packets_from_ton;
                                     .store_slice(jetton_master_address)
                                     .store_coins(jetton_amount)
                                     .store_uint(timeout, 64)
+                                    .store_uint(remote_receiver_byte_len, 8)
+                                    .store_slice(remote_receiver)
                                     .store_ref(memo)
-                                    .store_ref(begin_cell().store_slice(from_address).end_cell())
+                                    .store_ref(
+                                        begin_cell()
+                                        .store_slice(from_address)
+                                        .end_cell())
                                 .end_cell());
         cell body = bodyBuilder.end_cell();
         send_simple_message(0, whitelist_denom, body, CARRY_REMAINING_GAS);
@@ -249,24 +257,36 @@ global cell send_packets_from_ton;
         throw_unless(error::invalid_sender, compare_address(whitelist_denom ,sender_address));
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice ds = in_msg_body~load_ref().begin_parse();
+        
         int existed = ds~load_int(8);
         throw_unless(error::unsupport_this_denom, existed);
         int is_root_from_ton = ds~load_int(8);
+        
         slice jetton_master_address = ds~load_msg_addr();
         int amount = ds~load_coins();
         int timeout = ds~load_uint(64);
-        cell memo_cell = ds~load_ref();
+        
+        int remote_receiver_byte_len = ds~load_uint(8);
+        int remote_receiver_bits_len = remote_receiver_byte_len * 8;
+        int remote_receiver_address = ds~load_uint(remote_receiver_bits_len);
+        
+        cell universal_swap_msg_cell = ds~load_ref();
         slice response_address = ds~load_ref().begin_parse();
 
         cell emit_data = begin_cell()
                             .store_uint(op::send_to_cosmos, 32)
                             .store_uint(next_packet_seq, 64)
+                            .store_uint(is_root_from_ton ? token_origin::ton : token_origin::cosmos, 32)
+                            .store_uint(amount, 128)
                             .store_uint(timeout, 64)
+                            .store_uint(remote_receiver_byte_len, 8)
+                            .store_uint(remote_receiver_address, remote_receiver_bits_len)
                             .store_slice(jetton_master_address)
-                            .store_slice(response_address)
-                            .store_uint(0, 16) ;; channel-id => update soon when have this feature
-                            .store_coins(amount)
-                            .store_ref(memo_cell)
+                            .store_ref(
+                                begin_cell()
+                                .store_slice(response_address) ;; local_sender
+                                .end_cell())
+                            .store_ref(universal_swap_msg_cell)
                             .end_cell();
         send_packets_from_ton~udict_set(64, next_packet_seq, emit_data.begin_parse());
         next_packet_seq = next_packet_seq + 1;
