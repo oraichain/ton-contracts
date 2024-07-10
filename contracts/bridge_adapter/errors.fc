@@ -5,4 +5,8 @@ const int error::unsupport_this_denom = 3003;
 const int error::packet_timeout = 3004;
 const int error::invalid_native_amount = 3005;
 const int error::packet_verified_exist_fail = 3006;
+const int error::not_time_to_refund_ack_packet = 3007;
+const int error::packet_does_not_exist = 3008;
+
+
 

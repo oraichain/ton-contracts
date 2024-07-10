@@ -61,8 +61,6 @@ global cell send_packets_from_ton;
     slice packet_slice = packet.begin_parse();
     (int opcode_packet, int seq, int token_origin, int amount, int timeout) = (packet_slice~load_uint(32), packet_slice~load_uint(64), packet_slice~load_uint(32), packet_slice~load_uint(128), packet_slice~load_uint(64));
 
-
-
     if (is_packet_existed == 0){
         cell emit_ack = begin_cell()
                         .store_uint(opcode_packet, 32)
@@ -152,6 +150,73 @@ global cell send_packets_from_ton;
         return ();
     }
 
+    if (opcode_packet == op::send_to_cosmos){
+        int remote_receiver_byte_len = packet_slice~load_uint(8);
+        packet_slice~load_uint(remote_receiver_byte_len * 8);
+        slice jetton_master =  packet_slice~load_msg_addr();
+        slice packet_ref = packet_slice~load_ref().begin_parse();
+        slice to = packet_ref~load_msg_addr(); ;; local_sender
+
+        throw_unless(error::not_time_to_refund_ack_packet, now() >= timeout);
+        cell emit_ack = begin_cell()
+                        .store_uint(op::send_to_cosmos, 32)
+                        .store_uint(seq, 64)
+                        .store_uint(ack::timeout, 2)
+                        .end_cell();
+        emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
+
+        if (token_origin == token_origin::cosmos){
+            cell mint_msg = begin_cell()
+                        .store_uint(op::internal_transfer(), 32)
+                        .store_uint(query_id, 64)
+                        .store_coins(amount)
+                        .store_uint(0, 2)
+                        .store_slice(response_address)
+                        .store_coins(0)
+                        .store_maybe_ref(null())
+                        .end_cell();
+        
+            cell body = begin_cell()
+                        .store_uint(op::mint(),32)
+                        .store_uint(query_id,64)
+                        .store_slice(to)
+                        .store_coins(msg_value)
+                        .store_ref(mint_msg)
+                        .end_cell();
+            
+            send_simple_message(0, jetton_master, body, CARRY_REMAINING_GAS);
+        }
+
+        if (token_origin == token_origin::ton){
+            if ( jetton_master.preload_uint(2) == 0) {
+                send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
+            } else {
+                slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
+                cell body = begin_cell()
+                            .store_uint(op::transfer(), 32)
+                            .store_uint(query_id, 64)
+                            .store_coins(amount)
+                            .store_slice(to)
+                            .store_slice(response_address)
+                            .store_maybe_ref(null())
+                            .store_coins(0)
+                            .store_maybe_ref(null())
+                            .end_cell();
+                send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
+            }
+        }
+
+        cell emit_ack = begin_cell()
+                        .store_uint(opcode_packet, 32)
+                        .store_uint(seq, 64)
+                        .store_uint(ack::success, 2)
+                        .end_cell();
+                        
+        emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
+        
+        return ();
+    }
+
     save_data();
 }
 
@@ -182,17 +247,38 @@ global cell send_packets_from_ton;
         slice packet_slice = packet.begin_parse();
         int opcode_packet = packet_slice.preload_uint(32);
         throw_unless(error::invalid_packet_opcode, (opcode_packet == op::send_to_cosmos) | (opcode_packet == op::send_to_ton));
+
+
         builder bodyBuilder = begin_cell();
-        bodyBuilder = bodyBuilder 
-                    .store_uint(op::receive_packet, 32)
-                    .store_uint(query_id, 64)
-                    .store_ref(begin_cell()
-                                .store_uint(proven_height, 64)
-                                .store_slice(sender_address)
-                                .store_ref(bridge_wasm_smart_contract)
-                                .store_ref(proofs)
-                                .store_ref(packet)
-                                .end_cell());
+        if (opcode_packet == op::send_to_ton) {
+            bodyBuilder = bodyBuilder 
+            .store_uint(op::receive_packet, 32)
+            .store_uint(query_id, 64)
+            .store_ref(begin_cell()
+                        .store_uint(proven_height, 64)
+                        .store_slice(sender_address)
+                        .store_ref(bridge_wasm_smart_contract)
+                        .store_ref(proofs)
+                        .store_ref(packet)
+                        .end_cell());
+        } else {
+            slice skipped_packet = packet_slice.skip_bits(32);
+            int seq = skipped_packet.preload_uint(64);
+            (slice stored_packet_data, int exist) = send_packets_from_ton.udict_get?(64, seq);
+            throw_unless(error::packet_does_not_exist, exist);
+            cell new_packet = begin_cell().store_slice(stored_packet_data).store_uint(ack::timeout, 2).end_cell();
+            bodyBuilder = bodyBuilder 
+            .store_uint(op::receive_packet, 32)
+            .store_uint(query_id, 64)
+            .store_ref(begin_cell()
+                        .store_uint(proven_height, 64)
+                        .store_slice(sender_address)
+                        .store_ref(bridge_wasm_smart_contract)
+                        .store_ref(proofs)
+                        .store_ref(new_packet)
+                        .end_cell());
+        }
+
         cell body = bodyBuilder.end_cell();
         send_simple_message(0, light_client_master, body, CARRY_REMAINING_GAS);
         ;; prune all timeout packet
@@ -245,7 +331,7 @@ global cell send_packets_from_ton;
                                     .store_ref(memo)
                                     .store_ref(
                                         begin_cell()
-                                        .store_slice(from_address)
+                                            .store_slice(from_address)
                                         .end_cell())
                                 .end_cell());
         cell body = bodyBuilder.end_cell();
@@ -273,7 +359,7 @@ global cell send_packets_from_ton;
         cell universal_swap_msg_cell = ds~load_ref();
         slice response_address = ds~load_ref().begin_parse();
 
-        cell emit_data = begin_cell()
+        builder emit_data_builder = begin_cell()
                             .store_uint(op::send_to_cosmos, 32)
                             .store_uint(next_packet_seq, 64)
                             .store_uint(is_root_from_ton ? token_origin::ton : token_origin::cosmos, 32)
@@ -285,10 +371,15 @@ global cell send_packets_from_ton;
                             .store_ref(
                                 begin_cell()
                                 .store_slice(response_address) ;; local_sender
-                                .end_cell())
+                                .end_cell());
+                                
+        send_packets_from_ton~udict_set(64, next_packet_seq, emit_data_builder.end_cell().begin_parse());
+        
+        ;; append memo here for emitting events
+        cell emit_data = emit_data_builder
                             .store_ref(universal_swap_msg_cell)
                             .end_cell();
-        send_packets_from_ton~udict_set(64, next_packet_seq, emit_data.begin_parse());
+
         next_packet_seq = next_packet_seq + 1;
         ;; execute burn if not from ton
         if (is_root_from_ton == 0) {
