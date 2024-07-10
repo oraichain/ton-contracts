@@ -10,6 +10,7 @@ import {
     SendMode,
 } from '@ton/core';
 import { ValueOps } from './@types';
+import { fromBech32 } from '@cosmjs/encoding';
 
 export enum JettonOpCodes {
     TRANSFER = 0xf8a7ea5,
@@ -41,6 +42,7 @@ export interface SendTransferInterface {
     fwdAmount: bigint;
     jettonAmount: bigint;
     jettonMaster: Address;
+    remoteReceiver: string; // cosmos address
     timeout: bigint;
     memo: Cell;
 }
@@ -69,7 +71,13 @@ export class JettonWallet implements Contract {
         });
     }
 
-    async sendTransfer(provider: ContractProvider, via: Sender, data: SendTransferInterface, opts: ValueOps) {
+    async sendTransfer(
+        provider: ContractProvider,
+        via: Sender,
+        data: SendTransferInterface,
+        opts: ValueOps,
+    ) {
+        const remoteCosmosData = fromBech32(data.remoteReceiver).data;
         await provider.internal(via, {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
@@ -81,8 +89,13 @@ export class JettonWallet implements Contract {
                 .storeAddress(via.address) // response address
                 .storeDict(Dictionary.empty())
                 .storeCoins(data.fwdAmount)
-                .storeUint(0, 1)
-                .storeRef(beginCell().storeAddress(data.jettonMaster).storeUint(data.timeout, 64).endCell())
+                .storeBuffer(Buffer.from(remoteCosmosData))
+                .storeRef(
+                    beginCell()
+                        .storeAddress(data.jettonMaster)
+                        .storeUint(data.timeout, 64)
+                        .endCell(),
+                )
                 .storeRef(data.memo)
                 .endCell(),
         });
