@@ -87,6 +87,7 @@ export interface BridgeTon {
     amount: bigint;
     timeout: bigint;
     memo: Cell;
+    remoteReceiver: string;
 }
 
 export class BridgeAdapter implements Contract {
@@ -149,9 +150,12 @@ export class BridgeAdapter implements Contract {
     }
 
     async sendBridgeTon(provider: ContractProvider, via: Sender, data: BridgeTon, ops: ValueOps) {
+        const remoteCosmosData = fromBech32(data.remoteReceiver).data;
         const body = beginCell()
             .storeCoins(data.amount)
             .storeUint(data.timeout, 64)
+            .storeUint(Buffer.from(remoteCosmosData).length, 8)
+            .storeBuffer(Buffer.from(remoteCosmosData))
             .storeRef(data.memo)
             .endCell();
 

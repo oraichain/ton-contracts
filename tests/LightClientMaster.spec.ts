@@ -90,7 +90,7 @@ describe('LightClientMaster', () => {
                     commit: deserializeCommit(lastCommit),
                 },
                 {
-                    value: toNano('10'),
+                    value: toNano('3.5'),
                 },
             );
 

@@ -426,7 +426,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 packet,
                 provenHeight: 26877876,
             },
-            { value: toNano('1') },
+            { value: toNano('0.5') },
         );
 
         printTransactionFees(sendRecvResult.transactions);
@@ -490,7 +490,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 packet,
                 provenHeight: 26877882,
             },
-            { value: toNano('1') },
+            { value: toNano('0.5') },
         );
 
         printTransactionFees(sendRecvResult.transactions);
@@ -557,6 +557,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             },
             { value: toNano('1') },
         );
+        console.log('=====================================');
         printTransactionFees(sendRecvResult.transactions);
         const userTonBalance = await user.getBalance();
         expect(userTonBalance).toBeGreaterThan(9000000n);
@@ -1316,7 +1317,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         result = await wallet.sendTransfer(
             userContract.getSender(),
             {
-                fwdAmount: toNano(1),
+                fwdAmount: toNano(0.1),
                 jettonAmount: toNano(5),
                 jettonMaster: jettonMinterSrcCosmos.address,
                 toAddress: bridgeAdapter.address,
@@ -1442,5 +1443,31 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         );
         printTransactionFees(result1.transactions);
         expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10_000_000_000n);
+    });
+
+    it('Test send ton to cosmos', async () => {
+        const result = await bridgeAdapter.sendBridgeTon(
+            deployer.getSender(),
+            {
+                amount: 10_000_000n,
+                memo: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(
+                        beginCell()
+                            .storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx'))
+                            .endCell(),
+                    )
+                    .endCell(),
+                remoteReceiver: 'orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx',
+                timeout: 1720603835n,
+            },
+            {
+                value: toNano(0.05),
+            },
+        );
+
+        printTransactionFees(result.transactions);
     });
 });
