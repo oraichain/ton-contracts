@@ -483,7 +483,15 @@ global cell send_packets_from_ton;
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
 }
 
-(slice, slice ,cell) get_bridge_data() method_id {
+cell get_bridge_data() method_id {
     load_data();
-    return (light_client_master, bridge_wasm_smart_contract.begin_parse(), jetton_wallet_code);
+    return begin_parse()
+        .store_slice(light_client_master)
+        .store_slice(admin)
+        .store_slice(whitelist_denom)
+        .store_uint(next_packet_seq, 64)
+        .store_uint(paused, 1)
+        .store_ref(bridge_wasm_smart_contract)
+        .store_ref(jetton_wallet_code)
+        .end_cell();
 }
