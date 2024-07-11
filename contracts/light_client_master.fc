@@ -1,0 +1,295 @@
+#include "imports/stdlib.fc";
+#include "utils/verify.fc";
+#include "utils/messages.fc";
+#include "utils/helper.fc";
+#include "utils/validator_hash_input.fc";
+#include "utils/light_client.fc";
+#include "common/messages.fc";
+#include "common/address.fc";
+#include "imports/op-codes.fc";
+#include "light_client/constants.fc";
+#include "light_client/errors.fc";
+#include "light_client/opcodes.fc";
+
+;; store in a header_ref
+global int trusting_period;
+global int trusted_height;
+global slice chain_id;
+global cell light_client_code;
+;; proofSpecs 
+;; https://github.com/cosmos/ics23/blob/c7c728879896fb260fe76b208ea6a17c2b0132a3/js/src/generated/codecimpl.d.ts#L705
+global cell specs;
+
+() preload_data(slice ds) impure {
+    trusting_period = ds~load_uint(32);
+    trusted_height = ds~load_uint(64);
+    light_client_code = ds~load_ref();
+    specs = ds~load_ref();
+    chain_id = ds;
+}
+
+;; load_data populates storage variables using stored data
+() load_data() impure {
+    var ds = get_data().begin_parse();
+    preload_data(ds);
+}
+
+(cell) presave_data() {
+    return begin_cell()
+            .store_uint(trusting_period, 32)
+            .store_uint(trusted_height, 64)
+            .store_slice(chain_id)
+            .store_ref(light_client_code)
+            .store_ref(specs)
+        .end_cell();
+}
+
+;; save_data stores storage variables as a cell into persistent storage
+() save_data() impure inline_ref {
+    set_data(
+        presave_data()
+    );
+}
+
+;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) { ;; ignore all empty messages        
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+   
+    int flags = cs~load_uint(4);
+
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+
+    load_data(); ;; here we populate the storage variables
+
+    slice sender_address = cs~load_msg_addr();
+    int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
+    int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
+
+    if (op == op::verify_block_hash) {
+        ;; store block data
+        slice ds = in_msg_body~load_ref().begin_parse();
+        (cell header, cell validators_cell, cell commit) = parse_verify_light_client_body(ds);
+
+        slice header_cs = header.begin_parse();
+        slice inner_header = header_cs~load_ref().begin_parse();
+        inner_header~load_ref();
+        slice temp_chain_id = inner_header~load_ref().begin_parse();
+        int height = inner_header~load_uint(32);
+
+        throw_if(error::not_match_chain_id, chain_id.equal_slice?(temp_chain_id) != -1);
+        
+        ;; update untrusted validators here
+        builder inner_cell = begin_cell().store_ref(validators_cell);
+        slice validators = validators_cell.begin_parse();
+        cell validators_by_address = new_dict();
+        int total_voting_power = 0;
+        while(validators.slice_refs_empty?() != -1){
+            slice next_ref = validators~load_ref().begin_parse();
+            slice validator_i =  validators~load_ref().begin_parse();
+            int address = validator_i~load_uint(160);
+            validators_by_address~udict_set(160, address, validator_i);
+            int voting_power = validator_i~load_uint(32);
+            total_voting_power += voting_power;
+            validators = next_ref;
+        }
+        cell validators = inner_cell.store_uint(total_voting_power, 256).store_ref(validators_by_address).end_cell();
+
+        ;; send new message to verify untrusted validators
+        builder bodyBuilder = begin_cell();
+        bodyBuilder = bodyBuilder 
+                    .store_uint(op::verify_untrusted_validators, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(begin_cell()
+                                .store_slice(sender_address)
+                                .store_ref(begin_cell()
+                                    .store_ref(header)
+                                    .store_ref(validators)
+                                    .store_ref(commit)
+                                        .end_cell()
+            )
+                    .end_cell());
+        cell body = bodyBuilder.end_cell();
+        send_simple_message(0, my_address(), body, CARRY_REMAINING_GAS);
+        return ();
+    }
+
+    if (op == op::verify_untrusted_validators) {
+        throw_if(error::invalid_sender, sender_address.equal_slice?(my_address()) != -1);
+        slice msg = in_msg_body~load_ref().begin_parse();
+        slice response_address = msg~load_msg_addr();
+        cell ds = msg~load_ref();
+        slice cs = ds.begin_parse();
+
+        slice header = cs~load_ref().begin_parse();
+        cell validators = cs~load_ref();
+        
+        ;; get validator set
+        header~load_ref();
+        slice first_hashes = header~load_ref().begin_parse();
+        first_hashes~load_ref();
+        first_hashes~load_ref();
+        slice validator_hash_set = first_hashes~load_ref().begin_parse();
+
+        int result = verify::verify_validators_set(validator_hash_set, validators.begin_parse());
+        throw_if(error::invalid_verify_validators_set, result != -1);
+        ;; send verify_sigs message
+        builder bodyBuilder = begin_cell();
+        bodyBuilder = bodyBuilder 
+                    .store_uint(op::verify_on_untrusted_sigs, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(begin_cell().store_slice(response_address).store_ref(ds).end_cell());
+        cell body = bodyBuilder.end_cell();
+        send_simple_message(0, my_address(), body, CARRY_REMAINING_GAS);
+        return ();
+    }
+
+    if (op == op::verify_on_untrusted_sigs) {
+        throw_if(error::invalid_sender, sender_address.equal_slice?(my_address()) != -1);
+        slice msg = in_msg_body~load_ref().begin_parse();
+        slice response_address = msg~load_msg_addr();
+        cell ds = msg~load_ref();
+        slice cs = ds.begin_parse();
+        
+        (cell header, cell validators, cell commit) = parse_verify_light_client_body(cs);
+        slice slice_header = header.begin_parse();
+        slice inner_header = slice_header~load_ref().begin_parse();
+        int height = inner_header~load_uint(32);
+        
+        int result = 0;
+        result = verify::verify_single_optimized_commit_builder(
+            height,
+            chain_id,
+            commit.begin_parse(),
+            validators.begin_parse());
+        throw_if(error::invalid_verify_sigs, result != -1);
+
+        builder bodyBuilder = begin_cell();
+        if (trusted_height == 0) {
+            bodyBuilder = bodyBuilder 
+                    .store_uint(op::create_new_light_client, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(begin_cell()
+                                .store_slice(response_address)
+                                .store_ref(ds)
+                    .end_cell());
+            send_simple_message(0, my_address(), bodyBuilder.end_cell(), CARRY_REMAINING_GAS);
+        } else {
+            bodyBuilder = bodyBuilder 
+                    .store_uint(op::verify_on_trusted_sigs, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(begin_cell()
+                                .store_slice(response_address)
+                                .store_ref(ds)
+                    .end_cell());
+            slice light_client_address = calculate_specific_light_client_address(trusted_height, chain_id, my_address(), trusting_period,light_client_code);
+            send_simple_message(0, light_client_address, bodyBuilder.end_cell(), CARRY_REMAINING_GAS);
+        }
+        return ();
+    }
+
+    if (op == op::create_new_light_client) {
+        slice msg = in_msg_body~load_ref().begin_parse();
+        slice response_address = msg~load_msg_addr();
+        cell ds = msg~load_ref();
+
+        (cell header, cell validators, cell commit) = parse_verify_light_client_body(ds.begin_parse());
+        slice slice_header = header.begin_parse();
+        slice inner_header = slice_header~load_ref().begin_parse();
+        int height = inner_header~load_uint(32);
+
+        slice light_client_address = calculate_specific_light_client_address(height, chain_id, my_address(), trusting_period,light_client_code);
+        cell state_init = calculate_light_client_state_init(height, chain_id, my_address(), trusting_period, light_client_code);
+
+        throw_unless(error::invalid_sender, compare_address(sender_address, light_client_address) | compare_address(sender_address, my_address()));
+
+        builder bodyBuilder = begin_cell();
+        bodyBuilder = bodyBuilder 
+                    .store_uint(op::update_light_client_state, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(begin_cell()
+                        .store_slice(response_address)
+                        .store_ref(ds)
+                    .end_cell());
+        cell body = bodyBuilder.end_cell();
+        send_message_with_stateinit(0, light_client_address, state_init, body, CARRY_REMAINING_GAS);
+        return ();
+    }
+
+    if (op == op::finalize_verify_light_client) {
+        slice msg = in_msg_body~load_ref().begin_parse();
+        slice response_address = msg~load_msg_addr();
+        cell ds = msg~load_ref();
+        (cell header, _, _) = parse_verify_light_client_body(ds.begin_parse());
+        slice slice_header = header.begin_parse();
+        slice inner_header = slice_header~load_ref().begin_parse();
+        int height = inner_header~load_uint(32);
+        trusted_height = height;
+        save_data();
+        ;; refund excess money to user
+        var msg = begin_cell()
+            .store_uint(0x10, 6)
+            .store_slice(response_address)
+            .store_coins(0)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op::excesses(), 32)
+            .store_uint(query_id, 64);
+        send_raw_message(msg.end_cell(), IGNORE_ERRORS + CARRY_REMAINING_GAS);
+        return ();
+    }
+
+    if (op == op::receive_packet) {
+        cell body = in_msg_body~load_ref();
+        slice ds = body.begin_parse();
+        int proven_height = ds~load_uint(64);
+        slice light_client_address = calculate_specific_light_client_address(proven_height, chain_id, my_address(), trusting_period,light_client_code);
+        builder body_builder = begin_cell();
+        body_builder = body_builder 
+                    .store_uint(op::verify_packet_commitment, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(begin_cell()
+                        .store_slice(sender_address) ;; this is bridge adapter address
+                        .store_ref(specs) ;; bring proofSpecs
+                        .store_ref(body)
+                        .end_cell());
+        cell builder_cell = body_builder.end_cell();
+        send_simple_message(0, light_client_address, builder_cell, CARRY_REMAINING_GAS);
+        return ();
+    }
+
+    if (op == op::proxy_forward_msg) {
+        cell body = in_msg_body~load_ref();
+        slice ds = body.begin_parse();
+        int height = ds~load_uint(64);
+        slice bridge_adapter_address = ds~load_msg_addr();
+        cell forward_msg = ds~load_ref();
+
+        slice light_client_address = calculate_specific_light_client_address(height, chain_id, my_address(), trusting_period, light_client_code);
+        throw_unless(error::invalid_sender, compare_address(light_client_address, sender_address));
+
+        send_simple_message(0, bridge_adapter_address, forward_msg, CARRY_REMAINING_GAS);
+        return ();
+    }
+
+    throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
+}
+
+int get_trusted_height() method_id {
+    load_data();
+    return trusted_height;
+}
+
+slice get_chain_id() method_id {
+    load_data();
+    return chain_id;
+}
+
+cell get_light_client_code() method_id {
+    load_data();
+    return light_client_code;
+}

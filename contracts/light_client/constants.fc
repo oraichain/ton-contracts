@@ -1,0 +1,4 @@
+const module_prefix = "wasm";
+const contract_store_prefix = 0x03;
+const send_packet_commitment = "send_packet_commitment";
+const ack_packet_commitment = "ack_commitment";

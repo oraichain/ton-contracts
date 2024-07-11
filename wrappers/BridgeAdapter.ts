@@ -13,11 +13,12 @@ import { getAuthInfoInput, txBodyWasmToRef } from './utils';
 import { TxWasm } from './@types';
 import { crc32 } from '../crc32';
 import { ValueOps } from './@types';
+import { fromBech32 } from '@cosmjs/encoding';
 
 export type BridgeAdapterConfig = {
-    bridge_wasm_smart_contract: string;
-    light_client: Address;
+    light_client_master: Address;
     whitelist_denom: Address;
+    bridge_wasm_smart_contract: string;
     jetton_wallet_code: Cell;
 };
 
@@ -69,31 +70,46 @@ export function sliceRefToJson(cell: Cell): Object {
 
 export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
     return beginCell()
-        .storeAddress(config.light_client)
+        .storeAddress(config.light_client_master)
         .storeAddress(config.whitelist_denom)
-        .storeRef(beginCell().storeBuffer(Buffer.from(config.bridge_wasm_smart_contract)).endCell())
+        .storeUint(1, 64) // next_packet_seq initial value = 1
+        .storeRef(
+            beginCell()
+                .storeBuffer(Buffer.from(fromBech32(config.bridge_wasm_smart_contract).data))
+                .endCell(),
+        )
         .storeRef(config.jetton_wallet_code)
+        .storeRef(beginCell().storeDict(Dictionary.empty()).endCell()) // empty dict
         .storeRef(beginCell().storeDict(Dictionary.empty()).endCell()) // empty dict
         .endCell();
 }
 
 export const BridgeAdapterOpcodes = {
-    sendTx: crc32('op::send_tx'),
-    confirmTx: crc32('op::confirm_tx'),
+    bridgeRecvPacket: crc32('op::bridge_recv_packet'),
+    onRecvPacket: crc32('op::on_recv_packet'),
     callbackDenom: crc32('op::callback_denom'),
+    bridgeTon: crc32('op::bridge_ton'),
 };
 
-export const Src = {
-    COSMOS: crc32('src::cosmos'),
-    TON: crc32('src::ton'),
+export const BridgeAdapterPacketOpcodes = {
+    sendToTon: crc32('op::send_to_ton'),
 };
 
-export interface SendTxInterface {
-    height: bigint;
-    tx: TxWasm;
-    proofs: Cell | undefined;
-    positions: Cell;
-    data: Cell;
+export const TokenOrigin = {
+    COSMOS: crc32('token_origin::cosmos'),
+    TON: crc32('token_origin::ton'),
+};
+
+export interface BridgeRecvPacket {
+    proofs: Cell;
+    packet: Cell;
+    provenHeight: number;
+}
+
+export interface BridgeTon {
+    amount: bigint;
+    timeout: bigint;
+    memo: Cell;
 }
 
 export class BridgeAdapter implements Contract {
@@ -102,43 +118,17 @@ export class BridgeAdapter implements Contract {
         readonly init?: { code: Cell; data: Cell },
     ) {}
 
-    static buildBridgeAdapterSendTxBody(sendTxData: SendTxInterface, queryId: number = 0) {
-        const { height, tx, proofs, positions, data } = sendTxData;
-        const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
-        const authInfo = beginCell()
-            .storeRef(signInfos || beginCell().endCell())
-            .storeRef(fee)
-            .storeRef(tip)
-            .endCell();
-
-        const txBody = txBodyWasmToRef(tx.body);
-        let signatureCell: Cell | undefined;
-
-        for (let i = tx.signatures.length - 1; i >= 0; i--) {
-            let signature = tx.signatures[i];
-            let cell = beginCell()
-                .storeRef(beginCell().storeBuffer(Buffer.from(signature)).endCell())
-                .endCell();
-            if (!signatureCell) {
-                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
-            } else {
-                signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
-            }
-        }
-        const txRaw = beginCell()
-            .storeRef(authInfo)
-            .storeRef(txBody)
-            .storeRef(signatureCell || beginCell().endCell())
-            .endCell();
-
+    static buildBridgeRecvPacketBody(bridgeRecvPacketData: BridgeRecvPacket, queryId: number = 0) {
         return beginCell()
-            .storeUint(BridgeAdapterOpcodes.sendTx, 32)
+            .storeUint(BridgeAdapterOpcodes.bridgeRecvPacket, 32)
             .storeUint(queryId, 64)
-            .storeUint(height, 64)
-            .storeRef(txRaw)
-            .storeRef(proofs ?? beginCell().endCell())
-            .storeRef(positions)
-            .storeRef(data)
+            .storeRef(
+                beginCell()
+                    .storeUint(bridgeRecvPacketData.provenHeight, 64)
+                    .storeRef(bridgeRecvPacketData.proofs)
+                    .storeRef(bridgeRecvPacketData.packet)
+                    .endCell(),
+            )
             .endCell();
     }
 
@@ -160,12 +150,35 @@ export class BridgeAdapter implements Contract {
         });
     }
 
-    async sendTx(provider: ContractProvider, via: Sender, data: SendTxInterface, ops: ValueOps) {
-        const sendTxBody = BridgeAdapter.buildBridgeAdapterSendTxBody(data, ops.queryId);
+    async sendBridgeTon(provider: ContractProvider, via: Sender, data: BridgeTon, ops: ValueOps) {
+        const body = beginCell()
+            .storeCoins(data.amount)
+            .storeUint(data.timeout, 64)
+            .storeRef(data.memo)
+            .endCell();
 
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             ...ops,
+            body: beginCell()
+                .storeUint(BridgeAdapterOpcodes.bridgeTon, 32)
+                .storeUint(ops.queryId || 0, 64)
+                .storeRef(body)
+                .endCell(),
+        });
+    }
+
+    async sendBridgeRecvPacket(
+        provider: ContractProvider,
+        via: Sender,
+        data: BridgeRecvPacket,
+        ops: ValueOps,
+    ) {
+        const sendTxBody = BridgeAdapter.buildBridgeRecvPacketBody(data, ops.queryId);
+
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            value: ops.value,
             body: sendTxBody,
         });
     }

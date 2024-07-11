@@ -2,7 +2,14 @@ import { Cell, Tuple, TupleItem, TupleItemSlice, beginCell } from '@ton/core';
 import crypto from 'crypto';
 import { Any } from 'cosmjs-types/google/protobuf/any';
 
-import { Fee, Tip, TxBody, ModeInfo_Single, SignerInfo, AuthInfo } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
+import {
+    Fee,
+    Tip,
+    TxBody,
+    ModeInfo_Single,
+    SignerInfo,
+    AuthInfo,
+} from 'cosmjs-types/cosmos/tx/v1beta1/tx';
 
 import { int64FromString, writeVarint64 } from 'cosmjs-types/varint';
 import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';
@@ -26,6 +33,19 @@ import {
     fromRfc3339WithNanoseconds,
     Tendermint34Client,
 } from '@cosmjs/tendermint-rpc';
+import {
+    CommitmentProof,
+    ExistenceProof,
+    InnerOp,
+    LeafOp,
+    ProofSpec,
+} from 'cosmjs-types/cosmos/ics23/v1/proofs';
+import { calculateExistenceRoot, ics23, verifyMembership } from '@confio/ics23';
+import { QueryClient } from '@cosmjs/stargate';
+import { fromBech32, toAscii } from '@cosmjs/encoding';
+import { writeFileSync } from 'fs';
+import { resolve } from 'path';
+import { iavlSpec, tendermintSpec } from './specs';
 
 export type TestClientConfig = {
     id: number;
@@ -86,8 +106,16 @@ export const getInt64Slice = (modeInfo: ModeInfo_Single) => {
 
 export const getBlockSlice = (blockId: BlockId): Cell => {
     return beginCell()
-        .storeUint(blockId.hash ? BigInt('0x' + Buffer.from(blockId.hash).toString('hex')) : 0n, 256)
-        .storeUint(blockId.parts.hash ? BigInt('0x' + Buffer.from(blockId.parts.hash).toString('hex')) : 0n, 256)
+        .storeUint(
+            blockId.hash ? BigInt('0x' + Buffer.from(blockId.hash).toString('hex')) : 0n,
+            256,
+        )
+        .storeUint(
+            blockId.parts.hash
+                ? BigInt('0x' + Buffer.from(blockId.parts.hash).toString('hex'))
+                : 0n,
+            256,
+        )
         .storeUint(blockId.parts.total, 8)
         .endCell();
 };
@@ -99,7 +127,9 @@ export const getSignInfoCell = (mode: SignerInfo): Cell => {
         .storeRef(typeUrl)
         .storeRef(value || beginCell().endCell())
         .endCell();
-    const modeInfo = mode.modeInfo?.single ? getInt64Slice(mode.modeInfo?.single) : beginCell().endCell();
+    const modeInfo = mode.modeInfo?.single
+        ? getInt64Slice(mode.modeInfo?.single)
+        : beginCell().endCell();
     const { lo, hi } = int64FromString(mode.sequence.toString());
     const buff = [] as number[];
     writeVarint64({ lo, hi }, buff, 0);
@@ -316,14 +346,19 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
     let messagesCell: Cell | undefined;
 
     for (let i = txBodyWasm.messages.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl))
+            .endCell();
         const value = msgExecuteContractToCell(txBodyWasm.messages[i].value);
         const innerCell = beginCell()
             .storeRef(typeUrl)
             .storeRef(value || beginCell().endCell())
             .endCell();
         if (!messagesCell) {
-            messagesCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            messagesCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
             messagesCell = beginCell().storeRef(messagesCell).storeRef(innerCell).endCell();
         }
@@ -332,7 +367,9 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
     const memo_timeout_height_builder = beginCell();
 
     if (txBodyWasm.memo) {
-        memo_timeout_height_builder.storeRef(beginCell().storeBuffer(Buffer.from(txBodyWasm.memo, 'hex')).endCell());
+        memo_timeout_height_builder.storeRef(
+            beginCell().storeBuffer(Buffer.from(txBodyWasm.memo, 'hex')).endCell(),
+        );
     }
 
     if (txBodyWasm.timeoutHeight > 0n) {
@@ -341,7 +378,9 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
 
     let extCell;
     for (let i = txBodyWasm.extensionOptions.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl))
+            .endCell();
         const value = buildRecursiveSliceRef(txBodyWasm.extensionOptions[i].value);
         const innerCell = beginCell()
             .storeRef(typeUrl)
@@ -382,14 +421,19 @@ export const txBodyWasmToRef = (txBodyWasm: TxBodyWasm) => {
 export const txBodyToSliceRef = (txBodyWasm: TxBody) => {
     let messagesCell;
     for (let i = txBodyWasm.messages.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.messages[i].typeUrl))
+            .endCell();
         const value = buildRecursiveSliceRef(txBodyWasm.messages[i].value);
         const innerCell = beginCell()
             .storeRef(typeUrl)
             .storeRef(value || beginCell().endCell())
             .endCell();
         if (!messagesCell) {
-            messagesCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            messagesCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
             messagesCell = beginCell().storeRef(messagesCell).storeRef(innerCell).endCell();
         }
@@ -407,7 +451,9 @@ export const txBodyToSliceRef = (txBodyWasm: TxBody) => {
 
     let extCell;
     for (let i = txBodyWasm.extensionOptions.length - 1; i >= 0; i--) {
-        const typeUrl = beginCell().storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl)).endCell();
+        const typeUrl = beginCell()
+            .storeBuffer(Buffer.from(txBodyWasm.extensionOptions[i].typeUrl))
+            .endCell();
         const value = buildRecursiveSliceRef(txBodyWasm.extensionOptions[i].value);
         const innerCell = beginCell()
             .storeRef(typeUrl)
@@ -542,7 +588,9 @@ export const serializeCommit = (commit: Commit): SerializedCommit => {
         signatures: commit.signatures.map((sig) => {
             return {
                 blockIdFlag: sig.blockIdFlag,
-                validatorAddress: sig.validatorAddress ? Buffer.from(sig.validatorAddress).toString('hex') : '',
+                validatorAddress: sig.validatorAddress
+                    ? Buffer.from(sig.validatorAddress).toString('hex')
+                    : '',
                 timestamp: sig.timestamp
                     ? toRfc3339WithNanoseconds(sig.timestamp)
                     : new Date('0001-01-01T00:00:00Z').getTime().toString(),
@@ -601,8 +649,12 @@ export const deserializeCommit = (serializedCommit: SerializedCommit): Commit =>
         signatures: serializedCommit.signatures.map((sig) => {
             return {
                 blockIdFlag: sig.blockIdFlag,
-                validatorAddress: sig.validatorAddress ? Buffer.from(sig.validatorAddress, 'hex') : Buffer.from(''),
-                timestamp: sig.timestamp ? fromRfc3339WithNanoseconds(sig.timestamp) : new Date('0001-01-01T00:00:00Z'),
+                validatorAddress: sig.validatorAddress
+                    ? Buffer.from(sig.validatorAddress, 'hex')
+                    : Buffer.from(''),
+                timestamp: sig.timestamp
+                    ? fromRfc3339WithNanoseconds(sig.timestamp)
+                    : new Date('0001-01-01T00:00:00Z'),
                 signature: sig.signature ? Buffer.from(sig.signature, 'hex') : undefined,
             };
         }),
@@ -614,9 +666,15 @@ export function getAuthInfoInput(data: AuthInfo) {
     for (let i = data.signerInfos.length - 1; i >= 0; i--) {
         const innerCell = getSignInfoCell(data.signerInfos[i]);
         if (!finalSignInfosCell) {
-            finalSignInfosCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            finalSignInfosCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
-            finalSignInfosCell = beginCell().storeRef(finalSignInfosCell!).storeRef(innerCell).endCell();
+            finalSignInfosCell = beginCell()
+                .storeRef(finalSignInfosCell!)
+                .storeRef(innerCell)
+                .endCell();
         }
     }
     let fee = beginCell().endCell();
@@ -660,7 +718,9 @@ export const getValidatorsCell = (validators: Validator[]) => {
     for (let i = validators.length - 1; i >= 0; i--) {
         let builder = beginCell().storeBuffer(Buffer.from(validators[i].address));
         if (validators[i]?.pubkey?.data) {
-            builder = builder.storeRef(beginCell().storeBuffer(Buffer.from(validators[i].pubkey!.data)).endCell());
+            builder = builder.storeRef(
+                beginCell().storeBuffer(Buffer.from(validators[i].pubkey!.data)).endCell(),
+            );
         } else {
             builder = builder.storeRef(
                 beginCell()
@@ -678,7 +738,10 @@ export const getValidatorsCell = (validators: Validator[]) => {
         builder = builder.storeUint(validators[i].votingPower, 32);
         const innerCell = builder.endCell();
         if (!validatorCell) {
-            validatorCell = beginCell().storeRef(beginCell().endCell()).storeRef(innerCell).endCell();
+            validatorCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeRef(innerCell)
+                .endCell();
         } else {
             validatorCell = beginCell().storeRef(validatorCell).storeRef(innerCell).endCell();
         }
@@ -712,7 +775,264 @@ export const getBlockHashCell = (header: Header) => {
     return dsCell;
 };
 
-export const createUpdateClientData = async (rpcUrl: string, height: number): Promise<LightClientData> => {
+export const getExistLeafOpCell = (leaf: LeafOp) => {
+    return beginCell()
+        .storeUint(leaf.prehashKey, 8)
+        .storeUint(leaf.prehashValue, 8)
+        .storeUint(leaf.hash, 8)
+        .storeUint(leaf.length, 8)
+        .storeRef(beginCell().storeBuffer(Buffer.from(leaf.prefix)).endCell());
+};
+
+export const getPathOpCell = (innerOps: InnerOp[]) => {
+    let innerOpsCell;
+    for (let i = innerOps.length - 1; i >= 0; i--) {
+        const innerOp = innerOps[i];
+        const innerCell = beginCell()
+            .storeUint(innerOp.hash, 8)
+            .storeRef(
+                innerOp.prefix
+                    ? beginCell().storeBuffer(Buffer.from(innerOp.prefix)).endCell()
+                    : beginCell().endCell(),
+            )
+            .storeRef(
+                innerOp.suffix
+                    ? beginCell().storeBuffer(Buffer.from(innerOp.suffix)).endCell()
+                    : beginCell().endCell(),
+            );
+        if (!innerOpsCell) {
+            innerOpsCell = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeBuilder(innerCell)
+                .endCell();
+        } else {
+            innerOpsCell = beginCell().storeRef(innerOpsCell).storeBuilder(innerCell).endCell();
+        }
+    }
+    return innerOpsCell;
+};
+
+export const getExistenceProofCell = (proof: ExistenceProof) => {
+    const builder = beginCell()
+        .storeBuffer(Buffer.from(proof.key))
+        .storeRef(beginCell().storeBuffer(Buffer.from(proof.value)).endCell())
+        .storeRef(getExistLeafOpCell(proof.leaf!))
+        .storeRef(getPathOpCell(proof.path!)!);
+    return builder.endCell();
+};
+
+export const getSpecCell = (spec: ProofSpec) => {
+    const leafSpec = spec.leafSpec;
+    const innerSpec = spec.innerSpec;
+    const leafSpecCell = beginCell()
+        .storeUint(leafSpec?.prehashKey!, 8)
+        .storeUint(leafSpec?.prehashValue!, 8)
+        .storeUint(leafSpec?.hash!, 8)
+        .storeUint(leafSpec?.length!, 8)
+        .storeRef(beginCell().storeBuffer(Buffer.from(leafSpec?.prefix!)).endCell());
+
+    const innerSpecCell = beginCell()
+        .storeUint(innerSpec?.hash!, 8)
+        .storeUint(innerSpec?.minPrefixLength!, 8)
+        .storeUint(innerSpec?.maxPrefixLength!, 8)
+        .storeUint(innerSpec?.childOrder?.length!, 8)
+        .storeUint(innerSpec?.childSize!, 8);
+
+    return beginCell().storeRef(leafSpecCell.endCell()).storeRef(innerSpecCell.endCell()).endCell();
+};
+
+export const getVerifyExistenceInput = (
+    root: Uint8Array,
+    proof: ExistenceProof,
+    spec: ProofSpec,
+    key: Uint8Array,
+    value: Uint8Array,
+) => {
+    const builder = beginCell()
+        .storeUint(BigInt('0x' + Buffer.from(root).toString('hex')), 256)
+        .storeBuffer(Buffer.from(key))
+        .storeRef(getExistenceProofCell(proof))
+        .storeRef(getSpecCell(spec))
+        .storeRef(beginCell().storeBuffer(Buffer.from(value)).endCell());
+    return builder.endCell();
+};
+
+export const getVerifyChainedMembershipProof = (
+    root: Uint8Array,
+    proofs: ExistenceProof[],
+    specs: ProofSpec[],
+    keys: { keyPath: Uint8Array[] },
+    value: Uint8Array,
+) => {
+    let cellSpecs;
+    let cellKeys;
+    let cellProofs = getExistenceProofSnakeCell(proofs);
+
+    for (let i = specs.length - 1; i >= 0; i--) {
+        const innerCell = getSpecCell(specs[i]);
+        if (!cellSpecs) {
+            cellSpecs = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeSlice(innerCell.beginParse())
+                .endCell();
+        } else {
+            cellSpecs = beginCell()
+                .storeRef(cellSpecs)
+                .storeSlice(innerCell.beginParse())
+                .endCell();
+        }
+    }
+    // reverse order of keyPath
+    for (let i = 0; i < keys.keyPath.length; i++) {
+        if (!cellKeys) {
+            cellKeys = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeBuffer(Buffer.from(keys.keyPath[i]))
+                .endCell();
+        } else {
+            cellKeys = beginCell()
+                .storeRef(cellKeys)
+                .storeBuffer(Buffer.from(keys.keyPath[i]))
+                .endCell();
+        }
+    }
+
+    return beginCell()
+        .storeUint(BigInt('0x' + Buffer.from(root).toString('hex')), 256)
+        .storeBuffer(Buffer.from(value))
+        .storeRef(cellProofs!)
+        .storeRef(cellSpecs!)
+        .storeRef(cellKeys!)
+        .endCell();
+};
+
+export function getExistenceProofSnakeCell(proofs: ExistenceProof[]) {
+    let cellProofs;
+    for (let i = proofs.length - 1; i >= 0; i--) {
+        const innerCell = getExistenceProofCell(proofs[i]);
+        if (!cellProofs) {
+            cellProofs = beginCell()
+                .storeRef(beginCell().endCell())
+                .storeSlice(innerCell.beginParse())
+                .endCell();
+        } else {
+            cellProofs = beginCell()
+                .storeRef(cellProofs)
+                .storeSlice(innerCell.beginParse())
+                .endCell();
+        }
+    }
+    return cellProofs;
+}
+
+export function verifyChainedMembershipProof(
+    root: Uint8Array,
+    specs: ProofSpec[],
+    proofs: ics23.CommitmentProof[],
+    keys: { keyPath: Uint8Array[] },
+    value: Uint8Array,
+    index: number,
+): null | Error {
+    let subroot: Uint8Array = value;
+    for (let i = index; i < proofs.length; i++) {
+        const keyIndex = keys.keyPath.length - 1 - i;
+        const key = keys.keyPath[keyIndex];
+
+        if (!key) {
+            throw new Error(`could not retrieve key bytes for key ${keys.keyPath[keyIndex]}`);
+        }
+        if (proofs[i]?.exist) {
+            try {
+                subroot = calculateExistenceRoot(proofs[i].exist as ics23.IExistenceProof);
+                console.log(Buffer.from(subroot).toString());
+            } catch (err) {
+                console.log(err);
+            }
+
+            const ok = verifyMembership(
+                proofs[i] as ics23.CommitmentProof,
+                specs[i] as ics23.IProofSpec,
+                subroot,
+                key,
+                value,
+            );
+
+            if (!ok) {
+                throw new Error(`failed to verify membership at index ${i}`);
+            }
+            value = subroot;
+        } else if (proofs[i].nonexist) {
+            throw new Error('Non-existence proof not supported');
+        } else {
+            throw new Error('Invalid proof type');
+        }
+    }
+    if (Buffer.compare(subroot, root) !== 0) {
+        throw new Error('Root mismatch');
+    }
+    console.log('Root match');
+    return null;
+}
+
+export const encodeNamespaces = (namespaces: Uint8Array[]): Uint8Array => {
+    const ret = [];
+    for (const ns of namespaces) {
+        const lengthBuf = Buffer.allocUnsafe(2);
+        lengthBuf.writeUInt16BE(ns.byteLength);
+        ret.push(lengthBuf);
+        ret.push(ns);
+    }
+    return Buffer.concat(ret);
+};
+
+export async function getPacketProofs(
+    queryClient: QueryClient,
+    contract: string,
+    proven_height: number,
+    seq: bigint,
+) {
+    const contractBech = fromBech32(contract);
+    const namespace = encodeNamespaces([Buffer.from('send_packet_commitment')]);
+    const bufferSeq = Buffer.alloc(8);
+    bufferSeq.writeBigUInt64BE(seq);
+    const key = Buffer.concat([namespace, bufferSeq]);
+    const path = Buffer.concat([Buffer.from([0x03]), Buffer.from(contractBech.data), key]);
+    const res = await queryClient.queryRawProof('wasm', path, proven_height);
+    console.log(Buffer.from(res.value).toString());
+    const existProofs = res.proof.ops.slice(0, 2).map((op) => {
+        const commitmentProof = CommitmentProof.decode(op.data);
+        console.log(Buffer.from(commitmentProof?.exist?.key as any).toString());
+        return ExistenceProof.toJSON(commitmentProof?.exist!);
+    });
+    return existProofs;
+}
+
+export async function getAckPacketProofs(
+    queryClient: QueryClient,
+    contract: string,
+    proven_height: number,
+    seq: bigint,
+) {
+    const contractBech = fromBech32(contract);
+    const namespace = encodeNamespaces([Buffer.from('ack_commitment')]);
+    const bufferSeq = Buffer.alloc(8);
+    bufferSeq.writeBigUInt64BE(seq);
+    const key = Buffer.concat([namespace, bufferSeq]);
+    const path = Buffer.concat([Buffer.from([0x03]), Buffer.from(contractBech.data), key]);
+    const res = await queryClient.queryRawProof('wasm', path, proven_height);
+    console.log(Buffer.from(res.value).toString());
+    const existProofs = res.proof.ops.slice(0, 2).map((op) => {
+        const commitmentProof = CommitmentProof.decode(op.data);
+        console.log(Buffer.from(commitmentProof?.exist?.key as any).toString());
+        return ExistenceProof.toJSON(commitmentProof?.exist!);
+    });
+    return existProofs;
+}
+
+export const createUpdateClientData = async (
+    rpcUrl: string,
+    height: number,
+): Promise<LightClientData> => {
     const tendermintClient = await Tendermint34Client.connect(rpcUrl);
     const [
         {

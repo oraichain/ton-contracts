@@ -1,28 +1,12 @@
 const log::verify_receipt = 1;
-
-const op::verify_block_hash = "op::verify_block_hash"c;
-const op::store_untrusted_validators = "op::store_untrusted_validators"c;
-const op::verify_untrusted_validators = "op::verify_untrusted_validators"c;
-const op::verify_sigs = "op::verify_sigs"c; 
-const op::verify_receipt = "op::verify_receipt"c; 
-
-
-;; bridge adapter
-const op::send_tx = "op::send_tx"c;
-const op::confirm_tx = "op::confirm_tx"c;
+const log::confirm_tx = 2;
 
 ;; Minter
 int op::mint() asm "21 PUSHINT";
-const cosmos = "src::cosmos"c;
 
 ;; Burner
 int op::burn() asm "0x595f07bc PUSHINT";
 
-;; Whitelist Denom
-const op::set_admin_address = "op::set_admin_address"c;
-const op::set_denom = "op::set_denom"c;
-const op::query_denom = "op::query_denom"c;
-const op::callback_denom = "op::callback_denom"c;
 
 
 

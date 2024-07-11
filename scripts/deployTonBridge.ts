@@ -34,9 +34,10 @@ async function deploy() {
     console.log({ lightClient: lightClient.address.toString() });
     const tonBridge = BridgeAdapter.createFromConfig(
         {
-            light_client: lightClient.address,
+            light_client_master: lightClient.address,
             jetton_wallet_code: await compile('JettonWallet'),
-            bridge_wasm_smart_contract: 'orai16ka659l0t90dua6du8yq02ytgdh222ga3qcxaqxp86r78p6tl0usze57ve',
+            bridge_wasm_smart_contract:
+                'orai16ka659l0t90dua6du8yq02ytgdh222ga3qcxaqxp86r78p6tl0usze57ve',
             whitelist_denom: contract.address,
         },
         await compile('BridgeAdapter'),

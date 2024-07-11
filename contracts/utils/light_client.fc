@@ -1,0 +1,32 @@
+cell pack_light_client_data(int height, slice chain_id, slice data_hash, cell validator, slice light_client_master_address, int trusting_period, int created_at) inline {
+    return  begin_cell()
+            .store_uint(height, 64)
+            .store_uint(trusting_period, 32)
+            .store_uint(created_at, 32)
+            .store_slice(light_client_master_address)
+            .store_ref(begin_cell().store_slice(chain_id).end_cell())
+            .store_ref(begin_cell().store_slice(data_hash).end_cell())
+            .store_ref(validator)
+           .end_cell();
+}
+
+cell calculate_light_client_state_init(int height, slice chain_id, slice light_client_master_address, int trusting_period, cell light_client_code) inline {
+    return begin_cell()
+          .store_uint(0, 2)
+          .store_dict(light_client_code)
+          .store_dict(pack_light_client_data(height, chain_id, begin_cell().end_cell().begin_parse(), begin_cell().end_cell(), light_client_master_address, trusting_period, 0))
+          .store_uint(0, 1)
+         .end_cell();
+}
+
+slice calculate_light_client_address(cell state_init) inline {
+    return begin_cell().store_uint(4, 3)
+                     .store_int(workchain(), 8)
+                     .store_uint(cell_hash(state_init), 256)
+                     .end_cell()
+                     .begin_parse();
+}
+
+slice calculate_specific_light_client_address(int height, slice chain_id, slice light_client_master_address, int trusting_period, cell light_client_code) inline {
+    return calculate_light_client_address(calculate_light_client_state_init(height, chain_id, light_client_master_address, trusting_period, light_client_code));
+}

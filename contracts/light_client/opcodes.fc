@@ -1,0 +1,19 @@
+;; Light Client
+const op::verify_block_hash = "op::verify_block_hash"c;
+const op::store_untrusted_validators = "op::store_untrusted_validators"c;
+const op::verify_untrusted_validators = "op::verify_untrusted_validators"c;
+
+const op::verify_on_untrusted_sigs = "op::verify_on_untrusted_sigs"c; 
+const op::verify_on_trusted_sigs = "op::verify_on_trusted_sigs"c; 
+
+const op::create_new_light_client = "op::create_new_light_client"c; 
+const op::update_light_client_state = "op::update_light_client_state"c; 
+const op::finalize_verify_light_client = "op::finalize_verify_light_client"c; 
+const op::provide_light_client_address = "op::provide_light_client_address"c;
+const op::response_light_client_address = "op::response_light_client_address"c;
+const op::proxy_forward_msg = "op::proxy_forward_msg"c;
+
+
+const op::receive_packet = "op::receive_packet"c;
+const op::verify_packet_commitment = "op::verify_packet_commitment"c;
+const op::on_recv_packet = "op::on_recv_packet"c;

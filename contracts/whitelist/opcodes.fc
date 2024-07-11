@@ -1,0 +1,4 @@
+const op::set_admin_address = "op::set_admin_address"c;
+const op::set_denom = "op::set_denom"c;
+const op::query_denom = "op::query_denom"c;
+const op::callback_denom = "op::callback_denom"c;

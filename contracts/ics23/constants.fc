@@ -1,0 +1,6 @@
+;; Since this ics version only using SHA and NO_HASH, we can define them here
+const ics23::hashOp::NO_HASH = 0;
+const ics23::hashOp::SHA256 = 1;
+
+const ics23::lengthOp::NO_PREFIX = 0;
+const ics23::lengthOp::VAR_PROTO = 1;

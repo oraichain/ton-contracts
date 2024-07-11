@@ -1,0 +1,5 @@
+;; ics23 Proof error 6xxx
+const int error::existence_root_empty_key_or_value = 6000;
+const int error::existence_root_empty_leaf = 6001;
+const int error::ensure_spec_empty_leaf_spec = 6002;
+const int error::ensure_spec_empty_inner_spec = 6003;

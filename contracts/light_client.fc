@@ -1,49 +1,44 @@
 #include "imports/stdlib.fc";
 #include "utils/verify.fc";
-#include "static/errors.fc";
-#include "static/op_codes.fc";
 #include "utils/messages.fc";
 #include "utils/helper.fc";
 #include "static/state.fc";
 #include "utils/validator_hash_input.fc";
 #include "utils/merkleize.fc";
-#include "utils/tx_raw.fc";
 #include "common/messages.fc";
+#include "common/address.fc";
+#include "ics23/proof.fc";
+#include "ics23/key.fc";
+#include "light_client/constants.fc";
+#include "light_client/errors.fc";
+#include "light_client/opcodes.fc";
+#include "bridge_adapter/helper.fc";
+#include "bridge_adapter/opcodes.fc";
 
-
-;; storage variables
-;; 0: false, 1: true
-global int validator_set_changed;
-global int state;
 
 ;; store in a header_ref
 global int height;
 global slice chain_id;
-global slice data_hash;
-global slice validator_hash_set;
+global slice app_hash;
+global cell validator;
 
-;; store in a validator_ref
-;; first 256 bit is voting power
-;; first ref is validators array
-;; second ref is validators dict
-global cell trusted_validator;
-global cell untrusted_validator;
 
+;; trusting
+global int trusting_period;
+global int created_at;
+
+;; owner
+global slice light_client_master_address;
 
 () preload_data(slice ds) impure {
-    int validator_set_changed = ds~load_uint(1);
-    int state = ds~load_uint(8);
-    slice header_cell = ds~load_ref().begin_parse();
-    int height = header_cell~load_uint(32);
-    cell chain_id_cell = header_cell~load_ref();
-    chain_id = chain_id_cell.begin_parse();
-    cell data_hash_cell = header_cell~load_ref();
-    data_hash = data_hash_cell.begin_parse();
-    cell validator_hash_set_cell = header_cell~load_ref();
-    validator_hash_set = validator_hash_set_cell.begin_parse();
-    slice validator_cell = ds~load_ref().begin_parse();
-    trusted_validator = validator_cell~load_ref();
-    untrusted_validator = validator_cell~load_ref();
+    height = ds~load_uint(64);
+    chain_id = ds~load_ref().begin_parse();
+    app_hash = ds~load_ref().begin_parse();
+    validator = ds~load_ref();
+
+    trusting_period = ds~load_uint(32);
+    created_at = ds~load_uint(32);
+    light_client_master_address = ds~load_msg_addr();
     ds.end_parse();
 }
 
@@ -54,24 +49,17 @@ global cell untrusted_validator;
 }
 
 (cell) presave_data() {
-    cell header_ref = begin_cell()
-                        .store_uint(height, 32)
+    cell cell_data = begin_cell()
+                        .store_uint(height, 64)
+                        .store_uint(trusting_period, 32)
+                        .store_uint(created_at, 32)
+                        .store_slice(light_client_master_address)
                         .store_ref(begin_cell().store_slice(chain_id).end_cell())
-                        .store_ref(begin_cell().store_slice(data_hash).end_cell())
-                        .store_ref(begin_cell().store_slice(validator_hash_set).end_cell())
+                        .store_ref(begin_cell().store_slice(app_hash).end_cell())
+                        .store_ref(validator)
                         .end_cell();
     
-    cell validator_ref = begin_cell()
-                            .store_ref(trusted_validator)
-                            .store_ref(untrusted_validator)
-                            .end_cell();
-    
-    return begin_cell()
-            .store_uint(validator_set_changed, 1)
-            .store_uint(state, 8)
-            .store_ref(header_ref)
-            .store_ref(validator_ref)
-        .end_cell();
+    return cell_data;
 }
 
 ;; save_data stores storage variables as a cell into persistent storage
@@ -101,142 +89,111 @@ global cell untrusted_validator;
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
 
-    if (op == op::verify_block_hash) {
-        ;; store block data
-        slice ds = in_msg_body~load_ref().begin_parse();
-        slice header = ds~load_ref().begin_parse();
-        (int temp_height, slice temp_chain_id, slice temp_data_hash, slice temp_validator_hash_set) = get_data_from_header(header);
-        throw_if(error::invalid_height, height > temp_height);
-        height = temp_height;
-        throw_if(error::not_match_chain_id, chain_id.equal_slice?(temp_chain_id) != -1);
-        chain_id = temp_chain_id;
-        data_hash = temp_data_hash;
-        validator_set_changed = 0;
-
-        builder bodyBuilder = begin_cell();
-        if (validator_hash_set.equal_slice?(temp_validator_hash_set) != -1) {
-            validator_set_changed = 1;
-            validator_hash_set = temp_validator_hash_set;
-
-            ;; update untrusted validators here
-            cell validators_cell = ds~load_ref();
-            builder inner_cell = begin_cell().store_ref(validators_cell);
-            slice validators = validators_cell.begin_parse();
-            cell validators_by_address = new_dict();
-            int total_voting_power = 0;
-            while(validators.slice_refs_empty?() != -1){
-                slice next_ref = validators~load_ref().begin_parse();
-                slice validator_i =  validators~load_ref().begin_parse();
-                int address = validator_i~load_uint(160);
-                validators_by_address~udict_set(160, address, validator_i);
-                int voting_power = validator_i~load_uint(32);
-                total_voting_power += voting_power;
-                validators = next_ref;
-            }
-            untrusted_validator = inner_cell.store_uint(total_voting_power, 256).store_ref(validators_by_address).end_cell();
-
-            ;; send new message to verify untrusted validators
-            cell commit = ds~load_ref();
-            bodyBuilder = bodyBuilder 
-                        .store_uint(op::verify_untrusted_validators, 32)
-                        .store_uint(query_id, 64)
-                        .store_ref(begin_cell().store_slice(sender_address).store_ref(commit).store_ref(presave_data()).end_cell());
-        } else {
-            ds~load_ref();
-            cell commit = ds~load_ref();
-            bodyBuilder = bodyBuilder 
-                        .store_uint(op::verify_sigs, 32)
-                        .store_uint(query_id, 64)
-                        .store_ref(begin_cell().store_slice(sender_address).store_ref(commit).store_ref(presave_data()).end_cell());
-        }
-        state = state::initial;
-        cell body = bodyBuilder.end_cell();
-        send_simple_message(0, my_address(), body, CARRY_REMAINING_GAS);
-        return ();
-    }
-
-    if (op == op::verify_untrusted_validators) {
-        throw_if(error::invalid_sender, sender_address.equal_slice?(my_address()) != -1);
-        slice body = in_msg_body~load_ref().begin_parse(); ;; a cell that have ref is commit
-        slice sender_address = body~load_msg_addr();
-        cell commit = body~load_ref();
-        cell unsave_state = body~load_ref();
-        preload_data(unsave_state.begin_parse());
-
-        int result = verify::verify_validators_set(validator_hash_set, untrusted_validator.begin_parse());
-        throw_if(error::invalid_verify_validators_set, result != -1);
-
-        state = state::verify_untrusted_validators;
-        ;; send verify_sigs message
-        builder bodyBuilder = begin_cell();
-        bodyBuilder = bodyBuilder 
-                        .store_uint(op::verify_sigs, 32)
-                        .store_uint(query_id, 64)
-                        .store_ref(begin_cell().store_slice(sender_address).store_ref(commit).store_ref(presave_data()).end_cell());
-        cell body = bodyBuilder.end_cell();
-        send_simple_message(0, my_address(), body, CARRY_REMAINING_GAS);
-        return ();
-    }
-
-    if (op == op::verify_sigs) {
-        throw_if(error::invalid_sender, sender_address.equal_slice?(my_address()) != -1);
-        slice body = in_msg_body~load_ref().begin_parse();
-        slice response_address = body~load_msg_addr();
-        slice commit = body~load_ref().begin_parse();
-        slice unsave_state = body~load_ref().begin_parse();
-        preload_data(unsave_state);
-        if (validator_set_changed != 0) {
-            ;; if validator set changed => it have to finish verify_untrusted_validator state
-            throw_if(error::invalid_state, state != state::verify_untrusted_validators);
-        }
+    if (op == op::verify_on_trusted_sigs) {
+        throw_if(error::invalid_sender, compare_address(sender_address, light_client_master_address) != -1);
+        slice msg = in_msg_body~load_ref().begin_parse();
+        slice response_address = msg~load_msg_addr();
+        cell ds = msg~load_ref();
+        (cell header, _, cell commit) = parse_verify_light_client_body(ds.begin_parse());
+        slice slice_header = header.begin_parse();
+        slice inner_header = slice_header~load_ref().begin_parse();
+        int height = inner_header~load_uint(32);
         int result = 0;
 
-        result = verify::verify_optimized_commit_builder(
-            validator_set_changed,
+        result = verify::verify_single_optimized_commit_builder(
             height,
             chain_id,
-            commit,
-            trusted_validator.begin_parse(),
-            untrusted_validator.begin_parse());
+            commit.begin_parse(),
+            validator.begin_parse()
+        );
+
         throw_if(error::invalid_verify_sigs, result != -1);
-        if (validator_set_changed != 0) {
-            trusted_validator = untrusted_validator;
-        }
-        state = state::initial;
-        send_empty_message(0, response_address, CARRY_REMAINING_GAS);
-        save_data();
+        
+        builder bodyBuilder = begin_cell();
+        bodyBuilder = bodyBuilder 
+                    .store_uint(op::create_new_light_client, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(begin_cell()
+                                .store_slice(response_address)
+                                .store_ref(ds)
+                    .end_cell());
+        cell body = bodyBuilder.end_cell();
+        send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);
         return ();
     }
 
-    if (op == op::verify_receipt) {
-        slice body = in_msg_body~load_ref().begin_parse();
-        int receipt_height = body~load_uint(64);
-        slice response_address = body~load_msg_addr();
-        slice tx_raw = body~load_ref().begin_parse();
-        slice proofs = body~load_ref().begin_parse();
-        slice positions =  body~load_ref().begin_parse();
-        slice data =  body~load_ref().begin_parse();
-        throw_if(error::invalid_height, receipt_height != height);
-        (tuple encode_tx_raw, _) = tx_raw::encode(tx_raw);
-        int tx_hash = begin_cell()
-                    .store_uint(prefix::leaf, 8)
-                    .store_uint(digest_hash(encode_tx_raw), 256)
-                    .end_cell()
-                    .begin_parse()
-                    .string_hash();
-        int calculate_data_hash = hash_from_tree_proof_ref(proofs, tx_hash, positions);
-     
-        (_, int value) = data_hash.load_uint(256);
-        throw_if(error::invalid_verify_receipt, value != calculate_data_hash);
-       
-        cell body = begin_cell()
-                        .store_uint(op::confirm_tx, 32)
-                        .store_uint(query_id, 64)
-                        .store_slice(data)
-                        .store_ref(begin_cell().store_slice(response_address).end_cell())
-                    .end_cell();
+    if (op == op::update_light_client_state) {
+        throw_if(error::invalid_sender, compare_address(sender_address, light_client_master_address) != -1);
+        slice msg = in_msg_body~load_ref().begin_parse();
+        slice response_address = msg~load_msg_addr();
+        cell ds = msg~load_ref();
+        (cell header, cell validators, _) = parse_verify_light_client_body(ds.begin_parse());
+        (_, chain_id, app_hash, _) = get_data_from_header(header.begin_parse());
+        validator = validators;
+        created_at = now();
+        save_data();
 
-        send_simple_message(0, sender_address, body, CARRY_REMAINING_GAS);
+        builder bodyBuilder = begin_cell();
+        bodyBuilder = bodyBuilder 
+                    .store_uint(op::finalize_verify_light_client, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(begin_cell()
+                                .store_slice(response_address)
+                                .store_ref(ds)
+                    .end_cell());
+        send_simple_message(0, sender_address, bodyBuilder.end_cell(), CARRY_REMAINING_GAS);
+        return();
+    }
+
+    if (op == op::verify_packet_commitment) {
+        throw_unless(error::invalid_sender, compare_address(sender_address, light_client_master_address));
+        cell body = in_msg_body~load_ref();
+        slice body_cs = body.begin_parse();
+        slice bridge_adapter_address = body_cs~load_msg_addr();
+        slice specs = body_cs~load_ref().begin_parse();
+        slice ds = body_cs~load_ref().begin_parse();
+        ;; should get packet from body and verify
+        int proven_height = ds~load_uint(64);
+        throw_unless(error::invalid_height, proven_height == height);
+        slice response_address = ds~load_msg_addr();
+        (cell bridge_wasm_smart_contract, cell proofs, cell packet) = (ds~load_ref(), ds~load_ref(), ds~load_ref());
+        slice packet_cs = packet.begin_parse();
+        int opcode_packet = packet_cs~load_uint(32);
+        int seq = packet_cs~load_uint(64);
+        ;; build merklePath
+        builder contract_path = begin_cell()
+                                .store_uint(contract_store_prefix, 8)
+                                .store_slice(bridge_wasm_smart_contract.begin_parse());
+        builder keys = begin_cell();
+        if (opcode_packet == op::send_to_cosmos) {
+            keys =  packet_commitment_path(contract_path, ack_packet_commitment, seq);
+        } else {
+            keys =  packet_commitment_path(contract_path, send_packet_commitment, seq);
+        }
+        keys = keys.append_prefix(module_prefix);
+        slice commitment = packet.cell_hash().packet_commitment().end_cell().begin_parse();
+        int is_packet_existed = verify_chained_membership(app_hash.preload_uint(256),  specs, proofs.begin_parse(), keys.end_cell().begin_parse(), commitment);
+        builder forward_builder = begin_cell();
+        ;; should forward to light_client_master and this master will forward light client message
+        forward_builder = forward_builder
+                    .store_uint(op::on_recv_packet, 32)
+                    .store_uint(query_id, 64)
+                    .store_ref(begin_cell()
+                        .store_uint(is_packet_existed, 1)
+                        .store_slice(response_address)
+                        .store_ref(packet)
+                        .end_cell());
+        cell forward_payload = forward_builder.end_cell();
+        cell body_builder = begin_cell()
+                                .store_uint(op::proxy_forward_msg, 32)
+                                .store_uint(query_id, 64)
+                                .store_ref(begin_cell()
+                                    .store_uint(height, 64)
+                                    .store_slice(bridge_adapter_address)
+                                    .store_ref(forward_payload)
+                                    .end_cell())
+                                .end_cell();
+        send_simple_message(0, light_client_master_address, body_builder, CARRY_REMAINING_GAS);      
         return ();
     }
 
@@ -253,12 +210,7 @@ slice get_chain_id() method_id {
     return chain_id;
 }
 
-slice get_data_hash() method_id {
+slice get_app_hash() method_id {
     load_data();
-    return data_hash;
-}
-
-slice get_validator_hash_set() method_id {
-    load_data();
-    return validator_hash_set;
+    return app_hash;
 }

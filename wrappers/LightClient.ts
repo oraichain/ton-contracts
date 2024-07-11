@@ -24,12 +24,6 @@ export type LightClientConfig = {
     nextValidatorHashSet: string;
 };
 
-export interface SendVerifyBlockHashInterface {
-    header: Header;
-    validators: Validator[];
-    commit: Commit;
-}
-
 export function lightClientConfigToCell(config: LightClientConfig): Cell {
     return beginCell()
         .storeUint(0, 1)
@@ -66,8 +60,11 @@ export function lightClientConfigToCell(config: LightClientConfig): Cell {
 export const LightClientOpcodes = {
     verify_block_hash: crc32('op::verify_block_hash'),
     verify_sigs: crc32('op::verify_sigs'),
-    verify_receipt: crc32('op::verify_receipt'),
+    verify_packet_commitment: crc32('op::verify_packet_commitment'),
     verify_untrusted_validators: crc32('op::verify_untrusted_validators'),
+    verify_on_trusted_sigs: crc32('op:verify_on_trusted_sigs'),
+    update_light_client_state: crc32('op:update_light_client_state'),
+    timeout_send_packet: crc32('op:timeout_send_packet'),
 };
 
 export class LightClient implements Contract {
@@ -91,88 +88,6 @@ export class LightClient implements Contract {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell().endCell(),
-        });
-    }
-
-    async sendVerifyBlockHash(
-        provider: ContractProvider,
-        via: Sender,
-        data: SendVerifyBlockHashInterface,
-        opts: ValueOps,
-    ) {
-        const dataCell = beginCell()
-            .storeRef(getBlockHashCell(data.header))
-            .storeRef(getValidatorsCell(data.validators)!)
-            .storeRef(getCommitCell(data.commit))
-            .endCell();
-
-        await provider.internal(via, {
-            value: opts.value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(LightClientOpcodes.verify_block_hash, 32)
-                .storeUint(opts.queryId || 0, 64)
-                .storeRef(dataCell)
-                .endCell(),
-        });
-    }
-
-    async sendVerifyReceipt(
-        provider: ContractProvider,
-        via: Sender,
-        data: {
-            height: string;
-            tx: TxWasm;
-            leaves: Buffer[];
-            leafData: Buffer;
-        },
-        opts: ValueOps,
-    ) {
-        const { height, tx, leaves, leafData } = data;
-        const { signInfos, fee, tip } = getAuthInfoInput(tx.authInfo);
-        const authInfo = beginCell()
-            .storeRef(signInfos || beginCell().endCell())
-            .storeRef(fee)
-            .storeRef(tip)
-            .endCell();
-
-        const txBody = txBodyWasmToRef(tx.body);
-        let signatureCell: Cell | undefined;
-
-        for (let i = tx.signatures.length - 1; i >= 0; i--) {
-            let signature = tx.signatures[i];
-            let cell = beginCell()
-                .storeRef(beginCell().storeBuffer(Buffer.from(signature)).endCell())
-                .endCell();
-            if (!signatureCell) {
-                signatureCell = beginCell().storeRef(beginCell().endCell()).storeRef(cell).endCell();
-            } else {
-                signatureCell = beginCell().storeRef(signatureCell).storeRef(cell).endCell();
-            }
-        }
-        const txRaw = beginCell()
-            .storeRef(authInfo)
-            .storeRef(txBody)
-            .storeRef(signatureCell || beginCell().endCell())
-            .endCell();
-
-        const { branch: proofs, positions } = getMerkleProofs(leaves, leafData);
-
-        await provider.internal(via, {
-            value: opts.value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(LightClientOpcodes.verify_receipt, 32)
-                .storeUint(opts.queryId || 0, 64)
-                .storeRef(
-                    beginCell()
-                        .storeUint(BigInt(height), 64)
-                        .storeRef(txRaw)
-                        .storeRef(proofs || beginCell().endCell())
-                        .storeRef(positions)
-                        .endCell(),
-                )
-                .endCell(),
         });
     }
 

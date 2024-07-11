@@ -1,14 +1,79 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Address, beginCell, Cell, toNano } from '@ton/core';
-import { BlockId, TestClient, buildRecursiveSliceRef, getMerkleProofs, leafHash } from '../wrappers/TestClient';
+import {
+    BlockId,
+    TestClient,
+    buildRecursiveSliceRef,
+    getMerkleProofs,
+    leafHash,
+} from '../wrappers/TestClient';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { result as blockData } from './fixtures/block.json';
 import { result as validators } from './fixtures/validators.json';
 import { createHash } from 'crypto';
-import { Src } from '../wrappers/BridgeAdapter';
+import { TokenOrigin } from '../wrappers/BridgeAdapter';
+import * as proofs from './fixtures/proofs.json';
+import {
+    CommitmentProof,
+    ExistenceProof,
+    HashOp,
+    LengthOp,
+    ProofSpec,
+} from 'cosmjs-types/cosmos/ics23/v1/proofs';
+import { verifyMembership, calculateExistenceRoot, ics23 } from '@confio/ics23';
+import {
+    encodeNamespaces,
+    getExistenceProofCell,
+    getSpecCell,
+    getVerifyChainedMembershipProof,
+    getVerifyExistenceInput,
+} from '../wrappers';
+import { fromBech32, toAscii } from '@cosmjs/encoding';
 
 const validatorMap = Object.fromEntries(validators.validators.map((v) => [v.address, v]));
+const iavlSpec = {
+    leafSpec: {
+        prefix: Uint8Array.from([0]),
+        hash: HashOp.SHA256,
+        prehashValue: HashOp.SHA256,
+        prehashKey: HashOp.NO_HASH,
+        length: LengthOp.VAR_PROTO,
+    },
+    innerSpec: {
+        childOrder: [0, 1],
+        minPrefixLength: 4,
+        maxPrefixLength: 12,
+        childSize: 33,
+        hash: HashOp.SHA256,
+    },
+};
+
+const tendermintSpec = {
+    leafSpec: {
+        prefix: Uint8Array.from([0]),
+        hash: HashOp.SHA256,
+        prehashValue: HashOp.SHA256,
+        prehashKey: HashOp.NO_HASH,
+        length: LengthOp.VAR_PROTO,
+    },
+    innerSpec: {
+        childOrder: [0, 1],
+        minPrefixLength: 1,
+        maxPrefixLength: 1,
+        childSize: 32,
+        hash: HashOp.SHA256,
+    },
+};
+function paddingForUint256(value: string): string {
+    if (value.length > 64) {
+        throw new Error('Value is too long');
+    }
+    if (value.length === 64) {
+        return value;
+    }
+    return value.padStart(64, '0');
+}
 
 describe('TestClient', () => {
     let code: Cell;
@@ -74,7 +139,10 @@ describe('TestClient', () => {
             '2f042189d233b9113b91177184c699dcb140439f73cf0c7fb0c640d5edc46d76f95470bb54d0322bb0cdabeb7c848226a2d7e318a2d5d741961f8eeccefa3304',
             'hex',
         );
-        const publicKey = Buffer.from('10b8dfde73aeda38f81c5ce9c181ccaf2e25d0c66b8d4bfb41732f0ae61ee566', 'hex');
+        const publicKey = Buffer.from(
+            '10b8dfde73aeda38f81c5ce9c181ccaf2e25d0c66b8d4bfb41732f0ae61ee566',
+            'hex',
+        );
         const verified = await lightClient.getCheckSignature(data, signature, publicKey);
         console.log('verified', verified);
     });
@@ -190,40 +258,218 @@ describe('TestClient', () => {
     });
 
     it('memo unique', async () => {
-        console.log(Address.parse('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').toStringBuffer().length);
-        console.log(Src.COSMOS);
+        console.log(
+            Address.parse('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').toStringBuffer()
+                .length,
+        );
+        console.log(TokenOrigin.COSMOS);
         const memo = beginCell()
-            .storeAddress(Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address)
-            .storeAddress(Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address)
+            .storeAddress(
+                Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address,
+            )
+            .storeAddress(
+                Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address,
+            )
             .storeUint(BigInt('10000000000000000'), 128)
-            .storeUint(Src.COSMOS, 32)
+            .storeUint(TokenOrigin.COSMOS, 32)
             .endCell()
             .beginParse();
-        console.log(Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase());
-        const buffer = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
+        console.log(
+            Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase(),
+        );
+        const buffer = beginCell()
+            .storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex'))
+            .endCell();
         const res = await lightClient.getMemo(buffer);
-        console.log(Src.COSMOS);
+        console.log(TokenOrigin.COSMOS);
     });
 
-    it("should tuple of bits equal despite of the different element size", async()=>{
+    it('should tuple of bits equal despite of the different element size', async () => {
         const memo = beginCell()
-        .storeAddress(Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address)
-        .storeAddress(Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address)
-        .storeUint(BigInt('10000000000000000'), 128)
-        .storeUint(Src.COSMOS, 32)
-        .endCell()
-        .beginParse();
-        const data = Buffer.from(memo.asCell().bits.toString(), 'hex').toString('hex').toUpperCase();
-        const buffer = beginCell().storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex')).endCell();
-        console.log(data)
-        const msg = {"action":{"data":data}}
+            .storeAddress(
+                Address.parseFriendly('EQBxlOhnrtcZ4dRSRsC4-ssHvcuhzvLVGZ_6wkUx461zqTg9').address,
+            )
+            .storeAddress(
+                Address.parseFriendly('UQAN2U6sfupqIJ2QBvZImwUsUtiWXw7Il9x6JtdLRwZ9y5cN').address,
+            )
+            .storeUint(BigInt('10000000000000000'), 128)
+            .storeUint(TokenOrigin.COSMOS, 32)
+            .endCell()
+            .beginParse();
+        const data = Buffer.from(memo.asCell().bits.toString(), 'hex')
+            .toString('hex')
+            .toUpperCase();
+        const buffer = beginCell()
+            .storeBuffer(Buffer.from(memo.asCell().bits.toString(), 'hex'))
+            .endCell();
+        console.log(data);
+        const msg = { action: { data: data } };
         const msgBuffer = Buffer.from(JSON.stringify(msg));
         const msgSlice = buildRecursiveSliceRef(msgBuffer);
-        console.log(Buffer.from('{"write":{"data":').toString('hex'))
-        console.log(Buffer.from('}}').toString('hex'))
-        console.log(Buffer.from('"').toString('hex'))
+        console.log(Buffer.from('{"write":{"data":').toString('hex'));
+        console.log(Buffer.from('}}').toString('hex'));
+        console.log(Buffer.from('"').toString('hex'));
 
         await lightClient.getBuffParse(msgSlice ?? beginCell().endCell(), buffer);
-        
-    })
+    });
+
+    it('should getIntToString', async () => {
+        const result =
+            await lightClient.getIntToString(
+                52248677847378735994971370904173880278927895846726102394870472142661306263165n,
+            );
+        console.log(Uint8Array.from(Buffer.from(`"${result}"`)));
+        expect(result).toEqual(
+            52248677847378735994971370904173880278927895846726102394870472142661306263165n.toString(),
+        );
+    });
+
+    it('should getPacketCommitment', async () => {
+        const expectedResult = Buffer.from(
+            `"${52248677847378735994971370904173880278927895846726102394870472142661306263165n.toString()}"`,
+        );
+
+        const result =
+            await lightClient.getPacketCommitment(
+                52248677847378735994971370904173880278927895846726102394870472142661306263165n,
+            );
+
+        expect(Buffer.compare(result, expectedResult)).toBe(0);
+    });
+    describe('ics23', () => {
+        const contract = fromBech32(
+            'orai15un8msx3n5zf9ahlxmfeqd2kwa5wm0nrpxer304m9nd5q6qq0g6sku5pdd',
+        );
+        const key = encodeNamespaces([Buffer.from('balance')]);
+        const finalKey = Buffer.concat([
+            key,
+            Buffer.from('orai1mycmhyrmd6dusp408rtjgzlk7738vhtgqyhxxt'),
+        ]);
+        const wasmPath = Uint8Array.from([0x03, ...contract.data, ...finalKey]);
+        const keys = {
+            keyPath: [Buffer.from('wasm'), Buffer.from(wasmPath)],
+        };
+        const value = '"1783015"';
+        it('should calculateExistenceProof successfully', async () => {
+            for (const proof of Object.values(proofs).slice(0, 2)) {
+                const existenceProof = ics23.CommitmentProof.fromObject(proof).exist!;
+                const result = calculateExistenceRoot(existenceProof);
+                const hashResult = Buffer.from(result).toString('hex');
+                const number = await lightClient.getCalculateExistenceRoot(
+                    getExistenceProofCell(existenceProof as ExistenceProof),
+                );
+                expect(paddingForUint256(number.toString(16))).toEqual(hashResult);
+            }
+        });
+
+        it('should calculateExistenceProof throw empty value error', async () => {
+            for (const proof of Object.values(proofs).slice(0, 2)) {
+                let existenceProof = ics23.CommitmentProof.fromObject(proof).exist!;
+                existenceProof.value = new Uint8Array();
+                try {
+                    await lightClient.getCalculateExistenceRoot(
+                        getExistenceProofCell(existenceProof as ExistenceProof),
+                    );
+                } catch (error) {
+                    const err = JSON.parse(JSON.stringify(error));
+                    expect(err.exitCode).toEqual(6000);
+                }
+            }
+        });
+
+        it('should calculateExistenceProof throw empty leaf error', async () => {
+            for (const proof of Object.values(proofs).slice(0, 2)) {
+                let existenceProof = ics23.CommitmentProof.fromObject(proof).exist!;
+                existenceProof.leaf = new ics23.LeafOp();
+                try {
+                    await lightClient.getCalculateExistenceRoot(
+                        getExistenceProofCell(existenceProof as ExistenceProof),
+                    );
+                } catch (error) {
+                    const err = JSON.parse(JSON.stringify(error));
+                    expect(err.exitCode).toEqual(6001);
+                }
+            }
+        });
+
+        it('should ensureSpec successfully', async () => {
+            const iavlSpecCell = getSpecCell(iavlSpec as any);
+            const tendermintSpecCell = getSpecCell(tendermintSpec as any);
+            const existenceProofs = Object.values(proofs).map(
+                (proof) => CommitmentProof.fromJSON(proof).exist!,
+            );
+            const iavlProofCell = getExistenceProofCell(existenceProofs[0] as ExistenceProof);
+            const tendermintProofCell = getExistenceProofCell(existenceProofs[1] as ExistenceProof);
+            const iavlEnsureSpec = await lightClient.getEnsureSpec(
+                beginCell().storeRef(iavlProofCell).storeRef(iavlSpecCell).endCell(),
+            );
+            const tendermintEnsureSpec = await lightClient.getEnsureSpec(
+                beginCell().storeRef(tendermintProofCell).storeRef(tendermintSpecCell).endCell(),
+            );
+            expect(iavlEnsureSpec).toBe(-1n);
+            expect(tendermintEnsureSpec).toBe(-1n);
+        });
+
+        it('should verifyExistence successfully', async () => {
+            const proof = Object.values(proofs)[0];
+            const existenceProof = CommitmentProof.fromJSON(proof).exist!;
+            const root = calculateExistenceRoot(existenceProof as any);
+            const key = keys.keyPath[1];
+            const number = await lightClient.getVerifyExistence(
+                getVerifyExistenceInput(
+                    root,
+                    existenceProof as ExistenceProof,
+                    iavlSpec as ProofSpec,
+                    key,
+                    toAscii(value),
+                ),
+            );
+            expect(number).toEqual(-1n);
+        });
+
+        it('should verifyChainedMembership successfully', async () => {
+            const root = Buffer.from(
+                '0BC1C83CA48621F2E3EB3AFB48A7AD3FDD80AB734EA5123B13053528FD6E4679',
+                'hex',
+            );
+            const existenceProofs = Object.values(proofs)
+                .map((proof) => CommitmentProof.fromJSON(proof).exist!)
+                .slice(0, 2);
+            const result = await lightClient.getVerifyChainedMembership(
+                getVerifyChainedMembershipProof(
+                    root,
+                    existenceProofs,
+                    [iavlSpec as ProofSpec, tendermintSpec as ProofSpec],
+                    keys,
+                    toAscii(value),
+                ),
+            );
+            console.log(result);
+            // expect(result).toEqual(-1n);
+        });
+
+        it('should build commitment path successfully', async () => {
+            const contract = fromBech32(
+                'orai15un8msx3n5zf9ahlxmfeqd2kwa5wm0nrpxer304m9nd5q6qq0g6sku5pdd',
+            );
+            const key = encodeNamespaces([Buffer.from('balance')]);
+            const finalKey = Buffer.concat([
+                key,
+                Buffer.from('orai1mycmhyrmd6dusp408rtjgzlk7738vhtgqyhxxt'),
+            ]);
+            const wasmPath = Uint8Array.from([0x03, ...contract.data, ...finalKey]);
+            const path = await lightClient.getCommitmentPath(
+                beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from('balance')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from(contract.data)).endCell())
+                    .storeRef(
+                        beginCell()
+                            .storeBuffer(Buffer.from('orai1mycmhyrmd6dusp408rtjgzlk7738vhtgqyhxxt'))
+                            .endCell(),
+                    )
+                    .endCell(),
+            );
+            expect(Buffer.compare(path, Buffer.from(wasmPath))).toBe(0);
+        });
+    });
 });

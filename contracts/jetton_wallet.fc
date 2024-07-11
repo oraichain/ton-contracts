@@ -1,11 +1,10 @@
 ;; Jetton Wallet Smart Contract
-
-#include "../imports/stdlib.fc";
-#include "../imports/params.fc";
-#include "../imports/constants.fc";
-#include "../imports/jetton-utils.fc";
-#include "../imports/op-codes.fc";
-#include "../imports/utils.fc";
+#include "jetton/stdlib.fc";
+#include "jetton/params.fc";
+#include "jetton/constants.fc";
+#include "jetton/jetton-utils.fc";
+#include "jetton/op-codes.fc";
+#include "jetton/utils.fc";
 #pragma version >=0.2.0;
 
 {-

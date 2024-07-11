@@ -1,0 +1,21 @@
+builder int_to_string(int number){
+    builder string = begin_cell();
+    tuple chars = null();
+    do {
+        int r = number~divmod(10);
+        chars = cons(r + 48, chars);
+    } until (number == 0);
+    do {
+        int char = chars~list_next();
+        string~store_uint(char, 8);
+    } until (null?(chars));
+
+    return string;
+}
+
+builder packet_commitment(int number){
+    return begin_cell()
+            .store_uint(34, 8)
+            .store_builder(int_to_string(number))
+            .store_uint(34, 8);
+}
