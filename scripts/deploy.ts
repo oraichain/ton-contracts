@@ -3,7 +3,7 @@ import { LightClient } from '../wrappers/LightClient';
 import { createTonWallet, waitSeqno } from './utils';
 import { Address, beginCell, Cell, toNano } from '@ton/core';
 import { WhitelistDenom } from '../wrappers/WhitelistDenom';
-import { BridgeAdapter } from '../wrappers/BridgeAdapter';
+import { BridgeAdapter, Paused } from '../wrappers/BridgeAdapter';
 import { JettonMinter } from '../wrappers/JettonMinter';
 import { LightClientMaster } from '../wrappers/LightClientMaster';
 import { iavlSpec, tendermintSpec } from '../wrappers/specs';
@@ -89,8 +89,8 @@ async function deploy() {
         ),
     );
 
-    await whitelistContract.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
-    await waitSeqno(walletContract, await walletContract.getSeqno());
+    // await whitelistContract.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
     console.log('Success deploy whitelistContract at address: ', whitelistContract.address);
 
     // await whitelistContract.sendSetDenom(
@@ -117,8 +117,10 @@ async function deploy() {
                 ),
             )[0],
             bridge_wasm_smart_contract:
-                'orai1pump92q0m7y3p8zx3c9yfxh0uzk8gl8v8pmmxmmyv6pewe2cjpsqfl2md0',
+                'orai18lppnh7nwfnstpsewe70aql2qnmnm6kwkdcfe3j84ujtwzn89afqjp4pyr',
             whitelist_denom: whitelistContract.address,
+            admin: walletContract.sender(key.secretKey).address!,
+            paused: Paused.UNPAUSED,
         },
         await compile('BridgeAdapter'),
     );
@@ -149,30 +151,30 @@ async function deploy() {
     // await waitSeqno(walletContract, await walletContract.getSeqno());
     // console.log('Success deploy jettonMinterSrcCosmos at address: ', jettonMinterSrcCosmos.address);
 
-    await whitelistContract.sendSetDenom(
-        walletContract.sender(key.secretKey),
-        {
-            denom: Address.parse('EQBynBO23ywHy_CgarY9NK9FTz0yDsG82PtcbSTQgGoXwiuA'),
-            isRootFromTon: true,
-            permission: true,
-        },
-        {
-            value: toNano('0.1'),
-        },
-    );
-    await waitSeqno(walletContract, await walletContract.getSeqno());
-    await whitelistContract.sendSetDenom(
-        walletContract.sender(key.secretKey),
-        {
-            denom: Address.parse('EQB-MPwrd1G6WKNkLz_VnV6WqBDd142KMQv-g1O-8QUA3728'),
-            isRootFromTon: true,
-            permission: true,
-        },
-        {
-            value: toNano('0.1'),
-        },
-    );
-    await waitSeqno(walletContract, await walletContract.getSeqno());
+    // await whitelistContract.sendSetDenom(
+    //     walletContract.sender(key.secretKey),
+    //     {
+    //         denom: Address.parse('EQBynBO23ywHy_CgarY9NK9FTz0yDsG82PtcbSTQgGoXwiuA'),
+    //         isRootFromTon: true,
+    //         permission: true,
+    //     },
+    //     {
+    //         value: toNano('0.1'),
+    //     },
+    // );
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
+    // await whitelistContract.sendSetDenom(
+    //     walletContract.sender(key.secretKey),
+    //     {
+    //         denom: Address.parse('EQB-MPwrd1G6WKNkLz_VnV6WqBDd142KMQv-g1O-8QUA3728'),
+    //         isRootFromTon: true,
+    //         permission: true,
+    //     },
+    //     {
+    //         value: toNano('0.1'),
+    //     },
+    // );
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
 }
 
 deploy()

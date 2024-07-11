@@ -14,20 +14,18 @@ export async function updateClient() {
     const usdtJettonWalletContract = client.open(usdtJettonWallet);
 
     console.log(BigInt(calculateIbcTimeoutTimestamp(3600)));
+    // BigInt(Math.floor(new Date().getTime() / 1000) - 3600)
+    // BigInt(calculateIbcTimeoutTimestamp(3600))
     await usdtJettonWalletContract.sendTransfer(
         walletContract.sender(key.secretKey),
         {
             fwdAmount: toNano(1.95), // 1.95
-            jettonAmount: toNano(1000),
+            jettonAmount: 10_000n,
             jettonMaster: usdtContract.address,
             toAddress: bridgeAdapterAddress,
-            timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
-            memo: beginCell()
-                .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
-                .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
-                .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
-                .storeRef(beginCell().storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx')).endCell())
-                .endCell(),
+            timeout: BigInt(Math.floor(new Date().getTime() / 1000) - 3600),
+            remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
+            memo: beginCell().endCell(),
         },
         {
             value: toNano(2), // 2- 0.05

@@ -2,7 +2,7 @@ import { getHttpEndpoint, Network } from '@orbs-network/ton-access';
 import { WalletContractV3R2, WalletContractV4, TonClient, toNano, internal, OpenedContract } from '@ton/ton';
 import { mnemonicToWalletKey } from '@ton/crypto';
 import * as dotenv from 'dotenv';
-import Long from 'long';
+
 dotenv.config();
 const node_env = (process.env.NODE_ENV as Network) || 'testnet';
 
