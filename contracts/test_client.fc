@@ -415,7 +415,7 @@ int get_verify_chained_membership(slice ds) method_id {
 }
 
 slice get_commitment_path(slice ds) method_id {
-    (slice namespace, slice contract, slice sequence) = (ds~load_ref().begin_parse(), ds~load_ref().begin_parse(), ds~load_ref().begin_parse());
+    (slice namespace, slice contract, int sequence) = (ds~load_ref().begin_parse(), ds~load_ref().begin_parse(), ds~load_uint(64));
     builder contract_path = begin_cell()
                                 .store_uint(0x03, 8)
                                 .store_slice(contract);
