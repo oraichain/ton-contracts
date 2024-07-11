@@ -75,7 +75,6 @@ global cell send_packets_from_ton;
                         
         emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
         throw(error::packet_verified_exist_fail);
-        return ();
     }
     
     if (opcode_packet == op::send_to_ton){
@@ -92,16 +91,15 @@ global cell send_packets_from_ton;
         }
     
         (_, int exist) = counterparty_seq_receipt.udict_get?(64, seq);
-        cell emit_ack = begin_cell()
+        if (exist) {
+            cell emit_ack = begin_cell()
                             .store_uint(op::send_to_ton, 32)
                             .store_uint(seq, 64)
                             .store_uint(ack::error, 2)
                             .end_cell();
-        emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
-
-        throw_unless(error::processed_packet, exist == 0);
-        
-        counterparty_seq_receipt~udict_set(64, seq, packet.begin_parse());
+            emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
+            throw(error::processed_packet);
+        }
 
         if (token_origin == token_origin::cosmos){
             cell mint_msg = begin_cell()
@@ -143,7 +141,8 @@ global cell send_packets_from_ton;
                 send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
             }
         }
-
+        counterparty_seq_receipt~udict_set(64, seq, packet.begin_parse());
+        
         cell emit_ack = begin_cell()
                         .store_uint(opcode_packet, 32)
                         .store_uint(seq, 64)
@@ -163,12 +162,6 @@ global cell send_packets_from_ton;
         slice to = packet_ref~load_msg_addr(); ;; local_sender
 
         throw_unless(error::not_time_to_refund_ack_packet, now() >= timeout);
-        cell emit_ack = begin_cell()
-                        .store_uint(op::send_to_cosmos, 32)
-                        .store_uint(seq, 64)
-                        .store_uint(ack::timeout, 2)
-                        .end_cell();
-        emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
 
         if (token_origin == token_origin::cosmos){
             cell mint_msg = begin_cell()
@@ -211,6 +204,8 @@ global cell send_packets_from_ton;
             }
         }
 
+        send_packets_from_ton~udict_delete?(64,seq);
+
         cell emit_ack = begin_cell()
                         .store_uint(opcode_packet, 32)
                         .store_uint(seq, 64)
@@ -218,11 +213,8 @@ global cell send_packets_from_ton;
                         .end_cell();
                         
         emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
-        
         return ();
     }
-
-    save_data();
 }
 
 ;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
@@ -253,7 +245,6 @@ global cell send_packets_from_ton;
         slice packet_slice = packet.begin_parse();
         int opcode_packet = packet_slice.preload_uint(32);
         throw_unless(error::invalid_packet_opcode, (opcode_packet == op::send_to_cosmos) | (opcode_packet == op::send_to_ton));
-
 
         builder bodyBuilder = begin_cell();
         if (opcode_packet == op::send_to_ton) {
@@ -306,6 +297,7 @@ global cell send_packets_from_ton;
     if(op == op::on_recv_packet){
         throw_unless(error::unauthorized_sender, compare_address(sender_address, light_client_master));
         on_recv_packet(in_msg_body, msg_value); 
+        save_data();
         return ();
     }
 
