@@ -346,7 +346,7 @@ global cell send_packets_from_ton;
         slice ds = in_msg_body~load_ref().begin_parse();
         
         int existed = ds~load_int(8);
-        throw_unless(error::unsupport_this_denom, existed);
+        throw_unless(error::unsupported_denom, existed);
         int is_root_from_ton = ds~load_int(8);
         
         slice jetton_master_address = ds~load_msg_addr();
