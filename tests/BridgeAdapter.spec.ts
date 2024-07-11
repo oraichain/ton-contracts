@@ -1089,6 +1089,17 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         });
     });
 
+    it('test queryAckProof', async () => {
+        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        const queryClient = new QueryClient(tendermint37 as any);
+        await getAckPacketProofs(
+            queryClient,
+            'orai18lppnh7nwfnstpsewe70aql2qnmnm6kwkdcfe3j84ujtwzn89afqjp4pyr',
+            26987149,
+            5n,
+        );
+    });
+
     it('Test send jetton token from ton to bridge adapter', async () => {
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
