@@ -485,7 +485,7 @@ global cell send_packets_from_ton;
 
 cell get_bridge_data() method_id {
     load_data();
-    return begin_parse()
+    return begin_cell()
         .store_slice(light_client_master)
         .store_slice(admin)
         .store_slice(whitelist_denom)

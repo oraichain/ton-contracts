@@ -872,8 +872,10 @@ describe('Ton->Cosmos BridgeAdapter', () => {
                 {
                     light_client_master: lightClientMaster.address,
                     bridge_wasm_smart_contract: bridgeWasmAddress,
+                    admin: deployer.address,
                     jetton_wallet_code: jettonWalletCode,
                     whitelist_denom: whitelistDenom.address,
+                    paused: Paused.UNPAUSED,
                 },
                 bridgeAdapterCode,
             ),
