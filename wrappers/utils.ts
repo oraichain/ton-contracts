@@ -586,12 +586,18 @@ export const serializeCommit = (commit: Commit): SerializedCommit => {
         ...commit,
         blockId: serializeBlockId(commit.blockId)!,
         signatures: commit.signatures.map((sig) => {
+            let timestamp;
+            try {
+                timestamp = sig.timestamp ? toRfc3339WithNanoseconds(sig.timestamp) : null;
+            } catch (error) {
+                timestamp = null;
+            }
             return {
                 blockIdFlag: sig.blockIdFlag,
                 validatorAddress: sig.validatorAddress
                     ? Buffer.from(sig.validatorAddress).toString('hex')
                     : '',
-                timestamp: sig.timestamp ? toRfc3339WithNanoseconds(sig.timestamp) : null,
+                timestamp,
                 signature: sig.signature ? Buffer.from(sig.signature).toString('hex') : '',
             };
         }),
