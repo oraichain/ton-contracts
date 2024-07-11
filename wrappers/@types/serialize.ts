@@ -39,7 +39,7 @@ export type SerializedHeader = {
 export type SerializedSignature = {
     blockIdFlag: BlockIdFlag;
     validatorAddress: string;
-    timestamp: string;
+    timestamp: string | null;
     signature: string;
 };
 

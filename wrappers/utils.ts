@@ -591,9 +591,7 @@ export const serializeCommit = (commit: Commit): SerializedCommit => {
                 validatorAddress: sig.validatorAddress
                     ? Buffer.from(sig.validatorAddress).toString('hex')
                     : '',
-                timestamp: sig.timestamp
-                    ? toRfc3339WithNanoseconds(sig.timestamp)
-                    : new Date('0001-01-01T00:00:00Z').getTime().toString(),
+                timestamp: sig.timestamp ? toRfc3339WithNanoseconds(sig.timestamp) : null,
                 signature: sig.signature ? Buffer.from(sig.signature).toString('hex') : '',
             };
         }),

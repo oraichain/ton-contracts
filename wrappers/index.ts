@@ -6,3 +6,4 @@ export * from './LightClientMaster';
 export * from './WhitelistDenom';
 export * from './utils';
 export * from './@types';
+export * from './packet';
