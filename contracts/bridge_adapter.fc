@@ -503,3 +503,9 @@ cell get_bridge_data() method_id {
         .store_ref(jetton_wallet_code)
         .end_cell();
 }
+
+slice get_send_packet_commitment(int seq) method_id {
+    load_data();
+    (slice stored_packet_data, int exist) = send_packets_from_ton.udict_get?(64, seq);
+    return stored_packet_data;
+}
