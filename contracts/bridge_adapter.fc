@@ -14,8 +14,10 @@
 
 ;; storage variables
 global slice light_client_master; ;; TODO: dynamic calculate based on blockId
+global slice admin; ;; pause and update contract only for early stage
 global slice whitelist_denom; ;; whitelist denom contract
 global int next_packet_seq;
+global int paused;
 global cell bridge_wasm_smart_contract;
 global cell jetton_wallet_code;
 global cell counterparty_seq_receipt;
@@ -25,8 +27,10 @@ global cell send_packets_from_ton;
 () load_data() impure {
     slice ds = get_data().begin_parse();
     light_client_master = ds~load_msg_addr();
+    admin = ds~load_msg_addr();
     whitelist_denom = ds~load_msg_addr();
     next_packet_seq = ds~load_uint(64);
+    paused = ds~load_uint(1);
     bridge_wasm_smart_contract = ds~load_ref();
     jetton_wallet_code = ds~load_ref();
     slice dict_cs = ds~load_ref().begin_parse();
@@ -41,8 +45,10 @@ global cell send_packets_from_ton;
     set_data(
         begin_cell()
         .store_slice(light_client_master)
+        .store_slice(admin)
         .store_slice(whitelist_denom)
         .store_uint(next_packet_seq, 64)
+        .store_uint(paused, 1)
         .store_ref(bridge_wasm_smart_contract)
         .store_ref(jetton_wallet_code)
         .store_ref(begin_cell().store_dict(counterparty_seq_receipt).end_cell())
@@ -69,7 +75,6 @@ global cell send_packets_from_ton;
                         
         emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
         throw(error::packet_verified_exist_fail);
-        return ();
     }
     
     if (opcode_packet == op::send_to_ton){
@@ -86,16 +91,15 @@ global cell send_packets_from_ton;
         }
     
         (_, int exist) = counterparty_seq_receipt.udict_get?(64, seq);
-        cell emit_ack = begin_cell()
+        if (exist) {
+            cell emit_ack = begin_cell()
                             .store_uint(op::send_to_ton, 32)
                             .store_uint(seq, 64)
                             .store_uint(ack::error, 2)
                             .end_cell();
-        emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
-
-        throw_unless(error::processed_packet, exist == 0);
-        
-        counterparty_seq_receipt~udict_set(64, seq, packet.begin_parse());
+            emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
+            throw(error::processed_packet);
+        }
 
         if (token_origin == token_origin::cosmos){
             cell mint_msg = begin_cell()
@@ -137,7 +141,8 @@ global cell send_packets_from_ton;
                 send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
             }
         }
-
+        counterparty_seq_receipt~udict_set(64, seq, packet.begin_parse());
+        
         cell emit_ack = begin_cell()
                         .store_uint(opcode_packet, 32)
                         .store_uint(seq, 64)
@@ -157,12 +162,6 @@ global cell send_packets_from_ton;
         slice to = packet_ref~load_msg_addr(); ;; local_sender
 
         throw_unless(error::not_time_to_refund_ack_packet, now() >= timeout);
-        cell emit_ack = begin_cell()
-                        .store_uint(op::send_to_cosmos, 32)
-                        .store_uint(seq, 64)
-                        .store_uint(ack::timeout, 2)
-                        .end_cell();
-        emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
 
         if (token_origin == token_origin::cosmos){
             cell mint_msg = begin_cell()
@@ -205,6 +204,8 @@ global cell send_packets_from_ton;
             }
         }
 
+        send_packets_from_ton~udict_delete?(64,seq);
+
         cell emit_ack = begin_cell()
                         .store_uint(opcode_packet, 32)
                         .store_uint(seq, 64)
@@ -212,11 +213,8 @@ global cell send_packets_from_ton;
                         .end_cell();
                         
         emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
-        
         return ();
     }
-
-    save_data();
 }
 
 ;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
@@ -238,6 +236,7 @@ global cell send_packets_from_ton;
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
 
     if (op == op::bridge_recv_packet) {
+        throw_unless(error::paused, paused == paused::unpaused);
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice body = in_msg_body~load_ref().begin_parse();
         int proven_height = body~load_uint(64);
@@ -246,7 +245,6 @@ global cell send_packets_from_ton;
         slice packet_slice = packet.begin_parse();
         int opcode_packet = packet_slice.preload_uint(32);
         throw_unless(error::invalid_packet_opcode, (opcode_packet == op::send_to_cosmos) | (opcode_packet == op::send_to_ton));
-
 
         builder bodyBuilder = begin_cell();
         if (opcode_packet == op::send_to_ton) {
@@ -297,12 +295,14 @@ global cell send_packets_from_ton;
     } 
 
     if(op == op::on_recv_packet){
-        throw_unless(error::invalid_sender, compare_address(sender_address, light_client_master));
+        throw_unless(error::unauthorized_sender, compare_address(sender_address, light_client_master));
         on_recv_packet(in_msg_body, msg_value); 
+        save_data();
         return ();
     }
 
     if (op == op::transfer_notification()) {
+        throw_unless(error::paused, paused == paused::unpaused);
         int query_id = in_msg_body~load_uint(64);
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
@@ -318,7 +318,7 @@ global cell send_packets_from_ton;
         cell memo = either_forward_payload~load_ref();
         slice calculate_sender = calculate_user_jetton_wallet_address(my_address(), jetton_master_address, jetton_wallet_code);
         ;; validate jetton_master_address is valid
-        throw_unless(error::invalid_sender, compare_address(sender_address ,calculate_sender));
+        throw_unless(error::unauthorized_sender, compare_address(sender_address ,calculate_sender));
         slice from_jetton_address = calculate_user_jetton_wallet_address(from_address, from_address, jetton_wallet_code);
         builder bodyBuilder = begin_cell()
                                 .store_uint(op::query_denom, 32)
@@ -341,7 +341,7 @@ global cell send_packets_from_ton;
     }
 
     if (op == op::callback_denom) {
-        throw_unless(error::invalid_sender, compare_address(whitelist_denom ,sender_address));
+        throw_unless(error::unauthorized_sender, compare_address(whitelist_denom ,sender_address));
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice ds = in_msg_body~load_ref().begin_parse();
         
@@ -373,14 +373,6 @@ global cell send_packets_from_ton;
                                 begin_cell()
                                 .store_slice(response_address) ;; local_sender
                                 .end_cell());
-        ~dump(null());
-        ~dump(is_root_from_ton ? token_origin::ton : token_origin::cosmos);
-        ~dump(amount);
-        ~dump(timeout);
-        ~dump(remote_receiver_byte_len);
-        ~dump(jetton_master_address);
-        ~dump(emit_data_builder.store_uint(ack::timeout, 2).end_cell().cell_hash());
-        ~dump(null());
 
         send_packets_from_ton~udict_set(64, next_packet_seq, emit_data_builder.end_cell().begin_parse());
         
@@ -418,6 +410,7 @@ global cell send_packets_from_ton;
     }
 
     if (op == op::bridge_ton) {
+        throw_unless(error::paused, paused == paused::unpaused);
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice ds = in_msg_body~load_ref().begin_parse();
         int min_ton_for_execute = 20000000;
@@ -455,11 +448,42 @@ global cell send_packets_from_ton;
         return ();
     }
 
+    if (op == op::set_paused) {
+        throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        in_msg_body~load_uint(64); ;; skip query_id
+        paused = in_msg_body~load_uint(1);
+        save_data();
+        return ();
+    }
+
+    if (op == op::upgrade_contract) {
+        throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        in_msg_body~load_uint(64); ;; skip query_id
+        cell new_contract = in_msg_body~load_ref();
+        set_code(new_contract);
+        return ();
+    }
+
+    if (op == op::change_admin) {
+        throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        in_msg_body~load_uint(64); ;; skip query_id
+        admin = in_msg_body~load_msg_addr();
+        save_data();
+        return ();
+    }
 
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
 }
 
-(slice, slice ,cell) get_bridge_data() method_id {
+cell get_bridge_data() method_id {
     load_data();
-    return (light_client_master, bridge_wasm_smart_contract.begin_parse(), jetton_wallet_code);
+    return begin_cell()
+        .store_slice(light_client_master)
+        .store_slice(admin)
+        .store_slice(whitelist_denom)
+        .store_uint(next_packet_seq, 64)
+        .store_uint(paused, 1)
+        .store_ref(bridge_wasm_smart_contract)
+        .store_ref(jetton_wallet_code)
+        .end_cell();
 }
