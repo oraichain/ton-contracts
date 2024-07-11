@@ -47,8 +47,8 @@ async function deploy() {
             await compile('LightClientMaster'),
         ),
     );
-    await lightClientMaster.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
-    await waitSeqno(walletContract, await walletContract.getSeqno());
+    // await lightClientMaster.sendDeploy(walletContract.sender(key.secretKey), toNano('0.1'));
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
     console.log('Success deploy light client at address: ', lightClientMaster.address);
 
     // USDT
@@ -126,10 +126,10 @@ async function deploy() {
     );
 
     const tonBridgeContract = client.open(tonBridge);
-    await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), {
-        value: toNano('0.1'),
-    });
-    await waitSeqno(walletContract, await walletContract.getSeqno());
+    // await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), {
+    //     value: toNano('0.1'),
+    // });
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
     console.log('Success deploy tonBridgeContract at address: ', tonBridgeContract.address);
 
     // This one we consider it as orai token

@@ -356,7 +356,6 @@ global cell send_packets_from_ton;
         slice jetton_master_address = ds~load_msg_addr();
         int amount = ds~load_coins();
         int timeout = ds~load_uint(64);
-        throw_unless(error::packet_timeout, now() >= timeout);
         
         int remote_receiver_byte_len = ds~load_uint(8);
         int remote_receiver_bits_len = remote_receiver_byte_len * 8;
