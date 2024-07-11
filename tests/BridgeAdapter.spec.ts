@@ -693,7 +693,6 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     let whitelistDenomCode: Cell;
 
     const bridgeWasmAddress = 'orai16xfkjn7exdkzpl2jdu655qlzwjluyrld308c54jf4etyss73dt6qftt30h';
-    const bech32Address = fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data;
     const updateBlock = async (
         {
             header,

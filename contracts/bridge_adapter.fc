@@ -43,8 +43,10 @@ global cell send_packets_from_ton;
     set_data(
         begin_cell()
         .store_slice(light_client_master)
+        .store_slice(admin)
         .store_slice(whitelist_denom)
         .store_uint(next_packet_seq, 64)
+        .store_uint(paused, 1)
         .store_ref(bridge_wasm_smart_contract)
         .store_ref(jetton_wallet_code)
         .store_ref(begin_cell().store_dict(counterparty_seq_receipt).end_cell())
@@ -240,6 +242,7 @@ global cell send_packets_from_ton;
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
 
     if (op == op::bridge_recv_packet) {
+        throw_unless(error::paused, paused == 0);
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice body = in_msg_body~load_ref().begin_parse();
         int proven_height = body~load_uint(64);
@@ -299,12 +302,14 @@ global cell send_packets_from_ton;
     } 
 
     if(op == op::on_recv_packet){
+        throw_unless(error::paused, paused == 0);
         throw_unless(error::unauthorized_sender, compare_address(sender_address, light_client_master));
         on_recv_packet(in_msg_body, msg_value); 
         return ();
     }
 
     if (op == op::transfer_notification()) {
+        throw_unless(error::paused, paused == 0);
         int query_id = in_msg_body~load_uint(64);
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
@@ -343,6 +348,7 @@ global cell send_packets_from_ton;
     }
 
     if (op == op::callback_denom) {
+        throw_unless(error::paused, paused == 0);
         throw_unless(error::unauthorized_sender, compare_address(whitelist_denom ,sender_address));
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice ds = in_msg_body~load_ref().begin_parse();
@@ -412,6 +418,7 @@ global cell send_packets_from_ton;
     }
 
     if (op == op::bridge_ton) {
+        throw_unless(error::paused, paused == 0);
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice ds = in_msg_body~load_ref().begin_parse();
         int min_ton_for_execute = 20000000;
@@ -451,6 +458,7 @@ global cell send_packets_from_ton;
 
     if (op == op::set_paused) {
         throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        in_msg_body~load_uint(64); ;; skip query_id
         paused = in_msg_body~load_uint(1);
         save_data();
         return ();
@@ -458,6 +466,7 @@ global cell send_packets_from_ton;
 
     if (op == op::upgrade_contract) {
         throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        in_msg_body~load_uint(64); ;; skip query_id
         cell new_contract = in_msg_body~load_ref();
         set_code(new_contract);
         return ();
@@ -465,6 +474,7 @@ global cell send_packets_from_ton;
 
     if (op == op::change_admin) {
         throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        in_msg_body~load_uint(64); ;; skip query_id
         admin = in_msg_body~load_msg_addr();
         save_data();
         return ();

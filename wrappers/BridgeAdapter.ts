@@ -9,70 +9,26 @@ import {
     Sender,
     SendMode,
 } from '@ton/core';
-import { getAuthInfoInput, txBodyWasmToRef } from './utils';
-import { TxWasm } from './@types';
 import { crc32 } from '../crc32';
 import { ValueOps } from './@types';
 import { fromBech32 } from '@cosmjs/encoding';
 
 export type BridgeAdapterConfig = {
     light_client_master: Address;
+    admin: Address;
     whitelist_denom: Address;
     bridge_wasm_smart_contract: string;
     jetton_wallet_code: Cell;
+    paused: 0 | 1;
 };
-
-export function jsonToSliceRef(value: Object): Cell {
-    switch (typeof value) {
-        case 'undefined':
-        case 'function':
-        case 'symbol':
-            return beginCell().endCell();
-        case 'string':
-        case 'number':
-        case 'boolean':
-            return beginCell().storeBuffer(Buffer.from(value.toString())).endCell();
-        case 'object': {
-            let cell = beginCell().endCell();
-            const reverseEntries = Object.entries(value).reverse();
-            for (const [key, value] of reverseEntries) {
-                cell = beginCell()
-                    .storeRef(cell)
-                    .storeRef(beginCell().storeBuffer(Buffer.from(key)).endCell())
-                    .storeRef(jsonToSliceRef(value))
-                    .endCell();
-            }
-            return cell;
-        }
-        default:
-            throw new Error('Invalid JSON');
-    }
-}
-
-export function sliceRefToJson(cell: Cell): Object {
-    let innerCell = cell.beginParse();
-    if (innerCell.remainingRefs !== 3) {
-        return innerCell.loadStringTail();
-    }
-    let json: { [key: string]: Object } = {};
-
-    while (innerCell.remainingRefs) {
-        const nextProps = innerCell.loadRef();
-        const key = innerCell.loadRef();
-        const value = innerCell.loadRef();
-        // return value;
-        json[key.asSlice().loadStringTail()] = sliceRefToJson(value);
-        innerCell = nextProps.beginParse();
-    }
-
-    return json;
-}
 
 export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
     return beginCell()
         .storeAddress(config.light_client_master)
+        .storeAddress(config.admin)
         .storeAddress(config.whitelist_denom)
         .storeUint(1, 64) // next_packet_seq initial value = 1
+        .storeUint(config.paused, 1)
         .storeRef(
             beginCell()
                 .storeBuffer(Buffer.from(fromBech32(config.bridge_wasm_smart_contract).data))
@@ -89,6 +45,9 @@ export const BridgeAdapterOpcodes = {
     onRecvPacket: crc32('op::on_recv_packet'),
     callbackDenom: crc32('op::callback_denom'),
     bridgeTon: crc32('op::bridge_ton'),
+    setPaused: 1,
+    upgradeContract: 2,
+    changeAdmin: 3,
 };
 
 export const BridgeAdapterPacketOpcodes = {
@@ -180,6 +139,47 @@ export class BridgeAdapter implements Contract {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             value: ops.value,
             body: sendTxBody,
+        });
+    }
+
+    async sendSetPaused(provider: ContractProvider, via: Sender, paused: 0 | 1, ops: ValueOps) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
+            body: beginCell()
+                .storeUint(BridgeAdapterOpcodes.setPaused, 32)
+                .storeUint(ops.queryId ?? 0, 64)
+                .storeUint(paused, 1)
+                .endCell(),
+        });
+    }
+
+    async sendUpgradeContract(
+        provider: ContractProvider,
+        via: Sender,
+        new_code: Cell,
+        ops: ValueOps,
+    ) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
+            body: beginCell()
+                .storeUint(BridgeAdapterOpcodes.upgradeContract, 32)
+                .storeUint(ops.queryId ?? 0, 64)
+                .storeRef(new_code)
+                .endCell(),
+        });
+    }
+
+    async sendChangeAdmin(provider: ContractProvider, via: Sender, admin: Address, ops: ValueOps) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
+            body: beginCell()
+                .storeUint(BridgeAdapterOpcodes.changeAdmin, 32)
+                .storeUint(ops.queryId ?? 0, 64)
+                .storeAddress(admin)
+                .endCell(),
         });
     }
 
