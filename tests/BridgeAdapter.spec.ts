@@ -2,7 +2,12 @@ import { Blockchain, printTransactionFees, SandboxContract, TreasuryContract } f
 import { Address, beginCell, Cell, SendMode, toNano } from '@ton/core';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import { BridgeAdapter, BridgeAdapterOpcodes, TokenOrigin } from '../wrappers/BridgeAdapter';
+import {
+    BridgeAdapter,
+    BridgeAdapterOpcodes,
+    Paused,
+    TokenOrigin,
+} from '../wrappers/BridgeAdapter';
 import { JettonMinter } from '../wrappers/JettonMinter';
 import { WhitelistDenom, WhitelistDenomOpcodes } from '../wrappers/WhitelistDenom';
 import { JettonWallet } from '../wrappers/JettonWallet';
@@ -221,8 +226,10 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 {
                     light_client_master: lightClientMaster.address,
                     bridge_wasm_smart_contract: bridgeWasmAddress,
+                    admin: deployer.address,
                     jetton_wallet_code: jettonWalletCode,
                     whitelist_denom: whitelistDenom.address,
+                    paused: Paused.UNPAUSED,
                 },
                 bridgeAdapterCode,
             ),

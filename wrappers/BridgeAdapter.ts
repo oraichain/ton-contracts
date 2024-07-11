@@ -59,6 +59,11 @@ export const TokenOrigin = {
     TON: crc32('token_origin::ton'),
 };
 
+export enum Paused {
+    UNPAUSED = 0,
+    PAUSED = 1,
+}
+
 export interface BridgeRecvPacket {
     proofs: Cell;
     packet: Cell;

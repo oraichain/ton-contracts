@@ -242,7 +242,7 @@ global cell send_packets_from_ton;
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
 
     if (op == op::bridge_recv_packet) {
-        throw_unless(error::paused, paused == 0);
+        throw_unless(error::paused, paused == paused::unpaused);
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice body = in_msg_body~load_ref().begin_parse();
         int proven_height = body~load_uint(64);
@@ -302,14 +302,14 @@ global cell send_packets_from_ton;
     } 
 
     if(op == op::on_recv_packet){
-        throw_unless(error::paused, paused == 0);
+        throw_unless(error::paused, paused == paused::unpaused);
         throw_unless(error::unauthorized_sender, compare_address(sender_address, light_client_master));
         on_recv_packet(in_msg_body, msg_value); 
         return ();
     }
 
     if (op == op::transfer_notification()) {
-        throw_unless(error::paused, paused == 0);
+        throw_unless(error::paused, paused == paused::unpaused);
         int query_id = in_msg_body~load_uint(64);
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
@@ -348,7 +348,7 @@ global cell send_packets_from_ton;
     }
 
     if (op == op::callback_denom) {
-        throw_unless(error::paused, paused == 0);
+        throw_unless(error::paused, paused == paused::unpaused);
         throw_unless(error::unauthorized_sender, compare_address(whitelist_denom ,sender_address));
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice ds = in_msg_body~load_ref().begin_parse();
@@ -418,7 +418,7 @@ global cell send_packets_from_ton;
     }
 
     if (op == op::bridge_ton) {
-        throw_unless(error::paused, paused == 0);
+        throw_unless(error::paused, paused == paused::unpaused);
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice ds = in_msg_body~load_ref().begin_parse();
         int min_ton_for_execute = 20000000;
