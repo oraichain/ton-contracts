@@ -11,7 +11,7 @@ import {
 } from '@ton/core';
 import { crc32 } from '../crc32';
 import { ValueOps } from './@types';
-import { fromBech32 } from '@cosmjs/encoding';
+import { fromBech32, toBech32 } from '@cosmjs/encoding';
 
 export type BridgeAdapterConfig = {
     light_client_master: Address;
@@ -21,6 +21,19 @@ export type BridgeAdapterConfig = {
     jetton_wallet_code: Cell;
     paused: 0 | 1;
 };
+
+export enum BridgeAdapterError {
+    INVALID_PACKET_OPCODE = 3000,
+    UNAUTHORIZED_SENDER = 3001,
+    PROCESSED_PACKET = 3002,
+    UNSUPPORT_THIS_DENOM = 3003,
+    PACKET_TIMEOUT = 3004,
+    INVALID_NATIVE_AMOUNT = 3005,
+    PACKET_VERIFIED_EXIST_FAIL = 3006,
+    NOT_TIME_TO_REFUND_ACK_PACKET = 3007,
+    PACKET_DOES_NOT_EXIST = 3008,
+    PAUSED = 3009,
+}
 
 export function bridgeAdapterConfigToCell(config: BridgeAdapterConfig): Cell {
     return beginCell()
@@ -104,6 +117,27 @@ export class BridgeAdapter implements Contract {
         const data = bridgeAdapterConfigToCell(config);
         const init = { code, data };
         return new BridgeAdapter(contractAddress(workchain, init), init);
+    }
+
+    static parseBridgeDataResponse(cell: Cell) {
+        const cs = cell.beginParse();
+        const lightClientMasterAddress = cs.loadAddress();
+        const adminAddress = cs.loadAddress();
+        const whitelistDenomAddress = cs.loadAddress();
+        const next_packet_seq = cs.loadUint(64);
+        const paused = cs.loadUint(1);
+        const bridgeWasmBech32 = toBech32(
+            'orai',
+            Buffer.from(cs.loadRef().beginParse().asCell().bits.toString(), 'hex'),
+        );
+        return {
+            lightClientMasterAddress,
+            adminAddress,
+            whitelistDenomAddress,
+            next_packet_seq,
+            paused,
+            bridgeWasmBech32,
+        };
     }
 
     async sendDeploy(provider: ContractProvider, via: Sender, ops: ValueOps) {

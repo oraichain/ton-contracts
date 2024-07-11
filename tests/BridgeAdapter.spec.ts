@@ -4,6 +4,7 @@ import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import {
     BridgeAdapter,
+    BridgeAdapterError,
     BridgeAdapterOpcodes,
     Paused,
     TokenOrigin,
@@ -40,7 +41,7 @@ import * as sendToCosmosTimeoutOtherProof from './fixtures/sendToCosmosTimeoutOt
 
 import { writeFileSync } from 'fs';
 import { resolve } from 'path';
-import { fromBech32, toAscii } from '@cosmjs/encoding';
+import { fromBech32, toAscii, toBech32 } from '@cosmjs/encoding';
 import { QueryClient } from '@cosmjs/stargate';
 import { SerializedCommit, SerializedHeader, SerializedValidator } from '../wrappers/@types';
 import { calculateIbcTimeoutTimestamp } from '../scripts/utils';
@@ -226,10 +227,10 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 {
                     light_client_master: lightClientMaster.address,
                     bridge_wasm_smart_contract: bridgeWasmAddress,
-                    admin: deployer.address,
                     jetton_wallet_code: jettonWalletCode,
                     whitelist_denom: whitelistDenom.address,
                     paused: Paused.UNPAUSED,
+                    admin: deployer.address,
                 },
                 bridgeAdapterCode,
             ),
@@ -336,16 +337,22 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     });
 
     it('successfully deploy BridgeAdapter contract', async () => {
-        console.log('bridgeAdapterCode', bridgeAdapterCode.toBoc().toString('hex'));
-        console.log('successfully deploy');
         const stack = await bridgeAdapter.getBridgeData();
-        expect(stack.readCell().toBoc()).toEqual(
-            beginCell().storeAddress(lightClientMaster.address).endCell().toBoc(),
-        );
-        expect(stack.readBuffer().compare(Buffer.from(fromBech32(bridgeWasmAddress).data))).toEqual(
-            0,
-        );
-        expect(stack.readCell().toBoc()).toEqual(jettonWalletCode.toBoc());
+        const cell = stack.readCell();
+        const {
+            lightClientMasterAddress,
+            adminAddress,
+            whitelistDenomAddress,
+            next_packet_seq,
+            paused,
+            bridgeWasmBech32,
+        } = BridgeAdapter.parseBridgeDataResponse(cell);
+        expect(lightClientMasterAddress.equals(lightClientMaster.address)).toBeTruthy();
+        expect(adminAddress.equals(deployer.address)).toBeTruthy();
+        expect(whitelistDenomAddress.equals(whitelistDenom.address)).toBeTruthy();
+        expect(next_packet_seq).toBe(1);
+        expect(paused).toBe(Paused.UNPAUSED);
+        expect(bridgeWasmBech32).toEqual(bridgeWasmAddress);
     });
 
     xit('should log data persist data to test', async () => {
@@ -690,6 +697,106 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         expect(userTonBalance).toBeGreaterThan(9000000n);
         expect(userTonBalance).toBeLessThan(transferAmount);
     });
+
+    describe('admin operator', () => {
+        it('should paused bridge adapter contract successfully', async () => {
+            // action
+            await bridgeAdapter.sendSetPaused(deployer.getSender(), Paused.PAUSED, {
+                value: toNano('0.01'),
+            });
+            const cell = (await bridgeAdapter.getBridgeData()).readCell();
+            const { paused } = BridgeAdapter.parseBridgeDataResponse(cell);
+            // assert
+            expect(paused).toBe(Paused.PAUSED);
+        });
+
+        it('should call all function failed after paused', async () => {
+            // arrange
+            await bridgeAdapter.sendSetPaused(deployer.getSender(), Paused.PAUSED, {
+                value: toNano('0.01'),
+            });
+            // action
+            const result = await bridgeAdapter.sendBridgeRecvPacket(
+                deployer.getSender(),
+                {
+                    proofs: beginCell().endCell(),
+                    packet: beginCell().endCell(),
+                    provenHeight: 0,
+                },
+                { value: toNano('0.05') },
+            );
+
+            const usdtResultTransfer = await usdtDeployerJettonWallet.sendTransfer(
+                usdtDeployer.getSender(),
+                {
+                    fwdAmount: toNano(1),
+                    jettonAmount: toNano(333),
+                    jettonMaster: usdtMinterContract.address,
+                    toAddress: bridgeAdapter.address,
+                    timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
+                    remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
+                    memo: beginCell()
+                        .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                        .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
+                        .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                        .storeRef(
+                            beginCell()
+                                .storeBuffer(
+                                    Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx'),
+                                )
+                                .endCell(),
+                        )
+                        .endCell(),
+                },
+                {
+                    value: toNano(2),
+                    queryId: 0,
+                },
+            );
+            // assert
+            expect(result.transactions).toHaveTransaction({
+                op: BridgeAdapterOpcodes.bridgeRecvPacket,
+                success: false,
+                exitCode: BridgeAdapterError.PAUSED,
+            });
+
+            expect(usdtResultTransfer.transactions).toHaveTransaction({
+                op: 0x7362d09c,
+                success: false,
+                exitCode: BridgeAdapterError.PAUSED,
+            });
+        });
+
+        it('should emit error when call after contract upgraded', async () => {
+            // arrange
+            const newCode = jettonWalletCode;
+            await bridgeAdapter.sendUpgradeContract(deployer.getSender(), newCode, {
+                value: toNano('0.5'),
+            });
+            // action
+
+            const result = await bridgeAdapter.sendUpgradeContract(deployer.getSender(), newCode, {
+                value: toNano('0.5'),
+            });
+
+            // since new_code do not have upgradeContract function
+            expect(result.transactions).toHaveTransaction({
+                op: BridgeAdapterOpcodes.upgradeContract,
+                success: false,
+                exitCode: 65535,
+            });
+        });
+
+        it('should transfer ownership of contract', async () => {
+            const newOwner = await blockchain.treasury('new_owner');
+            await bridgeAdapter.sendChangeAdmin(deployer.getSender(), newOwner.address, {
+                value: toNano('0.01'),
+            });
+            const cell = await bridgeAdapter.getBridgeData();
+            const { adminAddress } = BridgeAdapter.parseBridgeDataResponse(cell.readCell());
+            expect(adminAddress.equals(newOwner.address)).toBeTruthy();
+        });
+    });
 });
 
 describe('Ton->Cosmos BridgeAdapter', () => {
@@ -700,6 +807,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     let whitelistDenomCode: Cell;
 
     const bridgeWasmAddress = 'orai16xfkjn7exdkzpl2jdu655qlzwjluyrld308c54jf4etyss73dt6qftt30h';
+    const bech32Address = fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data;
     const updateBlock = async (
         {
             header,
@@ -873,9 +981,9 @@ describe('Ton->Cosmos BridgeAdapter', () => {
                     light_client_master: lightClientMaster.address,
                     bridge_wasm_smart_contract: bridgeWasmAddress,
                     admin: deployer.address,
+                    paused: Paused.UNPAUSED,
                     jetton_wallet_code: jettonWalletCode,
                     whitelist_denom: whitelistDenom.address,
-                    paused: Paused.UNPAUSED,
                 },
                 bridgeAdapterCode,
             ),
@@ -978,29 +1086,6 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         await deployer.getSender().send({
             to: bridgeJettonWalletSrcTon.address,
             value: toNano('10'),
-        });
-    });
-
-    it('successfully deploy BridgeAdapter contract', async () => {
-        console.log('bridgeAdapterCode', bridgeAdapterCode.toBoc().toString('hex'));
-        console.log('successfully deploy');
-        const stack = await bridgeAdapter.getBridgeData();
-        expect(stack.readCell().toBoc()).toEqual(
-            beginCell().storeAddress(lightClientMaster.address).endCell().toBoc(),
-        );
-        expect(stack.readBuffer().compare(Buffer.from(fromBech32(bridgeWasmAddress).data))).toEqual(
-            0,
-        );
-        expect(stack.readCell().toBoc()).toEqual(jettonWalletCode.toBoc());
-    });
-
-    xit('should log data persist data to test', async () => {
-        console.log({
-            jettonMinterSrcCosmos: jettonMinterSrcCosmos.address,
-            jettonMinterSrcTon: jettonMinterSrcTon.address,
-            user: user.address,
-            srcCosmos: TokenOrigin.COSMOS,
-            srcTon: TokenOrigin.TON,
         });
     });
 

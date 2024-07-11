@@ -27,8 +27,10 @@ global cell send_packets_from_ton;
 () load_data() impure {
     slice ds = get_data().begin_parse();
     light_client_master = ds~load_msg_addr();
+    admin = ds~load_msg_addr();
     whitelist_denom = ds~load_msg_addr();
     next_packet_seq = ds~load_uint(64);
+    paused = ds~load_uint(1);
     bridge_wasm_smart_contract = ds~load_ref();
     jetton_wallet_code = ds~load_ref();
     slice dict_cs = ds~load_ref().begin_parse();
@@ -302,7 +304,6 @@ global cell send_packets_from_ton;
     } 
 
     if(op == op::on_recv_packet){
-        throw_unless(error::paused, paused == paused::unpaused);
         throw_unless(error::unauthorized_sender, compare_address(sender_address, light_client_master));
         on_recv_packet(in_msg_body, msg_value); 
         return ();
@@ -348,7 +349,6 @@ global cell send_packets_from_ton;
     }
 
     if (op == op::callback_denom) {
-        throw_unless(error::paused, paused == paused::unpaused);
         throw_unless(error::unauthorized_sender, compare_address(whitelist_denom ,sender_address));
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice ds = in_msg_body~load_ref().begin_parse();
