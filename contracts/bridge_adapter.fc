@@ -165,50 +165,48 @@ global cell send_packets_from_ton;
         slice packet_ref = packet_slice~load_ref().begin_parse();
         slice to = packet_ref~load_msg_addr(); ;; local_sender
 
-        if (ack != ack::timeout) {
-            return ();
-        }
+        if (ack == ack::timeout) {
+            throw_unless(error::not_time_to_refund_ack_packet, now() >= timeout);
 
-        throw_unless(error::not_time_to_refund_ack_packet, now() >= timeout);
-
-        if (token_origin == token_origin::cosmos){
-            cell mint_msg = begin_cell()
-                        .store_uint(op::internal_transfer(), 32)
-                        .store_uint(query_id, 64)
-                        .store_coins(amount)
-                        .store_uint(0, 2)
-                        .store_slice(response_address)
-                        .store_coins(0)
-                        .store_maybe_ref(null())
-                        .end_cell();
-        
-            cell body = begin_cell()
-                        .store_uint(op::mint(),32)
-                        .store_uint(query_id,64)
-                        .store_slice(to)
-                        .store_coins(msg_value)
-                        .store_ref(mint_msg)
-                        .end_cell();
-            
-            send_simple_message(0, jetton_master, body, CARRY_REMAINING_GAS);
-        }
-
-        if (token_origin == token_origin::ton){
-            if ( jetton_master.preload_uint(2) == 0) {
-                send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
-            } else {
-                slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
-                cell body = begin_cell()
-                            .store_uint(op::transfer(), 32)
+            if (token_origin == token_origin::cosmos){
+                cell mint_msg = begin_cell()
+                            .store_uint(op::internal_transfer(), 32)
                             .store_uint(query_id, 64)
                             .store_coins(amount)
-                            .store_slice(to)
+                            .store_uint(0, 2)
                             .store_slice(response_address)
-                            .store_maybe_ref(null())
                             .store_coins(0)
                             .store_maybe_ref(null())
                             .end_cell();
-                send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
+            
+                cell body = begin_cell()
+                            .store_uint(op::mint(),32)
+                            .store_uint(query_id,64)
+                            .store_slice(to)
+                            .store_coins(msg_value)
+                            .store_ref(mint_msg)
+                            .end_cell();
+                
+                send_simple_message(0, jetton_master, body, CARRY_REMAINING_GAS);
+            }
+
+            if (token_origin == token_origin::ton){
+                if ( jetton_master.preload_uint(2) == 0) {
+                    send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
+                } else {
+                    slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
+                    cell body = begin_cell()
+                                .store_uint(op::transfer(), 32)
+                                .store_uint(query_id, 64)
+                                .store_coins(amount)
+                                .store_slice(to)
+                                .store_slice(response_address)
+                                .store_maybe_ref(null())
+                                .store_coins(0)
+                                .store_maybe_ref(null())
+                                .end_cell();
+                    send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
+                }
             }
         }
 
@@ -237,7 +235,7 @@ global cell send_packets_from_ton;
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
 
     if (op == op::bridge_recv_packet) {
-        throw_unless(error::not_enough_gas, msg_value >= gas::send_to_ton);
+        throw_unless(error::not_enough_gas, msg_value >= gas::bridge_recv_packet);
         throw_unless(error::paused, paused == paused::unpaused);
         int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
         slice body = in_msg_body~load_ref().begin_parse();
@@ -264,6 +262,18 @@ global cell send_packets_from_ton;
             int seq = packet_slice~load_uint(64);
             int ack = packet_slice~load_uint(2);
             (slice stored_packet_data, int exist) = send_packets_from_ton.udict_get?(64, seq);
+            if (~exist) {
+                int refund_amount = msg_value - gas::bridge_recv_packet_failed;
+                var msg = begin_cell()
+                    .store_uint(0x10, 6)
+                    .store_slice(sender_address)
+                    .store_coins(refund_amount)
+                    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                    .store_uint(op::excesses(), 32)
+                    .store_uint(query_id, 64);
+                send_raw_message(msg.end_cell(), IGNORE_ERRORS + NORMAL);
+                return ();
+            }
             throw_unless(error::packet_does_not_exist, exist);
             cell new_packet = begin_cell().store_slice(stored_packet_data).store_uint(ack, 2).end_cell();
             bodyBuilder = bodyBuilder 
@@ -376,7 +386,6 @@ global cell send_packets_from_ton;
                                 begin_cell()
                                 .store_slice(response_address) ;; local_sender
                                 .end_cell());
-
         send_packets_from_ton~udict_set(64, next_packet_seq, emit_data_builder.end_cell().begin_parse());
         
         ;; append memo here for emitting events

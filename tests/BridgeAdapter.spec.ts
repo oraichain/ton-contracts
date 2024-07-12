@@ -427,7 +427,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 packet,
                 provenHeight: 26877876,
             },
-            { value: toNano('0.5') },
+            { value: toNano('0.7') },
         );
 
         printTransactionFees(sendRecvResult.transactions);
@@ -491,7 +491,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 packet,
                 provenHeight: 26877882,
             },
-            { value: toNano('0.5') },
+            { value: toNano('0.7') },
         );
 
         printTransactionFees(sendRecvResult.transactions);

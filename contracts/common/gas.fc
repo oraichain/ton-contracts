@@ -1,4 +1,5 @@
 const gas::bridge_ton = 50000000; ;; 0.05 TON
 const gas::send_to_cosmos = 100000000; ;; 0.1 TON
-const gas::send_to_ton = 500000000; ;; 0.5 TON
+const gas::bridge_recv_packet = 700000000; ;; 0.7 TON
+const gas::bridge_recv_packet_failed = 200000000; ;; 0.2 TON
 const gas::update_block = 3500000000; ;; 3.5 TON
