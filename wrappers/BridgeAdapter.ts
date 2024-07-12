@@ -147,6 +147,23 @@ export class BridgeAdapter implements Contract {
         };
     }
 
+    static buildBridgeTonBody(data: BridgeTon, remoteCosmosData: Uint8Array, ops: ValueOps) {
+        const body = beginCell()
+            .storeCoins(data.amount)
+            .storeUint(data.timeout, 64)
+            .storeUint(Buffer.from(remoteCosmosData).length, 8)
+            .storeBuffer(Buffer.from(remoteCosmosData))
+            .storeRef(data.memo)
+            .endCell();
+
+        const fullBody = beginCell()
+            .storeUint(BridgeAdapterOpcodes.bridgeTon, 32)
+            .storeUint(ops.queryId || 0, 64)
+            .storeRef(body)
+            .endCell();
+        return fullBody;
+    }
+
     async sendDeploy(provider: ContractProvider, via: Sender, ops: ValueOps) {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
@@ -157,7 +174,7 @@ export class BridgeAdapter implements Contract {
 
     async sendBridgeTon(provider: ContractProvider, via: Sender, data: BridgeTon, ops: ValueOps) {
         const remoteCosmosData = fromBech32(data.remoteReceiver).data;
-        const fullBody = buildBridgeTonBody(data, remoteCosmosData, ops);
+        const fullBody = BridgeAdapter.buildBridgeTonBody(data, remoteCosmosData, ops);
 
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
@@ -236,20 +253,4 @@ export class BridgeAdapter implements Contract {
         ]);
         return result.stack.readCell();
     }
-}
-export function buildBridgeTonBody(data: BridgeTon, remoteCosmosData: Uint8Array, ops: ValueOps) {
-    const body = beginCell()
-        .storeCoins(data.amount)
-        .storeUint(data.timeout, 64)
-        .storeUint(Buffer.from(remoteCosmosData).length, 8)
-        .storeBuffer(Buffer.from(remoteCosmosData))
-        .storeRef(data.memo)
-        .endCell();
-
-    const fullBody = beginCell()
-        .storeUint(BridgeAdapterOpcodes.bridgeTon, 32)
-        .storeUint(ops.queryId || 0, 64)
-        .storeRef(body)
-        .endCell();
-    return fullBody;
 }
