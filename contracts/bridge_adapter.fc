@@ -160,7 +160,6 @@ global cell send_packets_from_ton;
         int remote_receiver_byte_len = packet_slice~load_uint(8);
         packet_slice~load_uint(remote_receiver_byte_len * 8);
         slice jetton_master =  packet_slice~load_msg_addr();
-        ~dump(packet_slice);
         int ack = packet_slice~load_uint(2);
         slice packet_ref = packet_slice~load_ref().begin_parse();
         slice to = packet_ref~load_msg_addr(); ;; local_sender
