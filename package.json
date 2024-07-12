@@ -1,6 +1,6 @@
 {
     "name": "@oraichain/ton-bridge-contracts",
-    "version": "0.15.3",
+    "version": "0.15.4",
     "main": "wrappers/index.js",
     "scripts": {
         "start": "blueprint run",
