@@ -160,8 +160,14 @@ global cell send_packets_from_ton;
         int remote_receiver_byte_len = packet_slice~load_uint(8);
         packet_slice~load_uint(remote_receiver_byte_len * 8);
         slice jetton_master =  packet_slice~load_msg_addr();
+        ~dump(packet_slice);
+        int ack = packet_slice~load_uint(2);
         slice packet_ref = packet_slice~load_ref().begin_parse();
         slice to = packet_ref~load_msg_addr(); ;; local_sender
+
+        if (ack != ack::timeout) {
+            return ();
+        }
 
         throw_unless(error::not_time_to_refund_ack_packet, now() >= timeout);
 
@@ -208,13 +214,6 @@ global cell send_packets_from_ton;
 
         send_packets_from_ton~udict_delete?(64,seq);
 
-        cell emit_ack = begin_cell()
-                        .store_uint(opcode_packet, 32)
-                        .store_uint(seq, 64)
-                        .store_uint(ack::success, 2)
-                        .end_cell();
-                        
-        emit_log_simple(my_address().slice_hash(), emit_ack ,query_id);
         return ();
     }
 }
@@ -266,7 +265,8 @@ global cell send_packets_from_ton;
             int seq = skipped_packet.preload_uint(64);
             (slice stored_packet_data, int exist) = send_packets_from_ton.udict_get?(64, seq);
             throw_unless(error::packet_does_not_exist, exist);
-            cell new_packet = begin_cell().store_slice(stored_packet_data).store_uint(ack::timeout, 2).end_cell();
+            int ack = body~load_uint(2);
+            cell new_packet = begin_cell().store_slice(stored_packet_data).store_uint(ack, 2).end_cell();
             bodyBuilder = bodyBuilder 
             .store_uint(op::receive_packet, 32)
             .store_uint(query_id, 64)

@@ -77,10 +77,17 @@ export enum Paused {
     PAUSED = 1,
 }
 
+export enum Ack {
+    Success = 0,
+    Error = 1,
+    Timeout = 2,
+}
+
 export interface BridgeRecvPacket {
     proofs: Cell;
     packet: Cell;
     provenHeight: number;
+    ack?: Ack;
 }
 
 export interface BridgeTon {
@@ -101,11 +108,18 @@ export class BridgeAdapter implements Contract {
             .storeUint(BridgeAdapterOpcodes.bridgeRecvPacket, 32)
             .storeUint(queryId, 64)
             .storeRef(
-                beginCell()
-                    .storeUint(bridgeRecvPacketData.provenHeight, 64)
-                    .storeRef(bridgeRecvPacketData.proofs)
-                    .storeRef(bridgeRecvPacketData.packet)
-                    .endCell(),
+                bridgeRecvPacketData?.ack !== undefined
+                    ? beginCell()
+                          .storeUint(bridgeRecvPacketData.provenHeight, 64)
+                          .storeUint(bridgeRecvPacketData.ack, 2)
+                          .storeRef(bridgeRecvPacketData.proofs)
+                          .storeRef(bridgeRecvPacketData.packet)
+                          .endCell()
+                    : beginCell()
+                          .storeUint(bridgeRecvPacketData.provenHeight, 64)
+                          .storeRef(bridgeRecvPacketData.proofs)
+                          .storeRef(bridgeRecvPacketData.packet)
+                          .endCell(),
             )
             .endCell();
     }
@@ -229,5 +243,15 @@ export class BridgeAdapter implements Contract {
     async getBridgeData(provider: ContractProvider) {
         const result = await provider.get('get_bridge_data', []);
         return result.stack;
+    }
+
+    async getSendPacketCommitment(provider: ContractProvider, seq: bigint) {
+        const result = await provider.get('get_send_packet_commitment', [
+            {
+                type: 'int',
+                value: seq,
+            },
+        ]);
+        return result.stack.readCell();
     }
 }

@@ -13,13 +13,14 @@ export async function updateClient() {
     const usdtJettonWallet = JettonWallet.createFromAddress(usdtWalletAddress);
     const usdtJettonWalletContract = client.open(usdtJettonWallet);
 
-    console.log(BigInt(calculateIbcTimeoutTimestamp(3600)));
+    // console.log(BigInt(calculateIbcTimeoutTimestamp(3600)));
     // BigInt(Math.floor(new Date().getTime() / 1000) - 3600)
     // BigInt(calculateIbcTimeoutTimestamp(3600))
+
     await usdtJettonWalletContract.sendTransfer(
         walletContract.sender(key.secretKey),
         {
-            fwdAmount: toNano(1.95), // 1.95
+            fwdAmount: toNano(0.1),
             jettonAmount: 10_000n,
             jettonMaster: usdtContract.address,
             toAddress: bridgeAdapterAddress,
@@ -28,7 +29,7 @@ export async function updateClient() {
             memo: beginCell().endCell(),
         },
         {
-            value: toNano(2), // 2- 0.05
+            value: toNano(0.2),
             queryId: 0,
         },
     );

@@ -107,10 +107,10 @@ async function deploy() {
     // await waitSeqno(walletContract, await walletContract.getSeqno());
 
     // BRIDGE ADAPTER
-    const oldTonBridge = BridgeAdapter.createFromAddress(
-        Address.parse('EQCWH9kCKpCTpswaygq-Ah7h-1vH3xZ3gJq7-SM6ZkYiOgHH'),
+    const tonBridge = BridgeAdapter.createFromAddress(
+        Address.parse('EQArWlaBgdGClwJrAkQjQP_8zxIK_bdgbH-6qdl4f5JEfo3r'),
     );
-    const oldTonBridgeContract = client.open(oldTonBridge);
+    const tonBridgeContract = client.open(tonBridge);
     // const tonBridge = BridgeAdapter.createFromConfig(
     //     {
     //         light_client_master: lightClientMaster.address, // just fake it for demo
@@ -123,20 +123,20 @@ async function deploy() {
     //         bridge_wasm_smart_contract:
     //             'orai18lppnh7nwfnstpsewe70aql2qnmnm6kwkdcfe3j84ujtwzn89afqjp4pyr',
     //         whitelist_denom: whitelistContract.address,
-    //         admin: walletContract.sender(key.secretKey).address!,
+    //         admin: walletContract.address!,
     //         paused: Paused.UNPAUSED,
     //     },
     //     await compile('BridgeAdapter'),
     // );
 
-    const res = await oldTonBridgeContract.sendUpgradeContract(
-        walletContract.sender(key.secretKey),
-        await compile('BridgeAdapter'),
-        {
-            value: toNano('0.1'),
-        },
-    );
-    console.log('yo res');
+    // const res = await oldTonBridgeContract.sendUpgradeContract(
+    //     walletContract.sender(key.secretKey),
+    //     await compile('BridgeAdapter'),
+    //     {
+    //         value: toNano('0.1'),
+    //     },
+    // );
+    // console.log('yo res');
 
     // const tonBridgeContract = client.open(tonBridge);
     // await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), {
@@ -145,7 +145,11 @@ async function deploy() {
     // await waitSeqno(walletContract, await walletContract.getSeqno());
     // console.log('Success deploy tonBridgeContract at address: ', tonBridgeContract.address);
 
-    // expect(bridgeWasmBech32).toEqual(bridgeWasmAddress);
+    const cell = (await tonBridgeContract.getBridgeData()).readCell();
+    console.log(BridgeAdapter.parseBridgeDataResponse(cell));
+    const packet = await tonBridgeContract.getSendPacketCommitment(2n);
+
+    console.log(BigInt('0x' + packet.hash().toString('hex')));
 
     // This one we consider it as orai token
     // const jettonMinterSrcCosmos = client.open(
