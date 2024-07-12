@@ -262,7 +262,7 @@ global cell send_packets_from_ton;
             int seq = packet_slice~load_uint(64);
             int ack = packet_slice~load_uint(2);
             (slice stored_packet_data, int exist) = send_packets_from_ton.udict_get?(64, seq);
-            if (~exist) {
+            if (exist != -1) {
                 int refund_amount = msg_value - gas::bridge_recv_packet_failed;
                 var msg = begin_cell()
                     .store_uint(0x10, 6)
