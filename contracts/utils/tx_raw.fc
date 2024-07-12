@@ -82,7 +82,6 @@ const not_msg_execute_error = 0x03;
                     .end_cell().begin_parse();
 
     (int len, tuple tx_body_tuple, slice memo) = tx_body::encode(tx_body);
-    ;; ~dump(memo);
     
     slice tx_body_prefix_len = begin_cell()
                                 .store_slice(varuint::encode(10))

@@ -383,8 +383,6 @@ int buffer_parse(slice msg, slice data) method_id {
     tuple_data~tpush(b);
     tuple_data~tpush(quotes);
     tuple_data~tpush(end_slice);
-    ~dump(digest_hash(tuple_msg));
-    ~dump(digest_hash(tuple_data));
 
     return 1;   
 }

@@ -129,14 +129,14 @@ async function deploy() {
     //     await compile('BridgeAdapter'),
     // );
 
-    // await tonBridgeContract.sendUpgradeContract(
-    //     walletContract.sender(key.secretKey),
-    //     await compile('BridgeAdapter'),
-    //     {
-    //         value: toNano('0.03'),
-    //     },
-    // );
-    // await waitSeqno(walletContract, await walletContract.getSeqno());
+    await tonBridgeContract.sendUpgradeContract(
+        walletContract.sender(key.secretKey),
+        await compile('BridgeAdapter'),
+        {
+            value: toNano('0.03'),
+        },
+    );
+    await waitSeqno(walletContract, await walletContract.getSeqno());
 
     // const tonBridgeContract = client.open(tonBridge);
     // await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), {

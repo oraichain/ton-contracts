@@ -13,13 +13,13 @@ export async function updateClient() {
     await bridgeAdapterContract.sendBridgeTon(
         walletContract.sender(key.secretKey),
         {
-            amount: toNano('0.001'),
+            amount: toNano('1'),
             timeout: BigInt(Math.floor(new Date().getTime() / 1000) + 3600),
             remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
             memo: beginCell().endCell(),
         },
         {
-            value: toNano(0.2),
+            value: toNano(1.2),
             queryId: 0,
         },
     );
