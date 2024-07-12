@@ -129,14 +129,14 @@ async function deploy() {
     //     await compile('BridgeAdapter'),
     // );
 
-    // const res = await oldTonBridgeContract.sendUpgradeContract(
-    //     walletContract.sender(key.secretKey),
-    //     await compile('BridgeAdapter'),
-    //     {
-    //         value: toNano('0.1'),
-    //     },
-    // );
-    // console.log('yo res');
+    await tonBridgeContract.sendUpgradeContract(
+        walletContract.sender(key.secretKey),
+        await compile('BridgeAdapter'),
+        {
+            value: toNano('0.03'),
+        },
+    );
+    await waitSeqno(walletContract, await walletContract.getSeqno());
 
     // const tonBridgeContract = client.open(tonBridge);
     // await tonBridgeContract.sendDeploy(walletContract.sender(key.secretKey), {
@@ -147,7 +147,7 @@ async function deploy() {
 
     const cell = (await tonBridgeContract.getBridgeData()).readCell();
     console.log(BridgeAdapter.parseBridgeDataResponse(cell));
-    const packet = await tonBridgeContract.getSendPacketCommitment(2n);
+    const packet = await tonBridgeContract.getSendPacketCommitment(1n);
 
     console.log(BigInt('0x' + packet.hash().toString('hex')));
 

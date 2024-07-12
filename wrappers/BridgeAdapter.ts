@@ -87,7 +87,6 @@ export interface BridgeRecvPacket {
     proofs: Cell;
     packet: Cell;
     provenHeight: number;
-    ack?: Ack;
 }
 
 export interface BridgeTon {
@@ -108,18 +107,11 @@ export class BridgeAdapter implements Contract {
             .storeUint(BridgeAdapterOpcodes.bridgeRecvPacket, 32)
             .storeUint(queryId, 64)
             .storeRef(
-                bridgeRecvPacketData?.ack !== undefined
-                    ? beginCell()
-                          .storeUint(bridgeRecvPacketData.provenHeight, 64)
-                          .storeUint(bridgeRecvPacketData.ack, 2)
-                          .storeRef(bridgeRecvPacketData.proofs)
-                          .storeRef(bridgeRecvPacketData.packet)
-                          .endCell()
-                    : beginCell()
-                          .storeUint(bridgeRecvPacketData.provenHeight, 64)
-                          .storeRef(bridgeRecvPacketData.proofs)
-                          .storeRef(bridgeRecvPacketData.packet)
-                          .endCell(),
+                beginCell()
+                    .storeUint(bridgeRecvPacketData.provenHeight, 64)
+                    .storeRef(bridgeRecvPacketData.proofs)
+                    .storeRef(bridgeRecvPacketData.packet)
+                    .endCell(),
             )
             .endCell();
     }

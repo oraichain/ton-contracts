@@ -245,7 +245,7 @@ global cell send_packets_from_ton;
         cell proofs = body~load_ref();
         cell packet = body~load_ref();
         slice packet_slice = packet.begin_parse();
-        int opcode_packet = packet_slice.preload_uint(32);
+        int opcode_packet = packet_slice~load_uint(32);
         throw_unless(error::invalid_packet_opcode, (opcode_packet == op::send_to_cosmos) | (opcode_packet == op::send_to_ton));
 
         builder bodyBuilder = begin_cell();
@@ -261,11 +261,10 @@ global cell send_packets_from_ton;
                         .store_ref(packet)
                         .end_cell());
         } else {
-            slice skipped_packet = packet_slice.skip_bits(32);
-            int seq = skipped_packet.preload_uint(64);
+            int seq = packet_slice~load_uint(64);
+            int ack = packet_slice~load_uint(2);
             (slice stored_packet_data, int exist) = send_packets_from_ton.udict_get?(64, seq);
             throw_unless(error::packet_does_not_exist, exist);
-            int ack = body~load_uint(2);
             cell new_packet = begin_cell().store_slice(stored_packet_data).store_uint(ack, 2).end_cell();
             bodyBuilder = bodyBuilder 
             .store_uint(op::receive_packet, 32)

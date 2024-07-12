@@ -1236,7 +1236,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         const sendToCosmosPacket = beginCell()
             .storeUint(0xa64c12a3, 32) // op
             .storeUint(1, 64) // seq
-            .storeUint(timeout, 64)
+            .storeUint(Ack.Timeout, 2)
             .endCell();
         const existenceProofs = Object.values(sendToCosmosTimeoutProof)
             .slice(0, 2)
@@ -1246,7 +1246,6 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet: sendToCosmosPacket,
-                ack: Ack.Timeout,
                 provenHeight: height + 1,
             },
             { value: toNano('3') },
@@ -1429,7 +1428,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         const sendToCosmosPacket = beginCell()
             .storeUint(0xa64c12a3, 32) // op
             .storeUint(1, 64) // seq
-            .storeUint(timeout, 64)
+            .storeUint(Ack.Timeout, 2)
             .endCell();
         const existenceProofs = Object.values(sendToCosmosTimeoutOtherProof)
             .slice(0, 2)
@@ -1438,7 +1437,6 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             deployer.getSender(),
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
-                ack: Ack.Timeout,
                 packet: sendToCosmosPacket,
                 provenHeight: height + 1,
             },
