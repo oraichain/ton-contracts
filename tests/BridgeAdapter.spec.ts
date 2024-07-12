@@ -1089,7 +1089,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         });
     });
 
-    it('test queryAckProof', async () => {
+    it('test getAckProof', async () => {
         const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
         const queryClient = new QueryClient(tendermint37 as any);
         await getAckPacketProofs(
@@ -1098,6 +1098,27 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             26987149,
             5n,
         );
+
+        const ack = beginCell()
+            .storeUint(2790003363, 32)
+            .storeUint(5, 64)
+            .storeUint(TokenOrigin.TON, 32)
+            .storeUint(10000, 128)
+            .storeUint(1720698681, 64)
+            .storeUint(fromBech32('orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd').data.length, 8)
+            .storeBuffer(
+                Buffer.from(fromBech32('orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd').data),
+            )
+            .storeAddress(Address.parse('EQBynBO23ywHy_CgarY9NK9FTz0yDsG82PtcbSTQgGoXwiuA'))
+            .storeUint(0, 2)
+            .storeRef(
+                beginCell()
+                    .storeAddress(Address.parse('EQAW5Tsp2mMja-syAH_jw9j7a4dFICcaHHcq8xu0k-_Yzs_T'))
+                    .endCell(),
+            )
+            .endCell();
+        const ackHash = ack.hash();
+        console.log(BigInt('0x' + ackHash.toString('hex')));
     });
 
     it('Test send jetton token from ton to bridge adapter', async () => {
