@@ -63,6 +63,29 @@ export class JettonWallet implements Contract {
         return new JettonWallet(contractAddress(workchain, init), init);
     }
 
+    static buildSendTransferPacket(
+        responseAddress: Address,
+        data: SendTransferInterface,
+        queryId: number = 0,
+    ) {
+        const remoteCosmosData = fromBech32(data.remoteReceiver).data;
+        return beginCell()
+            .storeUint(JettonOpCodes.TRANSFER, 32)
+            .storeUint(queryId, 64)
+            .storeCoins(data.jettonAmount)
+            .storeAddress(data.toAddress)
+            .storeAddress(responseAddress) // response address
+            .storeDict(Dictionary.empty())
+            .storeCoins(data.fwdAmount)
+            .storeUint(Buffer.from(remoteCosmosData).length, 8)
+            .storeBuffer(Buffer.from(remoteCosmosData))
+            .storeRef(
+                beginCell().storeAddress(data.jettonMaster).storeUint(data.timeout, 64).endCell(),
+            )
+            .storeRef(data.memo)
+            .endCell();
+    }
+
     async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
         await provider.internal(via, {
             value,
@@ -77,28 +100,10 @@ export class JettonWallet implements Contract {
         data: SendTransferInterface,
         opts: ValueOps,
     ) {
-        const remoteCosmosData = fromBech32(data.remoteReceiver).data;
         await provider.internal(via, {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(JettonOpCodes.TRANSFER, 32)
-                .storeUint(opts.queryId || 0, 64)
-                .storeCoins(data.jettonAmount)
-                .storeAddress(data.toAddress)
-                .storeAddress(via.address) // response address
-                .storeDict(Dictionary.empty())
-                .storeCoins(data.fwdAmount)
-                .storeUint(Buffer.from(remoteCosmosData).length, 8)
-                .storeBuffer(Buffer.from(remoteCosmosData))
-                .storeRef(
-                    beginCell()
-                        .storeAddress(data.jettonMaster)
-                        .storeUint(data.timeout, 64)
-                        .endCell(),
-                )
-                .storeRef(data.memo)
-                .endCell(),
+            body: JettonWallet.buildSendTransferPacket(via.address!, data, opts.queryId),
         });
     }
 
