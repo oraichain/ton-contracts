@@ -1,0 +1,8 @@
+packet#ae89be5b seq:(## 64) token_origin:(## 32) remote_amount:(## 128) timeout_timestamp: (## 64)
+remote_receiver: MsgAddressInt remote_denom: MsgAddressInt ^[local_sender_byte_len: (## 8) local_sender: Any] = PacketSendToTon;
+
+packet#a64c12a3 seq:(## 64) token_origin:(## 32) local_amount:(## 128) timeout_timestamp: (## 64)
+remote_receiver_byte_len:(## 8) remote_receiver: Any local_denom: MsgAddressInt ^[local_sender: MsgAddressInt] = PacketSendToCosmos;
+
+msg#_ dest_denom_byte_len:(## 8) dest_denom: Any dest_receiver_byte_len:(## 8) dest_receiver: Any 
+dest_channel_len:(## 8) dest_channel: Any = UniversalSwapMsg;

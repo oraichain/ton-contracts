@@ -1,6 +1,6 @@
 {
     "name": "@oraichain/ton-bridge-contracts",
-    "version": "0.15.0",
+    "version": "0.15.2",
     "main": "wrappers/index.js",
     "scripts": {
         "start": "blueprint run",
@@ -19,6 +19,7 @@
         "@cosmjs/stargate": "^0.32.4",
         "@swc/core": "^1.5.3",
         "@swc/jest": "^0.2.36",
+        "@ton-community/tlb-codegen": "^1.1.0",
         "@ton/blueprint": "^0.19.0",
         "@ton/core": "~0",
         "@ton/crypto": "^3.2.0",

@@ -586,14 +586,18 @@ export const serializeCommit = (commit: Commit): SerializedCommit => {
         ...commit,
         blockId: serializeBlockId(commit.blockId)!,
         signatures: commit.signatures.map((sig) => {
+            let timestamp;
+            try {
+                timestamp = sig.timestamp ? toRfc3339WithNanoseconds(sig.timestamp) : null;
+            } catch (error) {
+                timestamp = null;
+            }
             return {
                 blockIdFlag: sig.blockIdFlag,
                 validatorAddress: sig.validatorAddress
                     ? Buffer.from(sig.validatorAddress).toString('hex')
                     : '',
-                timestamp: sig.timestamp
-                    ? toRfc3339WithNanoseconds(sig.timestamp)
-                    : new Date('0001-01-01T00:00:00Z').getTime().toString(),
+                timestamp,
                 signature: sig.signature ? Buffer.from(sig.signature).toString('hex') : '',
             };
         }),
@@ -998,10 +1002,8 @@ export async function getPacketProofs(
     const key = Buffer.concat([namespace, bufferSeq]);
     const path = Buffer.concat([Buffer.from([0x03]), Buffer.from(contractBech.data), key]);
     const res = await queryClient.queryRawProof('wasm', path, proven_height);
-    console.log(Buffer.from(res.value).toString());
     const existProofs = res.proof.ops.slice(0, 2).map((op) => {
         const commitmentProof = CommitmentProof.decode(op.data);
-        console.log(Buffer.from(commitmentProof?.exist?.key as any).toString());
         return ExistenceProof.toJSON(commitmentProof?.exist!);
     });
     return existProofs;
@@ -1023,7 +1025,6 @@ export async function getAckPacketProofs(
     console.log(Buffer.from(res.value).toString());
     const existProofs = res.proof.ops.slice(0, 2).map((op) => {
         const commitmentProof = CommitmentProof.decode(op.data);
-        console.log(Buffer.from(commitmentProof?.exist?.key as any).toString());
         return ExistenceProof.toJSON(commitmentProof?.exist!);
     });
     return existProofs;
