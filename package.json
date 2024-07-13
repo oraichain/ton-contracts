@@ -2,11 +2,14 @@
     "name": "@oraichain/ton-bridge-contracts",
     "version": "0.15.7",
     "main": "wrappers/index.js",
+    "files": [
+      "dist"  
+    ],
     "scripts": {
         "start": "blueprint run",
         "build": "blueprint build",
         "build:all": "blueprint build --all",
-        "build:npm": "yarn build:all && tsc --project tsconfig.build.json && cp -r ./build ./dist",
+        "build:npm": "yarn build:all & rm -rf ./dist && tsc --project tsconfig.build.json && cp -r ./build ./dist",
         "publish:npm": "yarn publish dist",
         "test": "jest --verbose"
     },

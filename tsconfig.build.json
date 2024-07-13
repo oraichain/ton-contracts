@@ -1,15 +1,14 @@
 {
     "compilerOptions": {
         "target": "ES2020",
-        "outDir": "dist",
         "module": "commonjs",
+        "outDir": "./dist",
         "declaration": true,
-        "sourceMap": true,
-        "declarationMap": true,
+        "downlevelIteration": true,
         "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true,
         "strict": true,
         "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true
     },
     "include": ["wrappers/**/*.ts", "package.json", ".npmrc"],
