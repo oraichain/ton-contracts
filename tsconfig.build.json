@@ -2,7 +2,7 @@
     "compilerOptions": {
         "target": "ES2020",
         "module": "commonjs",
-        "outDir": "./dist",
+        "outDir": "dist",
         "declaration": true,
         "downlevelIteration": true,
         "esModuleInterop": true,
@@ -11,6 +11,6 @@
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true
     },
-    "include": ["wrappers/**/*.ts", "package.json", ".npmrc"],
+    "include": ["wrappers/**/*.ts"],
     "exclude": ["wrappers/*.compile.ts"]
 }

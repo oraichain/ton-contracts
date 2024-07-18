@@ -1,7 +1,7 @@
 {
     "name": "@oraichain/ton-bridge-contracts",
     "version": "0.15.8",
-    "main": "wrappers/index.js",
+    "main": "dist/wrappers/index.js",
     "files": [
         "dist"
     ],
