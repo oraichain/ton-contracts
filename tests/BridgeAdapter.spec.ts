@@ -1,5 +1,29 @@
-import { Blockchain, printTransactionFees, SandboxContract, TreasuryContract } from '@ton/sandbox';
-import { Address, beginCell, Cell, loadTransaction, SendMode, toNano } from '@ton/core';
+import {
+    Blockchain,
+    printTransactionFees,
+    SandboxContract,
+    TreasuryContract,
+    internal,
+} from '@ton/sandbox';
+import {
+    Address,
+    beginCell,
+    Cell,
+    Dictionary,
+    internal as internal_relaxed,
+    loadTransaction,
+    SendMode,
+    toNano,
+} from '@ton/core';
+import {
+    MultisigConfig,
+    Multisig,
+    TransferRequest,
+} from '@oraichain/ton-multiowner/dist/wrappers/Multisig';
+import { Order } from '@oraichain/ton-multiowner/dist/wrappers/Order';
+import * as MultisigBuild from '@oraichain/ton-multiowner/dist/build/Multisig.compiled.json';
+import * as OrderRawBuild from '@oraichain/ton-multiowner/dist/build/Order.compiled.json';
+
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import {
@@ -797,6 +821,94 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             const cell = await bridgeAdapter.getBridgeData();
             const { adminAddress } = BridgeAdapter.parseBridgeDataResponse(cell.readCell());
             expect(adminAddress.equals(newOwner.address)).toBeTruthy();
+        });
+
+        it('should change admin to multisig wallet', async () => {
+            // arrange
+            const _libs = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
+            let order_code_raw = Cell.fromBoc(Buffer.from(OrderRawBuild.hex, 'hex'))[0];
+            _libs.set(BigInt(`0x${order_code_raw.hash().toString('hex')}`), order_code_raw);
+            const libs = beginCell().storeDictDirect(_libs).endCell();
+            blockchain.libs = libs;
+            const multiSigCode = Cell.fromBoc(Buffer.from(MultisigBuild.hex, 'hex'))[0];
+            const owner1 = await blockchain.treasury('owner1');
+            const owner2 = await blockchain.treasury('owner2');
+            const owner3 = await blockchain.treasury('owner3');
+            const proposer = await blockchain.treasury('proposer');
+            const multisigConfig: MultisigConfig = {
+                threshold: 2,
+                signers: [owner1.address, owner2.address, owner3.address],
+                proposers: [proposer.address],
+                allowArbitrarySeqno: false,
+            };
+            const multiSigWallet = blockchain.openContract(
+                Multisig.createFromConfig(multisigConfig, multiSigCode),
+            );
+            await multiSigWallet.sendDeploy(deployer.getSender(), toNano('0.05'));
+            // act
+            const changeOwnerShipResult = await bridgeAdapter.sendChangeAdmin(
+                deployer.getSender(),
+                multiSigWallet.address,
+                { value: toNano('0.01') },
+            );
+            expect(changeOwnerShipResult.transactions).toHaveTransaction({
+                op: BridgeAdapterOpcodes.changeAdmin,
+                success: true,
+            });
+            blockchain.now = Math.floor(Date.now() / 1000);
+            const setPausedMsg: TransferRequest = {
+                type: 'transfer',
+                sendMode: 1,
+                message: internal_relaxed({
+                    to: bridgeAdapter.address,
+                    value: toNano('0.05'),
+                    body: beginCell()
+                        .storeUint(BridgeAdapterOpcodes.setPaused, 32)
+                        .storeUint(0, 64)
+                        .storeBit(Paused.PAUSED)
+                        .endCell(),
+                }),
+            };
+            const nextSeq = (await multiSigWallet.getMultisigData()).nextOrderSeqno;
+            const orderAddress = await multiSigWallet.getOrderAddress(nextSeq);
+            const setPausedOrder = Multisig.newOrderMessage(
+                [setPausedMsg],
+                blockchain.now + 1000,
+                true,
+                0,
+            );
+            const sendSetPausedOrder = await blockchain.sendMessage(
+                internal({
+                    from: owner1.address,
+                    to: multiSigWallet.address,
+                    body: setPausedOrder,
+                    value: toNano('0.1'),
+                }),
+            );
+            expect(sendSetPausedOrder.transactions).toHaveTransaction({
+                from: multiSigWallet.address,
+                to: orderAddress,
+                deploy: true,
+                success: true,
+            });
+            const orderContract = blockchain.openContract(Order.createFromAddress(orderAddress));
+            const approveOrder = await orderContract.sendApprove(owner2.getSender(), 1);
+            // assert
+            expect(approveOrder.transactions).toHaveTransaction({
+                from: owner2.address,
+                to: orderAddress,
+                deploy: false,
+                success: true,
+            });
+            expect(approveOrder.transactions).toHaveTransaction({
+                from: multiSigWallet.address,
+                to: bridgeAdapter.address,
+                success: true,
+            });
+            const bridgeData = BridgeAdapter.parseBridgeDataResponse(
+                (await bridgeAdapter.getBridgeData()).readCell(),
+            );
+            expect(bridgeData.paused).toEqual(Paused.PAUSED);
         });
     });
 });

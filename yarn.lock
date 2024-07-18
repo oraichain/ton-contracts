@@ -1132,6 +1132,7 @@ __metadata:
     "@cosmjs/proto-signing": "npm:^0.32.3"
     "@cosmjs/stargate": "npm:^0.32.4"
     "@cosmjs/tendermint-rpc": "npm:^0.32.4"
+    "@oraichain/ton-multiowner": "npm:^0.0.1"
     "@orbs-network/ton-access": "npm:^2.3.3"
     "@swc/core": "npm:^1.5.3"
     "@swc/jest": "npm:^0.2.36"
@@ -1154,6 +1155,13 @@ __metadata:
     varstruct: "npm:^6.1.3"
   languageName: unknown
   linkType: soft
+
+"@oraichain/ton-multiowner@npm:^0.0.1":
+  version: 0.0.1
+  resolution: "@oraichain/ton-multiowner@npm:0.0.1"
+  checksum: 10c0/350c73b7e1f3aed302cd1da9992004372abdf978cf4e30bc3a3c1bb00732c6e38687a7e26b3464587b5c43cead4b532190ad31e7f689f36207e25598b4a8849b
+  languageName: node
+  linkType: hard
 
 "@orbs-network/ton-access@npm:^2.3.3":
   version: 2.3.3
