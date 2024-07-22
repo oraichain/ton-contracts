@@ -198,7 +198,7 @@ export class BridgeAdapter implements Contract {
         });
     }
 
-    async sendSetPaused(provider: ContractProvider, via: Sender, paused: 0 | 1, ops: ValueOps) {
+    async sendSetPaused(provider: ContractProvider, via: Sender, paused: Paused, ops: ValueOps) {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             ...ops,

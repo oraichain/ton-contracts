@@ -20,6 +20,7 @@
         "@cosmjs/encoding": "^0.32.3",
         "@cosmjs/proto-signing": "^0.32.3",
         "@cosmjs/stargate": "^0.32.4",
+        "@oraichain/ton-multiowner": "^0.0.1",
         "@swc/core": "^1.5.3",
         "@swc/jest": "^0.2.36",
         "@ton-community/tlb-codegen": "^1.1.0",
