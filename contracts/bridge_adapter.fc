@@ -3,7 +3,7 @@
 #include "utils/messages.fc";
 #include "common/messages.fc";
 #include "common/address.fc";
-#include "utils/jetton.fc";
+#include "imports/jetton-utils.fc";
 #include "bridge_adapter/packet_transfer.fc";
 #include "bridge_adapter/opcodes.fc";
 #include "bridge_adapter/errors.fc";
