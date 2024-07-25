@@ -70,6 +70,7 @@ import { fromBech32, toAscii, toBech32 } from '@cosmjs/encoding';
 import { QueryClient } from '@cosmjs/stargate';
 import { SerializedCommit, SerializedHeader, SerializedValidator } from '../wrappers/@types';
 import { calculateIbcTimeoutTimestamp } from '../scripts/utils';
+import { JETTON_MINTER_CODE, JETTON_WALLET_CODE } from '../wrappers/constants';
 
 describe('Cosmos->Ton BridgeAdapter', () => {
     let lightClientMasterCode: Cell;
@@ -114,8 +115,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     beforeAll(async () => {
         lightClientMasterCode = await compile('LightClientMaster');
         bridgeAdapterCode = await compile('BridgeAdapter');
-        jettonWalletCode = await compile('JettonWallet');
-        jettonMinterCode = await compile('JettonMinter');
+        jettonWalletCode = Cell.fromBoc(Buffer.from(JETTON_WALLET_CODE, 'hex'))[0];
+        jettonMinterCode = Cell.fromBoc(Buffer.from(JETTON_MINTER_CODE, 'hex'))[0];
         whitelistDenomCode = await compile('WhitelistDenom');
     });
 
@@ -160,12 +161,15 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 value: toNano('1000'),
             },
         );
+        console.log('yay');
         expect(deployUsdtMinterResult.transactions).toHaveTransaction({
             from: usdtDeployer.address,
             to: usdtMinterContract.address,
             deploy: true,
             success: true,
         });
+        console.log('yay');
+
         await usdtMinterContract.sendMint(
             usdtDeployer.getSender(),
             {

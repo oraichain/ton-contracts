@@ -29,16 +29,17 @@ export abstract class Op {
 
 export type JettonMinterConfig = {
     adminAddress: Address;
-    content: Cell;
     jettonWalletCode: Cell;
+    content: Cell;
 };
 
 export function jettonMinterConfigToCell(config: JettonMinterConfig): Cell {
     return beginCell()
         .storeCoins(0)
         .storeAddress(config.adminAddress)
-        .storeRef(config.content)
+        .storeUint(0, 2)
         .storeRef(config.jettonWalletCode)
+        .storeRef(config.content)
         .endCell();
 }
 
