@@ -1631,26 +1631,26 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10_000_000_000n - 10_000_000n);
 
         //#region script fetch data
-        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
-        const queryClient = new QueryClient(tendermint37 as any);
-        const data = await getAckPacketProofs(
-            queryClient,
-            'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
-            height,
-            1n,
-        );
-        writeFileSync(
-            resolve(__dirname, './fixtures/sendToCosmosTimeoutOtherProof.json'),
-            JSON.stringify(data),
-        );
-        const { header, lastCommit, validators } = await createUpdateClientData(
-            'https://rpc.orai.io',
-            height + 1,
-        );
-        writeFileSync(
-            resolve(__dirname, `./fixtures/light_client_${height + 1}.json`),
-            JSON.stringify({ header, lastCommit, validators }),
-        );
+        // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        // const queryClient = new QueryClient(tendermint37 as any);
+        // const data = await getAckPacketProofs(
+        //     queryClient,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     height,
+        //     1n,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, './fixtures/sendToCosmosTimeoutOtherProof.json'),
+        //     JSON.stringify(data),
+        // );
+        // const { header, lastCommit, validators } = await createUpdateClientData(
+        //     'https://rpc.orai.io',
+        //     height + 1,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, `./fixtures/light_client_${height + 1}.json`),
+        //     JSON.stringify({ header, lastCommit, validators }),
+        // );
         // #endregion;
 
         await updateBlock(lightClient_28359916 as any, deployer);
