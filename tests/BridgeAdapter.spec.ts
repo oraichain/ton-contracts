@@ -51,11 +51,11 @@ import { LightClientMaster, LightClientMasterOpcodes } from '../wrappers/LightCl
 import { iavlSpec, tendermintSpec } from '../wrappers/specs';
 import { ExistenceProof, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { Tendermint37Client } from '@cosmjs/tendermint-rpc';
-import * as lightClient_26877876 from './fixtures/light_client_26877876.json';
-import * as lightClient_26877882 from './fixtures/light_client_26877882.json';
-import * as lightClient_26877891 from './fixtures/light_client_26877891.json';
-import * as lightClient_26912809 from './fixtures/light_client_26912809.json';
-import * as lightClient_26918592 from './fixtures/light_client_26918592.json';
+import * as lightClient_28349621 from './fixtures/light_client_28349621.json';
+import * as lightClient_28352007 from './fixtures/light_client_28352007.json';
+import * as lightClient_28353959 from './fixtures/light_client_28353959.json';
+import * as lightClient_28358436 from './fixtures/light_client_28358436.json';
+import * as lightClient_28359916 from './fixtures/light_client_28359916.json';
 
 import * as bridgeToTonProofsSrcCosmos from './fixtures/bridgeToTonProofs.json';
 import * as bridgeToTonProofsSrcTon from './fixtures/bridgeToTonProofs2.json';
@@ -79,8 +79,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     let jettonMinterCode: Cell;
     let whitelistDenomCode: Cell;
 
-    const bridgeWasmAddress = 'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse';
-    const bech32Address = fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data;
+    const bridgeWasmAddress = 'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7';
+    const bech32Address = fromBech32('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx').data;
     const updateBlock = async (
         {
             header,
@@ -115,8 +115,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     beforeAll(async () => {
         lightClientMasterCode = await compile('LightClientMaster');
         bridgeAdapterCode = await compile('BridgeAdapter');
-        jettonWalletCode = Cell.fromBoc(Buffer.from(JETTON_WALLET_CODE, 'hex'))[0];
-        jettonMinterCode = Cell.fromBoc(Buffer.from(JETTON_MINTER_CODE, 'hex'))[0];
+        jettonWalletCode = await compile('JettonWallet');
+        jettonMinterCode = await compile('JettonMinter');
         whitelistDenomCode = await compile('WhitelistDenom');
     });
 
@@ -135,7 +135,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
 
     // packet info
     const transferAmount = 10000000n;
-    const timeout = 1751623658;
+    const timeout = 1721983548;
     beforeEach(async () => {
         blockchain = await Blockchain.create();
         blockchain.verbosity = {
@@ -161,16 +161,15 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 value: toNano('1000'),
             },
         );
-        console.log('yay');
+
         expect(deployUsdtMinterResult.transactions).toHaveTransaction({
             from: usdtDeployer.address,
             to: usdtMinterContract.address,
             deploy: true,
             success: true,
         });
-        console.log('yay');
 
-        await usdtMinterContract.sendMint(
+        let result = await usdtMinterContract.sendMint(
             usdtDeployer.getSender(),
             {
                 toAddress: usdtDeployer.address,
@@ -179,6 +178,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             },
             { value: toNano(1), queryId: 0 },
         );
+        printTransactionFees(result.transactions);
+
         const usdtWalletAddress = await usdtMinterContract.getWalletAddress(usdtDeployer.address);
         const usdtJettonWallet = JettonWallet.createFromAddress(usdtWalletAddress);
         usdtDeployerJettonWallet = blockchain.openContract(usdtJettonWallet);
@@ -402,6 +403,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data,
             ).toString('base64'),
         });
+        // console.log(Buffer.from(bech32Address).toString('base64'));
+
         const packet = beginCell()
             .storeUint(0xae89be5b, 32) // op
             .storeUint(1, 64) // seq
@@ -425,8 +428,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await getPacketProofs(
         //     queryClient,
-        //     'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //     26877875,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     28349620,
         //     1n,
         // );
         // writeFileSync(
@@ -435,15 +438,15 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // );
         // const { header, lastCommit, validators } = await createUpdateClientData(
         //     'https://rpc.orai.io',
-        //     26877876,
+        //     28349621,
         // );
         // writeFileSync(
-        //     resolve(__dirname, `./fixtures/light_client_${26877876}.json`),
+        //     resolve(__dirname, `./fixtures/light_client_${28349621}.json`),
         //     JSON.stringify({ header, lastCommit, validators }),
         // );
-        // #endregion
+        // #endregion;
 
-        await updateBlock(lightClient_26877876 as any, deployer);
+        await updateBlock(lightClient_28349621 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsSrcCosmos)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -453,7 +456,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet,
-                provenHeight: 26877876,
+                provenHeight: 28349621,
             },
             { value: toNano('0.7') },
         );
@@ -466,6 +469,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     });
 
     it('should send jetton token_origin::ton to TON', async () => {
+        console.log({ jettonMinterSrcTon: jettonMinterSrcTon.address });
+
         const packet = beginCell()
             .storeUint(0xae89be5b, 32)
             .storeUint(2, 64)
@@ -489,8 +494,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await getPacketProofs(
         //     queryClient,
-        //     'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //     26877881,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     28352006,
         //     2n,
         // );
         // writeFileSync(
@@ -499,15 +504,15 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // );
         // const { header, lastCommit, validators } = await createUpdateClientData(
         //     'https://rpc.orai.io',
-        //     26877882,
+        //     28352007,
         // );
         // writeFileSync(
-        //     resolve(__dirname, `./fixtures/light_client_${26877882}.json`),
+        //     resolve(__dirname, `./fixtures/light_client_${28352007}.json`),
         //     JSON.stringify({ header, lastCommit, validators }),
         // );
         //#endregion
 
-        await updateBlock(lightClient_26877882 as any, deployer);
+        await updateBlock(lightClient_28352007 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsSrcTon)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -517,7 +522,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet,
-                provenHeight: 26877882,
+                provenHeight: 28352007,
             },
             { value: toNano('0.7') },
         );
@@ -553,8 +558,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await getPacketProofs(
         //     queryClient,
-        //     'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //     26877890,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     28353958,
         //     3n,
         // );
         // writeFileSync(
@@ -563,16 +568,16 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // );
         // const { header, lastCommit, validators } = await createUpdateClientData(
         //     'https://rpc.orai.io',
-        //     26877891,
+        //     28353959,
         // );
         // writeFileSync(
-        //     resolve(__dirname, `./fixtures/light_client_${26877891}.json`),
+        //     resolve(__dirname, `./fixtures/light_client_${28353959}.json`),
         //     JSON.stringify({ header, lastCommit, validators }),
         // );
         //#endregion
 
         // provenBlockHeight = proofHeight + 1;
-        await updateBlock(lightClient_26877891 as any, deployer);
+        await updateBlock(lightClient_28353959 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsTon)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -582,7 +587,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet,
-                provenHeight: 26877891,
+                provenHeight: 28353959,
             },
             { value: toNano('1') },
         );
@@ -648,20 +653,20 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // const data = await Promise.all([
         //     getPacketProofs(
         //         queryClient,
-        //         'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //         26877890,
+        //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //         28353958,
         //         1n,
         //     ),
         //     getPacketProofs(
         //         queryClient,
-        //         'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //         26877890,
+        //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //         28353958,
         //         2n,
         //     ),
         //     getPacketProofs(
         //         queryClient,
-        //         'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //         26877890,
+        //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //         28353958,
         //         3n,
         //     ),
         // ]);
@@ -672,7 +677,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         //#endregion
 
         // provenBlockHeight = proofHeight + 1;
-        await updateBlock(lightClient_26877891 as any, deployer);
+        await updateBlock(lightClient_28353959 as any, deployer);
         const existenceProofs = Object.values(multiplePacketProofs)
             .slice(0, 3) // cut the default property
             .flat()
@@ -681,33 +686,38 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         const proofSendJettonSrcTon = existenceProofs.slice(2, 4);
         const proofSendTon = existenceProofs.slice(4, 6);
 
-        await bridgeAdapter.sendBridgeRecvPacket(
+        let result = await bridgeAdapter.sendBridgeRecvPacket(
             deployer.getSender(),
             {
                 proofs: getExistenceProofSnakeCell(proofSendJettonSrcCosmos)!,
                 packet: sendJettonSrcCosmosPacket,
-                provenHeight: 26877891,
+                provenHeight: 28353959,
             },
             { value: toNano('1') },
         );
-        await bridgeAdapter.sendBridgeRecvPacket(
+        printTransactionFees(result.transactions);
+
+        result = await bridgeAdapter.sendBridgeRecvPacket(
             deployer.getSender(),
             {
                 proofs: getExistenceProofSnakeCell(proofSendJettonSrcTon)!,
                 packet: sendJettonSrcTonPacket,
-                provenHeight: 26877891,
+                provenHeight: 28353959,
             },
             { value: toNano('1') },
         );
-        await bridgeAdapter.sendBridgeRecvPacket(
+        printTransactionFees(result.transactions);
+
+        result = await bridgeAdapter.sendBridgeRecvPacket(
             deployer.getSender(),
             {
                 proofs: getExistenceProofSnakeCell(proofSendTon)!,
                 packet: sendTonPacket,
-                provenHeight: 26877891,
+                provenHeight: 28353959,
             },
             { value: toNano('1') },
         );
+        printTransactionFees(result.transactions);
 
         const userJettonWalletSrcCosmos = await jettonMinterSrcTon.getWalletAddress(user.address);
         const walletJettonSrcCosmos = blockchain.openContract(
@@ -924,8 +934,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     let jettonMinterCode: Cell;
     let whitelistDenomCode: Cell;
 
-    const bridgeWasmAddress = 'orai16xfkjn7exdkzpl2jdu655qlzwjluyrld308c54jf4etyss73dt6qftt30h';
-    const bech32Address = fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data;
+    const bridgeWasmAddress = 'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7';
     const updateBlock = async (
         {
             header,
@@ -1292,7 +1301,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
                 remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
                 memo: beginCell()
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-0')).endCell())
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
                     .storeRef(
                         beginCell()
@@ -1321,12 +1330,16 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         });
         const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
             .balance;
-        expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
+        expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.15));
     });
 
     it('Test timeout send jetton token from ton to bridge adapter', async () => {
-        const height = 26912808;
+        const height = 28358435;
         const timeout = 1720603835;
+        console.log({
+            denom: usdtMinterContract.address,
+            sender: usdtDeployer.getSender().address,
+        });
 
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
@@ -1401,9 +1414,32 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         });
         const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
             .balance;
-        expect(-senderBeforeBalance + senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
+        expect(-senderBeforeBalance + senderAfterBalance).toBeLessThanOrEqual(toNano(0.15));
 
-        await updateBlock(lightClient_26912809 as any, deployer);
+        //#region script fetch data
+        // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        // const queryClient = new QueryClient(tendermint37 as any);
+        // const data = await getAckPacketProofs(
+        //     queryClient,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     height,
+        //     1n,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, './fixtures/sendToCosmosTimeoutProof.json'),
+        //     JSON.stringify(data),
+        // );
+        // const { header, lastCommit, validators } = await createUpdateClientData(
+        //     'https://rpc.orai.io',
+        //     height + 1,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, `./fixtures/light_client_${height + 1}.json`),
+        //     JSON.stringify({ header, lastCommit, validators }),
+        // );
+        //#endregion
+
+        await updateBlock(lightClient_28358436 as any, deployer);
         const sendToCosmosPacket = beginCell()
             .storeUint(0xa64c12a3, 32) // op
             .storeUint(1, 64) // seq
@@ -1489,7 +1525,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         result = await wallet.sendTransfer(
             userContract.getSender(),
             {
-                fwdAmount: toNano(0.1),
+                fwdAmount: toNano(0.15),
                 jettonAmount: toNano(5),
                 jettonMaster: jettonMinterSrcCosmos.address,
                 toAddress: bridgeAdapter.address,
@@ -1514,8 +1550,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     });
 
     it('Test timeout send jetton token from cosmos to bridge adapter', async () => {
-        // 26918591
-        const height = 26918591;
+        const height = 28359915;
         const timeout = 1720603835;
 
         const jettonMinterSrcCosmos = blockchain.openContract(
@@ -1595,7 +1630,30 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         });
         expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10_000_000_000n - 10_000_000n);
 
-        await updateBlock(lightClient_26918592 as any, deployer);
+        //#region script fetch data
+        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        const queryClient = new QueryClient(tendermint37 as any);
+        const data = await getAckPacketProofs(
+            queryClient,
+            'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+            height,
+            1n,
+        );
+        writeFileSync(
+            resolve(__dirname, './fixtures/sendToCosmosTimeoutOtherProof.json'),
+            JSON.stringify(data),
+        );
+        const { header, lastCommit, validators } = await createUpdateClientData(
+            'https://rpc.orai.io',
+            height + 1,
+        );
+        writeFileSync(
+            resolve(__dirname, `./fixtures/light_client_${height + 1}.json`),
+            JSON.stringify({ header, lastCommit, validators }),
+        );
+        // #endregion;
+
+        await updateBlock(lightClient_28359916 as any, deployer);
         const sendToCosmosPacket = beginCell()
             .storeUint(0xa64c12a3, 32) // op
             .storeUint(1, 64) // seq

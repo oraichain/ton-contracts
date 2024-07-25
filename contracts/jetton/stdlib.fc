@@ -24,6 +24,8 @@ int my_storage_due() asm "DUEPAYMENT";
   Empty list is conventionally represented as TVM `null` value (it can be obtained by calling [null()]).
   For example, tuple `(1, (2, (3, null)))` represents list `[1, 2, 3]`. Elements of a list can be of different types.
 -}
+;;; Retrieves code of smart-contract from c7
+cell my_code() asm "MYCODE";
 
 forall X -> (tuple, X) tpop(tuple t) asm "TPOP";
 

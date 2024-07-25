@@ -22,7 +22,7 @@ export abstract class Op {
 
     static provide_wallet_address = 0x2c76b973;
     static take_wallet_address = 0xd1735400;
-    static mint = 21;
+    static mint = 0x15;
     static change_admin = 3;
     static change_content = 4;
 }
@@ -37,9 +37,8 @@ export function jettonMinterConfigToCell(config: JettonMinterConfig): Cell {
     return beginCell()
         .storeCoins(0)
         .storeAddress(config.adminAddress)
-        .storeUint(0, 2)
-        .storeRef(config.jettonWalletCode)
         .storeRef(config.content)
+        .storeRef(config.jettonWalletCode)
         .endCell();
 }
 
@@ -89,7 +88,7 @@ export class JettonMinter implements Contract {
                 .storeCoins(data.amount)
                 .storeRef(
                     beginCell()
-                        .storeUint(0x178d4519, 32)
+                        .storeUint(Op.internal_transfer, 32)
                         .storeUint(opts.queryId || 0, 64)
                         .storeCoins(data.jettonAmount)
                         .storeAddress(this.address)
