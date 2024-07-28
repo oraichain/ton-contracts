@@ -147,7 +147,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     const transferAmount = 10000000n;
     const timeout = 1721983548;
     beforeEach(async () => {
-        blockchain = await Blockchain.create();
+        blockchain = await Blockchain.create({});
+        blockchain.now = timeout - 3600;
         blockchain.verbosity = {
             ...blockchain.verbosity,
             // vmLogs: 'vm_logs_gas',
@@ -448,6 +449,9 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     });
 
     it('successfully deploy BridgeAdapter contract', async () => {
+        console.log(
+            Uint8Array.from(Buffer.from('Hi87NDAwrg5zUSaHWVV08GeCuPk=', 'base64')).join(','),
+        );
         const stack = await bridgeAdapter.getBridgeData();
         const cell = stack.readCell();
         const {
