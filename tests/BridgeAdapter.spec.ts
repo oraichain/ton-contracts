@@ -900,6 +900,19 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             expect(paused).toBe(Paused.PAUSED);
         });
 
+        it('should update jetton code', async () => {
+            await bridgeAdapter.sendChangeJettonWalletCode(
+                deployer.getSender(),
+                beginCell().endCell(),
+                {
+                    value: toNano('0.01'),
+                },
+            );
+            const cell = (await bridgeAdapter.getBridgeData()).readCell();
+            const { jettonCode } = BridgeAdapter.parseBridgeDataResponse(cell);
+            expect(jettonCode.bits.length == 0).toBe(true);
+        });
+
         xit('should call all function failed after paused', async () => {
             // arrange
             await bridgeAdapter.sendSetPaused(deployer.getSender(), Paused.PAUSED, {

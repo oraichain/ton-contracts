@@ -58,6 +58,7 @@ export const BridgeAdapterOpcodes = {
     onRecvPacket: crc32('op::on_recv_packet'),
     callbackDenom: crc32('op::callback_denom'),
     bridgeTon: crc32('op::bridge_ton'),
+    changeJettonWalletCode: crc32('op::change_jetton_wallet_code'),
     setPaused: 1,
     upgradeContract: 2,
     changeAdmin: 3,
@@ -137,6 +138,7 @@ export class BridgeAdapter implements Contract {
             'orai',
             Buffer.from(cs.loadRef().beginParse().asCell().bits.toString(), 'hex'),
         );
+        const jettonCode = cs.loadRef().beginParse().asCell();
         return {
             lightClientMasterAddress,
             adminAddress,
@@ -144,6 +146,7 @@ export class BridgeAdapter implements Contract {
             next_packet_seq,
             paused,
             bridgeWasmBech32,
+            jettonCode,
         };
     }
 
@@ -223,6 +226,23 @@ export class BridgeAdapter implements Contract {
                 .storeUint(BridgeAdapterOpcodes.upgradeContract, 32)
                 .storeUint(ops.queryId ?? 0, 64)
                 .storeRef(new_code)
+                .endCell(),
+        });
+    }
+
+    async sendChangeJettonWalletCode(
+        provider: ContractProvider,
+        via: Sender,
+        newCode: Cell,
+        ops: ValueOps,
+    ) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
+            body: beginCell()
+                .storeUint(BridgeAdapterOpcodes.changeJettonWalletCode, 32)
+                .storeUint(ops.queryId ?? 0, 64)
+                .storeRef(newCode)
                 .endCell(),
         });
     }

@@ -487,6 +487,15 @@ global cell send_packets_from_ton;
         return ();
     }
 
+    if (op == op::change_jetton_wallet_code) {
+        throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        in_msg_body~load_uint(64); ;; skip query_id
+        cell new_jetton_wallet_code = in_msg_body~load_ref();
+        jetton_wallet_code = new_jetton_wallet_code;
+        save_data();
+        return ();
+    }
+
     if (op == op::change_admin) {
         throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
         in_msg_body~load_uint(64); ;; skip query_id
