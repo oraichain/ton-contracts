@@ -128,8 +128,8 @@ global cell send_packets_from_ton;
         if (token_origin == token_origin::ton){
             if (jetton_master.preload_uint(2) == 0) {
                 int refund_amount = msg_value - amount - gas::send_ton; 
-                send_empty_message(amount, to , SEND_MODE_PAY_FEES_SEPARETELY);
-                send_empty_message(refund_amount, response_address , SEND_MODE_PAY_FEES_SEPARETELY);
+                send_empty_message(amount, to , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
+                send_empty_message(refund_amount, response_address , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
             } else {
                 slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
                 cell body = begin_cell()
@@ -194,8 +194,8 @@ global cell send_packets_from_ton;
             if (token_origin == token_origin::ton){
                 if (jetton_master.preload_uint(2) == 0) {
                     int refund_amount = msg_value - amount - gas::send_ton; 
-                    send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
-                    send_empty_message(refund_amount, response_address , SEND_MODE_PAY_FEES_SEPARETELY);
+                    send_empty_message(amount,to, IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
+                    send_empty_message(refund_amount, response_address , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
                 } else {
                     slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
                     cell body = begin_cell()
@@ -213,7 +213,7 @@ global cell send_packets_from_ton;
             }
         } else {
             ;; if not timeout, just refunds
-            send_empty_message(0, response_address , CARRY_REMAINING_GAS);
+            send_empty_message(0, response_address, IGNORE_ERRORS + CARRY_REMAINING_GAS);
         }
 
         send_packets_from_ton~udict_delete?(64,seq);
