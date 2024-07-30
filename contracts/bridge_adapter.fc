@@ -211,6 +211,9 @@ global cell send_packets_from_ton;
                     send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
                 }
             }
+        } else {
+            ;; if not timeout, just refunds
+            send_empty_message(0, response_address , CARRY_REMAINING_GAS);
         }
 
         send_packets_from_ton~udict_delete?(64,seq);
@@ -250,6 +253,7 @@ global cell send_packets_from_ton;
         throw_unless(error::invalid_packet_opcode, (opcode_packet == op::send_to_cosmos) | (opcode_packet == op::send_to_ton));
 
         builder bodyBuilder = begin_cell();
+
         if (opcode_packet == op::send_to_ton) {
             bodyBuilder = bodyBuilder 
             .store_uint(op::receive_packet, 32)
@@ -265,6 +269,7 @@ global cell send_packets_from_ton;
             int seq = packet_slice~load_uint(64);
             int ack = packet_slice~load_uint(2);
             (slice stored_packet_data, int exist) = send_packets_from_ton.udict_get?(64, seq);
+            
             if (exist != -1) {
                 int refund_amount = msg_value - gas::bridge_recv_packet_failed;
                 var msg = begin_cell()
