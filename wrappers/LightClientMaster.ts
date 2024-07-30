@@ -19,6 +19,7 @@ import { ValueOps } from './@types';
 export type LightClientMasterConfig = {
     trustingPeriod: number;
     trustedHeight: number;
+    adminAddress: Address;
     chainId: string;
     lightClientCode: Cell;
     specs: Cell;
@@ -34,6 +35,7 @@ export function lightClientMasterConfigToCell(config: LightClientMasterConfig): 
     return beginCell()
         .storeUint(config.trustingPeriod, 32)
         .storeUint(config.trustedHeight, 64)
+        .storeAddress(config.adminAddress)
         .storeBuffer(Buffer.from(config.chainId))
         .storeRef(config.lightClientCode)
         .storeRef(config.specs)
@@ -47,6 +49,9 @@ export const LightClientMasterOpcodes = {
     create_new_light_client: crc32('op::create_new_light_client'),
     finalize_verify_light_client: crc32('op::finalize_verify_light_client'),
     receive_packet: crc32('op::receive_packet'),
+    change_light_client_code: crc32('op::change_light_client_code'),
+    upgrade_contract: 2,
+    change_admin: 3,
 };
 
 export class LightClientMaster implements Contract {
@@ -96,6 +101,52 @@ export class LightClientMaster implements Contract {
         });
     }
 
+    async sendUpgradeContract(
+        provider: ContractProvider,
+        via: Sender,
+        new_code: Cell,
+        ops: ValueOps,
+    ) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
+            body: beginCell()
+                .storeUint(LightClientMasterOpcodes.upgrade_contract, 32)
+                .storeUint(ops.queryId ?? 0, 64)
+                .storeRef(new_code)
+                .endCell(),
+        });
+    }
+
+    async sendChangeLightClientCode(
+        provider: ContractProvider,
+        via: Sender,
+        newCode: Cell,
+        ops: ValueOps,
+    ) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
+            body: beginCell()
+                .storeUint(LightClientMasterOpcodes.change_light_client_code, 32)
+                .storeUint(ops.queryId ?? 0, 64)
+                .storeRef(newCode)
+                .endCell(),
+        });
+    }
+
+    async sendChangeAdmin(provider: ContractProvider, via: Sender, admin: Address, ops: ValueOps) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
+            body: beginCell()
+                .storeUint(LightClientMasterOpcodes.change_admin, 32)
+                .storeUint(ops.queryId ?? 0, 64)
+                .storeAddress(admin)
+                .endCell(),
+        });
+    }
+
     async getTrustedHeight(provider: ContractProvider) {
         const result = await provider.get('get_trusted_height', []);
         return result.stack.readNumber();
@@ -104,5 +155,25 @@ export class LightClientMaster implements Contract {
     async getChainId(provider: ContractProvider) {
         const result = await provider.get('get_chain_id', []);
         return result.stack.readBuffer().toString('utf-8');
+    }
+
+    async getAdminAddress(provider: ContractProvider) {
+        const result = await provider.get('get_admin_address', []);
+        return result.stack.readAddress();
+    }
+
+    async getLightClientAddress(provider: ContractProvider, height: bigint) {
+        const result = await provider.get('get_light_client_address', [
+            {
+                type: 'int',
+                value: height,
+            },
+        ]);
+        return result.stack.readAddress();
+    }
+
+    async getLightClientCode(provider: ContractProvider) {
+        const result = await provider.get('get_light_client_code', []);
+        return result.stack.readCell();
     }
 }

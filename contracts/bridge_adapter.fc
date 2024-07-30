@@ -507,6 +507,14 @@ global cell send_packets_from_ton;
         return ();
     }
 
+    if (op == op::change_light_client_master) {
+        throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        in_msg_body~load_uint(64); ;; skip query_id
+        light_client_master = in_msg_body~load_msg_addr();
+        save_data();
+        return ();
+    }
+
     if (op == op::change_admin) {
         throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
         in_msg_body~load_uint(64); ;; skip query_id
