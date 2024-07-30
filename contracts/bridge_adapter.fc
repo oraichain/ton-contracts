@@ -441,7 +441,7 @@ global cell send_packets_from_ton;
         throw_unless(error::invalid_native_amount, msg_value > amount + min_ton_for_execute);
         int remaining_gas = msg_value - amount - min_ton_for_execute;
         
-        cell emit_data = begin_cell()
+        builder emit_data_builder = begin_cell()
                             .store_uint(op::send_to_cosmos, 32)
                             .store_uint(next_packet_seq, 64)
                             .store_uint(token_origin::ton, 32)
@@ -453,11 +453,13 @@ global cell send_packets_from_ton;
                             .store_ref(
                                 begin_cell()
                                 .store_slice(sender_address) ;; local_sender
-                                .end_cell())
+                                .end_cell());
+
+        send_packets_from_ton~udict_set(64, next_packet_seq, emit_data_builder.end_cell().begin_parse());
+        
+        cell emit_data = emit_data_builder
                             .store_ref(universal_swap_msg_cell)
                             .end_cell();
-
-        send_packets_from_ton~udict_set(64, next_packet_seq, emit_data.begin_parse());
         next_packet_seq = next_packet_seq + 1;
 
         emit_log_simple(my_address().slice_hash(), emit_data, query_id);

@@ -8,6 +8,7 @@ import { iavlSpec, tendermintSpec } from '../wrappers/specs';
 import { getSpecCell } from '../wrappers';
 import { ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { TetherMinter } from '../wrappers/TetherMinter';
+import { fromBech32, toBech32 } from '@cosmjs/encoding';
 
 async function deploy() {
     // =================== Setup TON Wallet ===================
@@ -112,6 +113,7 @@ async function deploy() {
         Address.parse('EQASlo5_ZTuknZ5oZkM7RmPXN2oNOKk3usg4NMYBDf2VsTwk'),
     );
     const tonBridgeContract = client.open(tonBridge);
+
     await tonBridgeContract.sendUpgradeContract(
         walletContract.sender(key.secretKey),
         await compile('BridgeAdapter'),
