@@ -126,8 +126,10 @@ global cell send_packets_from_ton;
         }
 
         if (token_origin == token_origin::ton){
-            if ( jetton_master.preload_uint(2) == 0) {
-                send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
+            if (jetton_master.preload_uint(2) == 0) {
+                int refund_amount = msg_value - amount - gas::send_ton; 
+                send_empty_message(amount, to , SEND_MODE_PAY_FEES_SEPARETELY);
+                send_empty_message(refund_amount, response_address , SEND_MODE_PAY_FEES_SEPARETELY);
             } else {
                 slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
                 cell body = begin_cell()
@@ -190,8 +192,10 @@ global cell send_packets_from_ton;
             }
 
             if (token_origin == token_origin::ton){
-                if ( jetton_master.preload_uint(2) == 0) {
+                if (jetton_master.preload_uint(2) == 0) {
+                    int refund_amount = msg_value - amount - gas::send_ton; 
                     send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
+                    send_empty_message(refund_amount, response_address , SEND_MODE_PAY_FEES_SEPARETELY);
                 } else {
                     slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
                     cell body = begin_cell()
@@ -270,7 +274,7 @@ global cell send_packets_from_ton;
                     .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
                     .store_uint(op::excesses(), 32)
                     .store_uint(query_id, 64);
-                send_raw_message(msg.end_cell(), IGNORE_ERRORS + NORMAL);
+                send_raw_message(msg.end_cell(), IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
                 return ();
             }
             throw_unless(error::packet_does_not_exist, exist);
@@ -465,7 +469,7 @@ global cell send_packets_from_ton;
             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
             .store_uint(op::excesses(), 32)
             .store_uint(query_id, 64);
-        send_raw_message(msg.end_cell(), IGNORE_ERRORS + NORMAL);
+        send_raw_message(msg.end_cell(), IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
         
         save_data();
         return ();

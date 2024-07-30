@@ -4,6 +4,7 @@ import {
     SandboxContract,
     TreasuryContract,
     internal,
+    prettyLogTransactions,
 } from '@ton/sandbox';
 import {
     Address,
@@ -732,6 +733,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
 
+        console.log({ deployer: deployer.address });
+        let deployerBeforeBalance = (await deployer.getBalance()) - toNano('1');
         const sendRecvResult = await bridgeAdapter.sendBridgeRecvPacket(
             deployer.getSender(),
             {
@@ -743,8 +746,12 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         );
         console.log('=====================================');
         printTransactionFees(sendRecvResult.transactions);
+        let deployerAfterBalance = await deployer.getBalance();
         const userTonBalance = await user.getBalance();
         expect(userTonBalance).toBeGreaterThan(9000000n);
+        let updatedBalance = deployerAfterBalance - deployerBeforeBalance;
+        expect(updatedBalance).toBeGreaterThan(500000000);
+        expect(updatedBalance).toBeLessThan(622664000);
         expect(userTonBalance).toBeLessThan(transferAmount);
     });
 
