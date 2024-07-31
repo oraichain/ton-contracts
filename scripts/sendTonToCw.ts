@@ -1,12 +1,13 @@
 import { Address, beginCell, toNano } from '@ton/core';
 import * as dotenv from 'dotenv';
 import { calculateIbcTimeoutTimestamp, createTonWallet, waitSeqno } from './utils';
-import { JettonMinter, JettonWallet } from '../wrappers';
+import { JettonWallet } from '../wrappers';
+import { TetherMinter } from '../wrappers/TetherMinter';
 dotenv.config();
 
 export async function updateClient() {
     var { client, walletContract, key } = await createTonWallet();
-    const usdt = JettonMinter.createFromAddress(Address.parse(process.env.USDT_CLIENT as string));
+    const usdt = TetherMinter.createFromAddress(Address.parse(process.env.USDT_CLIENT as string));
     const bridgeAdapterAddress = Address.parse(process.env.BRIDGE_ADAPTER_CLIENT as string);
     const usdtContract = client.open(usdt);
     const usdtWalletAddress = await usdtContract.getWalletAddress(walletContract.address);
@@ -20,7 +21,7 @@ export async function updateClient() {
     await usdtJettonWalletContract.sendTransfer(
         walletContract.sender(key.secretKey),
         {
-            fwdAmount: toNano(0.1),
+            fwdAmount: toNano(0.15),
             jettonAmount: 10_000n,
             jettonMaster: usdtContract.address,
             toAddress: bridgeAdapterAddress,
@@ -29,7 +30,7 @@ export async function updateClient() {
             memo: beginCell().endCell(),
         },
         {
-            value: toNano(0.2),
+            value: toNano(0.25),
             queryId: 0,
         },
     );

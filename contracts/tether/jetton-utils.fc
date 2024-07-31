@@ -1,5 +1,4 @@
 #include "workchain.fc";
-#include "../common/errors.fc";
 
 const int STATUS_SIZE = 4;
 

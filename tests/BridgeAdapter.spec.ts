@@ -4,6 +4,7 @@ import {
     SandboxContract,
     TreasuryContract,
     internal,
+    prettyLogTransactions,
 } from '@ton/sandbox';
 import {
     Address,
@@ -51,15 +52,17 @@ import { LightClientMaster, LightClientMasterOpcodes } from '../wrappers/LightCl
 import { iavlSpec, tendermintSpec } from '../wrappers/specs';
 import { ExistenceProof, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { Tendermint37Client } from '@cosmjs/tendermint-rpc';
-import * as lightClient_26877876 from './fixtures/light_client_26877876.json';
-import * as lightClient_26877882 from './fixtures/light_client_26877882.json';
-import * as lightClient_26877891 from './fixtures/light_client_26877891.json';
-import * as lightClient_26912809 from './fixtures/light_client_26912809.json';
-import * as lightClient_26918592 from './fixtures/light_client_26918592.json';
+import * as lightClient_28349621 from './fixtures/light_client_28349621.json';
+import * as lightClient_28352007 from './fixtures/light_client_28352007.json';
+import * as lightClient_28353959 from './fixtures/light_client_28353959.json';
+import * as lightClient_28358436 from './fixtures/light_client_28358436.json';
+import * as lightClient_28359916 from './fixtures/light_client_28359916.json';
+import * as lightClient_28388309 from './fixtures/light_client_28388309.json';
 
 import * as bridgeToTonProofsSrcCosmos from './fixtures/bridgeToTonProofs.json';
 import * as bridgeToTonProofsSrcTon from './fixtures/bridgeToTonProofs2.json';
 import * as bridgeToTonProofsTon from './fixtures/bridgeToTonProofs3.json';
+import * as bridgeToTonProofsTether from './fixtures/bridgeToTonProofs4.json';
 import * as multiplePacketProofs from './fixtures/multiplePacketProofs.json';
 import * as sendToCosmosTimeoutProof from './fixtures/sendToCosmosTimeoutProof.json';
 import * as sendToCosmosTimeoutOtherProof from './fixtures/sendToCosmosTimeoutOtherProof.json';
@@ -70,6 +73,7 @@ import { fromBech32, toAscii, toBech32 } from '@cosmjs/encoding';
 import { QueryClient } from '@cosmjs/stargate';
 import { SerializedCommit, SerializedHeader, SerializedValidator } from '../wrappers/@types';
 import { calculateIbcTimeoutTimestamp } from '../scripts/utils';
+import { TetherMinter } from '../wrappers/TetherMinter';
 
 describe('Cosmos->Ton BridgeAdapter', () => {
     let lightClientMasterCode: Cell;
@@ -77,9 +81,11 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     let jettonWalletCode: Cell;
     let jettonMinterCode: Cell;
     let whitelistDenomCode: Cell;
+    let tetherMinterCode: Cell;
+    let tetherWalletCode: Cell;
 
-    const bridgeWasmAddress = 'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse';
-    const bech32Address = fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data;
+    const bridgeWasmAddress = 'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7';
+    const bech32Address = fromBech32('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx').data;
     const updateBlock = async (
         {
             header,
@@ -117,6 +123,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         jettonWalletCode = await compile('JettonWallet');
         jettonMinterCode = await compile('JettonMinter');
         whitelistDenomCode = await compile('WhitelistDenom');
+        tetherMinterCode = await compile('TetherMinter');
+        tetherWalletCode = await compile('TetherWallet');
     });
 
     let blockchain: Blockchain;
@@ -124,23 +132,29 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     let user: SandboxContract<TreasuryContract>;
     let lightClientMaster: SandboxContract<LightClientMaster>;
     let bridgeAdapter: SandboxContract<BridgeAdapter>;
+    let bridgeTetherAdapter: SandboxContract<BridgeAdapter>;
     let jettonMinterSrcCosmos: SandboxContract<JettonMinter>;
     let jettonMinterSrcTon: SandboxContract<JettonMinter>;
     let bridgeJettonWalletSrcTon: SandboxContract<JettonWallet>;
     let usdtMinterContract: SandboxContract<JettonMinter>;
     let usdtDeployerJettonWallet: SandboxContract<JettonWallet>;
     let usdtDeployer: SandboxContract<TreasuryContract>;
+    let tetherMinterContract: SandboxContract<TetherMinter>;
+    let bridgeTetherWallet: SandboxContract<JettonWallet>;
+    let tetherDeployer: SandboxContract<TreasuryContract>;
     let whitelistDenom: SandboxContract<WhitelistDenom>;
 
     // packet info
     const transferAmount = 10000000n;
-    const timeout = 1751623658;
+    const timeout = 1721983548;
     beforeEach(async () => {
-        blockchain = await Blockchain.create();
+        blockchain = await Blockchain.create({});
+        blockchain.now = timeout - 3600;
         blockchain.verbosity = {
             ...blockchain.verbosity,
             // vmLogs: 'vm_logs_gas',
         };
+
         // SET UP WHITELIST DENOM
         // THIS USDT token will be used for case we want to send USDT to Oraichain from TON
         usdtDeployer = await blockchain.treasury('usdt_deployer');
@@ -160,13 +174,15 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 value: toNano('1000'),
             },
         );
+
         expect(deployUsdtMinterResult.transactions).toHaveTransaction({
             from: usdtDeployer.address,
             to: usdtMinterContract.address,
             deploy: true,
             success: true,
         });
-        await usdtMinterContract.sendMint(
+
+        let result = await usdtMinterContract.sendMint(
             usdtDeployer.getSender(),
             {
                 toAddress: usdtDeployer.address,
@@ -175,6 +191,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             },
             { value: toNano(1), queryId: 0 },
         );
+        printTransactionFees(result.transactions);
+
         const usdtWalletAddress = await usdtMinterContract.getWalletAddress(usdtDeployer.address);
         const usdtJettonWallet = JettonWallet.createFromAddress(usdtWalletAddress);
         usdtDeployerJettonWallet = blockchain.openContract(usdtJettonWallet);
@@ -229,6 +247,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                     trustedHeight: 0,
                     trustingPeriod: 14 * 86400,
                     specs: cellSpecs!,
+                    adminAddress: deployer.address,
                 },
                 lightClientMasterCode,
             ),
@@ -264,7 +283,6 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         const deployBridgeResult = await bridgeAdapter.sendDeploy(deployer.getSender(), {
             value: toNano('1'),
         });
-
         expect(deployBridgeResult.transactions).toHaveTransaction({
             from: deployer.address,
             to: bridgeAdapter.address,
@@ -340,6 +358,77 @@ describe('Cosmos->Ton BridgeAdapter', () => {
 
         expect((await bridgeJettonWalletSrcTon.getBalance()).amount).toBe(toNano(1000000000));
 
+        // SET UP TETHER CONTRACT
+        bridgeTetherAdapter = blockchain.openContract(
+            BridgeAdapter.createFromConfig(
+                {
+                    light_client_master: lightClientMaster.address,
+                    bridge_wasm_smart_contract: bridgeWasmAddress,
+                    jetton_wallet_code: tetherWalletCode,
+                    whitelist_denom: whitelistDenom.address,
+                    paused: Paused.UNPAUSED,
+                    admin: deployer.address,
+                },
+                bridgeAdapterCode,
+            ),
+        );
+
+        const deployBridgeTetherResult = await bridgeTetherAdapter.sendDeploy(
+            deployer.getSender(),
+            {
+                value: toNano('1'),
+            },
+        );
+        expect(deployBridgeTetherResult.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: bridgeTetherAdapter.address,
+            deploy: true,
+            success: true,
+        });
+        printTransactionFees(deployBridgeTetherResult.transactions);
+
+        tetherDeployer = await blockchain.treasury('tether_deployer');
+        tetherMinterContract = blockchain.openContract(
+            TetherMinter.createFromConfig(
+                {
+                    adminAddress: tetherDeployer.address,
+                    content: beginCell().storeBuffer(Buffer.from('TETHER USDT TOKEN')).endCell(),
+                    jettonWalletCode: tetherWalletCode,
+                },
+                tetherMinterCode,
+            ),
+        );
+        const deployTetherMinterResult = await tetherMinterContract.sendDeploy(
+            tetherDeployer.getSender(),
+            {
+                value: toNano('1000'),
+            },
+        );
+
+        expect(deployTetherMinterResult.transactions).toHaveTransaction({
+            from: tetherDeployer.address,
+            to: tetherMinterContract.address,
+            deploy: true,
+            success: true,
+        });
+        result = await tetherMinterContract.sendMint(
+            tetherDeployer.getSender(),
+            {
+                toAddress: bridgeTetherAdapter.address,
+                jettonAmount: toNano(333333),
+                amount: toNano(0.5),
+            },
+            { value: toNano(1), queryId: 0 },
+        );
+        printTransactionFees(result.transactions);
+
+        const tetherWalletAddress = await tetherMinterContract.getWalletAddress(
+            bridgeTetherAdapter.address,
+        );
+        const tetherJettonWallet = JettonWallet.createFromAddress(tetherWalletAddress);
+        bridgeTetherWallet = blockchain.openContract(tetherJettonWallet);
+        expect((await bridgeTetherWallet.getBalance()).amount).toBe(333333000000000n);
+
         await deployer.getSender().send({
             to: bridgeAdapter.address,
             value: toNano('1000'),
@@ -362,6 +451,9 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     });
 
     it('successfully deploy BridgeAdapter contract', async () => {
+        console.log(
+            Uint8Array.from(Buffer.from('Hi87NDAwrg5zUSaHWVV08GeCuPk=', 'base64')).join(','),
+        );
         const stack = await bridgeAdapter.getBridgeData();
         const cell = stack.readCell();
         const {
@@ -398,6 +490,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data,
             ).toString('base64'),
         });
+        // console.log(Buffer.from(bech32Address).toString('base64'));
+
         const packet = beginCell()
             .storeUint(0xae89be5b, 32) // op
             .storeUint(1, 64) // seq
@@ -421,8 +515,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await getPacketProofs(
         //     queryClient,
-        //     'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //     26877875,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     28349620,
         //     1n,
         // );
         // writeFileSync(
@@ -431,15 +525,15 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // );
         // const { header, lastCommit, validators } = await createUpdateClientData(
         //     'https://rpc.orai.io',
-        //     26877876,
+        //     28349621,
         // );
         // writeFileSync(
-        //     resolve(__dirname, `./fixtures/light_client_${26877876}.json`),
+        //     resolve(__dirname, `./fixtures/light_client_${28349621}.json`),
         //     JSON.stringify({ header, lastCommit, validators }),
         // );
-        // #endregion
+        // #endregion;
 
-        await updateBlock(lightClient_26877876 as any, deployer);
+        await updateBlock(lightClient_28349621 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsSrcCosmos)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -449,7 +543,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet,
-                provenHeight: 26877876,
+                provenHeight: 28349621,
             },
             { value: toNano('0.7') },
         );
@@ -462,6 +556,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     });
 
     it('should send jetton token_origin::ton to TON', async () => {
+        console.log({ jettonMinterSrcTon: jettonMinterSrcTon.address });
+
         const packet = beginCell()
             .storeUint(0xae89be5b, 32)
             .storeUint(2, 64)
@@ -485,8 +581,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await getPacketProofs(
         //     queryClient,
-        //     'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //     26877881,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     28352006,
         //     2n,
         // );
         // writeFileSync(
@@ -495,15 +591,15 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // );
         // const { header, lastCommit, validators } = await createUpdateClientData(
         //     'https://rpc.orai.io',
-        //     26877882,
+        //     28352007,
         // );
         // writeFileSync(
-        //     resolve(__dirname, `./fixtures/light_client_${26877882}.json`),
+        //     resolve(__dirname, `./fixtures/light_client_${28352007}.json`),
         //     JSON.stringify({ header, lastCommit, validators }),
         // );
         //#endregion
 
-        await updateBlock(lightClient_26877882 as any, deployer);
+        await updateBlock(lightClient_28352007 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsSrcTon)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
@@ -513,13 +609,78 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet,
-                provenHeight: 26877882,
+                provenHeight: 28352007,
             },
             { value: toNano('0.7') },
         );
 
         printTransactionFees(sendRecvResult.transactions);
         const userJettonWallet = await jettonMinterSrcTon.getWalletAddress(user.address);
+        const wallet = blockchain.openContract(JettonWallet.createFromAddress(userJettonWallet));
+        const balance = await wallet.getBalance();
+        expect(balance.amount).toBe(transferAmount);
+    });
+
+    it('should send tether to TON', async () => {
+        const timeout = 1751983548;
+        const packet = beginCell()
+            .storeUint(0xae89be5b, 32)
+            .storeUint(5, 64)
+            .storeUint(TokenOrigin.TON, 32)
+            .storeUint(transferAmount, 128)
+            .storeUint(timeout, 64)
+            .storeAddress(user.address)
+            .storeAddress(tetherMinterContract.address)
+            .storeRef(
+                beginCell()
+                    .storeUint(bech32Address.length, 8)
+                    .storeBuffer(Buffer.from(bech32Address))
+                    .endCell(),
+            )
+            .endCell();
+        const packet_cell = packet.hash();
+        console.log(BigInt('0x' + packet_cell.toString('hex')));
+
+        //#region script fetch data
+        // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        // const queryClient = new QueryClient(tendermint37 as any);
+        // const data = await getPacketProofs(
+        //     queryClient,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     28388308,
+        //     5n,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, './fixtures/bridgeToTonProofs4.json'),
+        //     JSON.stringify(data),
+        // );
+        // const { header, lastCommit, validators } = await createUpdateClientData(
+        //     'https://rpc.orai.io',
+        //     28388309,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, `./fixtures/light_client_${28388309}.json`),
+        //     JSON.stringify({ header, lastCommit, validators }),
+        // );
+        //#endregion
+
+        await updateBlock(lightClient_28388309 as any, deployer);
+        const existenceProofs = Object.values(bridgeToTonProofsTether)
+            .slice(0, 2)
+            .map(ExistenceProof.fromJSON);
+
+        const sendRecvResult = await bridgeTetherAdapter.sendBridgeRecvPacket(
+            deployer.getSender(),
+            {
+                proofs: getExistenceProofSnakeCell(existenceProofs)!,
+                packet,
+                provenHeight: 28388309,
+            },
+            { value: toNano('0.7') },
+        );
+
+        printTransactionFees(sendRecvResult.transactions);
+        const userJettonWallet = await tetherMinterContract.getWalletAddress(user.address);
         const wallet = blockchain.openContract(JettonWallet.createFromAddress(userJettonWallet));
         const balance = await wallet.getBalance();
         expect(balance.amount).toBe(transferAmount);
@@ -549,8 +710,8 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // const queryClient = new QueryClient(tendermint37 as any);
         // const data = await getPacketProofs(
         //     queryClient,
-        //     'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //     26877890,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     28353958,
         //     3n,
         // );
         // writeFileSync(
@@ -559,33 +720,39 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // );
         // const { header, lastCommit, validators } = await createUpdateClientData(
         //     'https://rpc.orai.io',
-        //     26877891,
+        //     28353959,
         // );
         // writeFileSync(
-        //     resolve(__dirname, `./fixtures/light_client_${26877891}.json`),
+        //     resolve(__dirname, `./fixtures/light_client_${28353959}.json`),
         //     JSON.stringify({ header, lastCommit, validators }),
         // );
         //#endregion
 
         // provenBlockHeight = proofHeight + 1;
-        await updateBlock(lightClient_26877891 as any, deployer);
+        await updateBlock(lightClient_28353959 as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsTon)
             .slice(0, 2)
             .map(ExistenceProof.fromJSON);
 
+        console.log({ deployer: deployer.address });
+        let deployerBeforeBalance = (await deployer.getBalance()) - toNano('1');
         const sendRecvResult = await bridgeAdapter.sendBridgeRecvPacket(
             deployer.getSender(),
             {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet,
-                provenHeight: 26877891,
+                provenHeight: 28353959,
             },
             { value: toNano('1') },
         );
         console.log('=====================================');
         printTransactionFees(sendRecvResult.transactions);
+        let deployerAfterBalance = await deployer.getBalance();
         const userTonBalance = await user.getBalance();
         expect(userTonBalance).toBeGreaterThan(9000000n);
+        let updatedBalance = deployerAfterBalance - deployerBeforeBalance;
+        expect(updatedBalance).toBeGreaterThan(500000000);
+        expect(updatedBalance).toBeLessThan(622664000);
         expect(userTonBalance).toBeLessThan(transferAmount);
     });
 
@@ -644,20 +811,20 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // const data = await Promise.all([
         //     getPacketProofs(
         //         queryClient,
-        //         'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //         26877890,
+        //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //         28353958,
         //         1n,
         //     ),
         //     getPacketProofs(
         //         queryClient,
-        //         'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //         26877890,
+        //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //         28353958,
         //         2n,
         //     ),
         //     getPacketProofs(
         //         queryClient,
-        //         'orai1qc3pe6ucpvlqpqnl83p0rrahhdv8geh559kus99hs9n8tc86y67su2zvse',
-        //         26877890,
+        //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //         28353958,
         //         3n,
         //     ),
         // ]);
@@ -668,7 +835,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         //#endregion
 
         // provenBlockHeight = proofHeight + 1;
-        await updateBlock(lightClient_26877891 as any, deployer);
+        await updateBlock(lightClient_28353959 as any, deployer);
         const existenceProofs = Object.values(multiplePacketProofs)
             .slice(0, 3) // cut the default property
             .flat()
@@ -677,33 +844,38 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         const proofSendJettonSrcTon = existenceProofs.slice(2, 4);
         const proofSendTon = existenceProofs.slice(4, 6);
 
-        await bridgeAdapter.sendBridgeRecvPacket(
+        let result = await bridgeAdapter.sendBridgeRecvPacket(
             deployer.getSender(),
             {
                 proofs: getExistenceProofSnakeCell(proofSendJettonSrcCosmos)!,
                 packet: sendJettonSrcCosmosPacket,
-                provenHeight: 26877891,
+                provenHeight: 28353959,
             },
             { value: toNano('1') },
         );
-        await bridgeAdapter.sendBridgeRecvPacket(
+        printTransactionFees(result.transactions);
+
+        result = await bridgeAdapter.sendBridgeRecvPacket(
             deployer.getSender(),
             {
                 proofs: getExistenceProofSnakeCell(proofSendJettonSrcTon)!,
                 packet: sendJettonSrcTonPacket,
-                provenHeight: 26877891,
+                provenHeight: 28353959,
             },
             { value: toNano('1') },
         );
-        await bridgeAdapter.sendBridgeRecvPacket(
+        printTransactionFees(result.transactions);
+
+        result = await bridgeAdapter.sendBridgeRecvPacket(
             deployer.getSender(),
             {
                 proofs: getExistenceProofSnakeCell(proofSendTon)!,
                 packet: sendTonPacket,
-                provenHeight: 26877891,
+                provenHeight: 28353959,
             },
             { value: toNano('1') },
         );
+        printTransactionFees(result.transactions);
 
         const userJettonWalletSrcCosmos = await jettonMinterSrcTon.getWalletAddress(user.address);
         const walletJettonSrcCosmos = blockchain.openContract(
@@ -734,6 +906,19 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             const { paused } = BridgeAdapter.parseBridgeDataResponse(cell);
             // assert
             expect(paused).toBe(Paused.PAUSED);
+        });
+
+        it('should update jetton code', async () => {
+            await bridgeAdapter.sendChangeJettonWalletCode(
+                deployer.getSender(),
+                beginCell().endCell(),
+                {
+                    value: toNano('0.01'),
+                },
+            );
+            const cell = (await bridgeAdapter.getBridgeData()).readCell();
+            const { jettonCode } = BridgeAdapter.parseBridgeDataResponse(cell);
+            expect(jettonCode.bits.length == 0).toBe(true);
         });
 
         xit('should call all function failed after paused', async () => {
@@ -821,6 +1006,22 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             const cell = await bridgeAdapter.getBridgeData();
             const { adminAddress } = BridgeAdapter.parseBridgeDataResponse(cell.readCell());
             expect(adminAddress.equals(newOwner.address)).toBeTruthy();
+        });
+
+        it('should change light client master of contract', async () => {
+            const newContract = await blockchain.treasury('new_light_client_master');
+            await bridgeAdapter.sendChangeLightClientMaster(
+                deployer.getSender(),
+                newContract.address,
+                {
+                    value: toNano('0.01'),
+                },
+            );
+            const cell = await bridgeAdapter.getBridgeData();
+            const { lightClientMasterAddress } = BridgeAdapter.parseBridgeDataResponse(
+                cell.readCell(),
+            );
+            expect(lightClientMasterAddress.equals(newContract.address)).toBeTruthy();
         });
 
         it('should change admin to multisig wallet', async () => {
@@ -919,9 +1120,10 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     let jettonWalletCode: Cell;
     let jettonMinterCode: Cell;
     let whitelistDenomCode: Cell;
+    let tetherMinterCode: Cell;
+    let tetherWalletCode: Cell;
 
-    const bridgeWasmAddress = 'orai16xfkjn7exdkzpl2jdu655qlzwjluyrld308c54jf4etyss73dt6qftt30h';
-    const bech32Address = fromBech32('orai12p0ywjwcpa500r9fuf0hly78zyjeltakrzkv0c').data;
+    const bridgeWasmAddress = 'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7';
     const updateBlock = async (
         {
             header,
@@ -959,6 +1161,8 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         jettonWalletCode = await compile('JettonWallet');
         jettonMinterCode = await compile('JettonMinter');
         whitelistDenomCode = await compile('WhitelistDenom');
+        tetherMinterCode = await compile('TetherMinter');
+        tetherWalletCode = await compile('TetherWallet');
     });
 
     let blockchain: Blockchain;
@@ -966,23 +1170,26 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     let user: SandboxContract<TreasuryContract>;
     let lightClientMaster: SandboxContract<LightClientMaster>;
     let bridgeAdapter: SandboxContract<BridgeAdapter>;
+    let bridgeTetherAdapter: SandboxContract<BridgeAdapter>;
     let jettonMinterSrcCosmos: SandboxContract<JettonMinter>;
     let jettonMinterSrcTon: SandboxContract<JettonMinter>;
     let bridgeJettonWalletSrcTon: SandboxContract<JettonWallet>;
     let usdtMinterContract: SandboxContract<JettonMinter>;
     let usdtDeployerJettonWallet: SandboxContract<JettonWallet>;
     let usdtDeployer: SandboxContract<TreasuryContract>;
+    let tetherMinterContract: SandboxContract<TetherMinter>;
+    let bridgeTetherWallet: SandboxContract<JettonWallet>;
+    let tetherDeployer: SandboxContract<TreasuryContract>;
     let whitelistDenom: SandboxContract<WhitelistDenom>;
 
     // packet info
-    const transferAmount = 10000000n;
-    const timeout = 1751623658;
     beforeEach(async () => {
         blockchain = await Blockchain.create();
         blockchain.verbosity = {
             ...blockchain.verbosity,
             // vmLogs: 'vm_logs_gas',
         };
+
         // SET UP WHITELIST DENOM
         // THIS USDT token will be used for case we want to send USDT to Oraichain from TON
         usdtDeployer = await blockchain.treasury('usdt_deployer');
@@ -1002,13 +1209,15 @@ describe('Ton->Cosmos BridgeAdapter', () => {
                 value: toNano('1000'),
             },
         );
+
         expect(deployUsdtMinterResult.transactions).toHaveTransaction({
             from: usdtDeployer.address,
             to: usdtMinterContract.address,
             deploy: true,
             success: true,
         });
-        await usdtMinterContract.sendMint(
+
+        let result = await usdtMinterContract.sendMint(
             usdtDeployer.getSender(),
             {
                 toAddress: usdtDeployer.address,
@@ -1017,6 +1226,8 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             },
             { value: toNano(1), queryId: 0 },
         );
+        printTransactionFees(result.transactions);
+
         const usdtWalletAddress = await usdtMinterContract.getWalletAddress(usdtDeployer.address);
         const usdtJettonWallet = JettonWallet.createFromAddress(usdtWalletAddress);
         usdtDeployerJettonWallet = blockchain.openContract(usdtJettonWallet);
@@ -1071,6 +1282,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
                     trustedHeight: 0,
                     trustingPeriod: 14 * 86400,
                     specs: cellSpecs!,
+                    adminAddress: deployer.address,
                 },
                 lightClientMasterCode,
             ),
@@ -1094,10 +1306,10 @@ describe('Ton->Cosmos BridgeAdapter', () => {
                 {
                     light_client_master: lightClientMaster.address,
                     bridge_wasm_smart_contract: bridgeWasmAddress,
-                    admin: deployer.address,
-                    paused: Paused.UNPAUSED,
                     jetton_wallet_code: jettonWalletCode,
                     whitelist_denom: whitelistDenom.address,
+                    paused: Paused.UNPAUSED,
+                    admin: deployer.address,
                 },
                 bridgeAdapterCode,
             ),
@@ -1106,7 +1318,6 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         const deployBridgeResult = await bridgeAdapter.sendDeploy(deployer.getSender(), {
             value: toNano('1'),
         });
-
         expect(deployBridgeResult.transactions).toHaveTransaction({
             from: deployer.address,
             to: bridgeAdapter.address,
@@ -1181,6 +1392,77 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         bridgeJettonWalletSrcTon = blockchain.openContract(bridgeJettonWalletBalance);
 
         expect((await bridgeJettonWalletSrcTon.getBalance()).amount).toBe(toNano(1000000000));
+
+        // SET UP TETHER CONTRACT
+        bridgeTetherAdapter = blockchain.openContract(
+            BridgeAdapter.createFromConfig(
+                {
+                    light_client_master: lightClientMaster.address,
+                    bridge_wasm_smart_contract: bridgeWasmAddress,
+                    jetton_wallet_code: tetherWalletCode,
+                    whitelist_denom: whitelistDenom.address,
+                    paused: Paused.UNPAUSED,
+                    admin: deployer.address,
+                },
+                bridgeAdapterCode,
+            ),
+        );
+
+        const deployBridgeTetherResult = await bridgeTetherAdapter.sendDeploy(
+            deployer.getSender(),
+            {
+                value: toNano('1'),
+            },
+        );
+        expect(deployBridgeTetherResult.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: bridgeTetherAdapter.address,
+            deploy: true,
+            success: true,
+        });
+        printTransactionFees(deployBridgeTetherResult.transactions);
+
+        tetherDeployer = await blockchain.treasury('tether_deployer');
+        tetherMinterContract = blockchain.openContract(
+            TetherMinter.createFromConfig(
+                {
+                    adminAddress: tetherDeployer.address,
+                    content: beginCell().storeBuffer(Buffer.from('TETHER USDT TOKEN')).endCell(),
+                    jettonWalletCode: tetherWalletCode,
+                },
+                tetherMinterCode,
+            ),
+        );
+        const deployTetherMinterResult = await tetherMinterContract.sendDeploy(
+            tetherDeployer.getSender(),
+            {
+                value: toNano('1000'),
+            },
+        );
+
+        expect(deployTetherMinterResult.transactions).toHaveTransaction({
+            from: tetherDeployer.address,
+            to: tetherMinterContract.address,
+            deploy: true,
+            success: true,
+        });
+        result = await tetherMinterContract.sendMint(
+            tetherDeployer.getSender(),
+            {
+                toAddress: bridgeTetherAdapter.address,
+                jettonAmount: toNano(333333),
+                amount: toNano(0.5),
+            },
+            { value: toNano(1), queryId: 0 },
+        );
+        printTransactionFees(result.transactions);
+
+        const tetherWalletAddress = await tetherMinterContract.getWalletAddress(
+            bridgeTetherAdapter.address,
+        );
+        const tetherJettonWallet = JettonWallet.createFromAddress(tetherWalletAddress);
+        bridgeTetherWallet = blockchain.openContract(tetherJettonWallet);
+        expect((await bridgeTetherWallet.getBalance()).amount).toBe(333333000000000n);
 
         await deployer.getSender().send({
             to: bridgeAdapter.address,
@@ -1288,7 +1570,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
                 remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
                 memo: beginCell()
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
-                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-1')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-0')).endCell())
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
                     .storeRef(
                         beginCell()
@@ -1317,12 +1599,16 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         });
         const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
             .balance;
-        expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
+        expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.15));
     });
 
     it('Test timeout send jetton token from ton to bridge adapter', async () => {
-        const height = 26912808;
+        const height = 28358435;
         const timeout = 1720603835;
+        console.log({
+            denom: usdtMinterContract.address,
+            sender: usdtDeployer.getSender().address,
+        });
 
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
@@ -1397,9 +1683,32 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         });
         const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
             .balance;
-        expect(-senderBeforeBalance + senderAfterBalance).toBeLessThanOrEqual(toNano(0.1));
+        expect(-senderBeforeBalance + senderAfterBalance).toBeLessThanOrEqual(toNano(0.15));
 
-        await updateBlock(lightClient_26912809 as any, deployer);
+        //#region script fetch data
+        // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        // const queryClient = new QueryClient(tendermint37 as any);
+        // const data = await getAckPacketProofs(
+        //     queryClient,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     height,
+        //     1n,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, './fixtures/sendToCosmosTimeoutProof.json'),
+        //     JSON.stringify(data),
+        // );
+        // const { header, lastCommit, validators } = await createUpdateClientData(
+        //     'https://rpc.orai.io',
+        //     height + 1,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, `./fixtures/light_client_${height + 1}.json`),
+        //     JSON.stringify({ header, lastCommit, validators }),
+        // );
+        //#endregion
+
+        await updateBlock(lightClient_28358436 as any, deployer);
         const sendToCosmosPacket = beginCell()
             .storeUint(0xa64c12a3, 32) // op
             .storeUint(1, 64) // seq
@@ -1421,6 +1730,88 @@ describe('Ton->Cosmos BridgeAdapter', () => {
 
         const afterAfterJettonBalance = (await usdtDeployerJettonWallet.getBalance()).amount;
         expect(afterAfterJettonBalance - beforeJettonBalance).toBe(0n);
+    });
+
+    it('Test send usdt from ton to bridge adapter', async () => {
+        let result = await whitelistDenom.sendSetDenom(
+            deployer.getSender(),
+            {
+                denom: tetherMinterContract.address,
+                permission: true,
+                isRootFromTon: true,
+            },
+            {
+                value: toNano(0.1),
+            },
+        );
+        expect(result.transactions).toHaveTransaction({
+            op: WhitelistDenomOpcodes.setDenom,
+            success: true,
+        });
+
+        result = await tetherMinterContract.sendMint(
+            tetherDeployer.getSender(),
+            {
+                toAddress: tetherDeployer.address,
+                jettonAmount: toNano(1000),
+                amount: toNano(0.5),
+            },
+            { value: toNano(1), queryId: 0 },
+        );
+        printTransactionFees(result.transactions);
+
+        const tetherWalletAddress = await tetherMinterContract.getWalletAddress(
+            tetherDeployer.address,
+        );
+        const deployerTetherJettonWalletContract =
+            JettonWallet.createFromAddress(tetherWalletAddress);
+        const deployerTetherJettonWallet = blockchain.openContract(
+            deployerTetherJettonWalletContract,
+        );
+
+        const senderBeforeBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
+            .balance;
+        result = await deployerTetherJettonWallet.sendTransfer(
+            tetherDeployer.getSender(),
+            {
+                fwdAmount: toNano(1),
+                jettonAmount: toNano(333),
+                jettonMaster: tetherMinterContract.address,
+                toAddress: bridgeAdapter.address,
+                timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
+                remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
+                memo: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-0')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(
+                        beginCell()
+                            .storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx'))
+                            .endCell(),
+                    )
+                    .endCell(),
+            },
+            {
+                value: toNano(2),
+                queryId: 0,
+            },
+        );
+        printTransactionFees(result.transactions);
+
+        const bodyCell = result.transactions[result.transactions.length - 2].externals[0].body;
+        expect(BigInt(bodyCell.asSlice().loadUint(32))).toBe(BigInt('0xa64c12a3'));
+
+        console.log(
+            'Bridge adapter balance:',
+            (await blockchain.getContract(bridgeAdapter.address)).balance,
+        );
+        expect(result.transactions).toHaveTransaction({
+            op: BridgeAdapterOpcodes.callbackDenom,
+            success: true,
+        });
+        const senderAfterBalance = (await blockchain.getContract(usdtDeployer.getSender().address))
+            .balance;
+        expect(senderBeforeBalance - senderAfterBalance).toBeLessThanOrEqual(toNano(0.15));
     });
 
     it('Test send jetton token from cosmos to bridge adapter', async () => {
@@ -1485,7 +1876,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         result = await wallet.sendTransfer(
             userContract.getSender(),
             {
-                fwdAmount: toNano(0.1),
+                fwdAmount: toNano(0.15),
                 jettonAmount: toNano(5),
                 jettonMaster: jettonMinterSrcCosmos.address,
                 toAddress: bridgeAdapter.address,
@@ -1510,8 +1901,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     });
 
     it('Test timeout send jetton token from cosmos to bridge adapter', async () => {
-        // 26918591
-        const height = 26918591;
+        const height = 28359915;
         const timeout = 1720603835;
 
         const jettonMinterSrcCosmos = blockchain.openContract(
@@ -1591,7 +1981,30 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         });
         expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10_000_000_000n - 10_000_000n);
 
-        await updateBlock(lightClient_26918592 as any, deployer);
+        //#region script fetch data
+        // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        // const queryClient = new QueryClient(tendermint37 as any);
+        // const data = await getAckPacketProofs(
+        //     queryClient,
+        //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //     height,
+        //     1n,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, './fixtures/sendToCosmosTimeoutOtherProof.json'),
+        //     JSON.stringify(data),
+        // );
+        // const { header, lastCommit, validators } = await createUpdateClientData(
+        //     'https://rpc.orai.io',
+        //     height + 1,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, `./fixtures/light_client_${height + 1}.json`),
+        //     JSON.stringify({ header, lastCommit, validators }),
+        // );
+        // #endregion;
+
+        await updateBlock(lightClient_28359916 as any, deployer);
         const sendToCosmosPacket = beginCell()
             .storeUint(0xa64c12a3, 32) // op
             .storeUint(1, 64) // seq

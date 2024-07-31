@@ -128,9 +128,10 @@ global slice light_client_master_address;
         slice response_address = msg~load_msg_addr();
         cell ds = msg~load_ref();
         (cell header, cell validators, _) = parse_verify_light_client_body(ds.begin_parse());
-        (_, chain_id, app_hash, _) = get_data_from_header(header.begin_parse());
+        (_, slice time, chain_id, app_hash, _) = get_data_from_header(header.begin_parse());
+        int timestamp = time~load_uint(32);
         validator = validators;
-        created_at = now();
+        created_at = timestamp;
         save_data();
 
         builder bodyBuilder = begin_cell();
@@ -146,6 +147,7 @@ global slice light_client_master_address;
     }
 
     if (op == op::verify_packet_commitment) {
+        throw_unless(error::client_expired, now() - created_at <= trusting_period);
         throw_unless(error::invalid_sender, compare_address(sender_address, light_client_master_address));
         cell body = in_msg_body~load_ref();
         slice body_cs = body.begin_parse();
@@ -213,4 +215,19 @@ slice get_chain_id() method_id {
 slice get_app_hash() method_id {
     load_data();
     return app_hash;
+}
+
+int get_trusting_period() method_id {
+    load_data();
+    return trusting_period;
+}
+
+int get_created_at() method_id {
+    load_data();
+    return created_at;
+}
+
+slice get_jetton_master_address() method_id {
+    load_data();
+    return light_client_master_address;
 }

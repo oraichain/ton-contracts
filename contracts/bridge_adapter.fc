@@ -126,8 +126,10 @@ global cell send_packets_from_ton;
         }
 
         if (token_origin == token_origin::ton){
-            if ( jetton_master.preload_uint(2) == 0) {
-                send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
+            if (jetton_master.preload_uint(2) == 0) {
+                int refund_amount = msg_value - amount - gas::send_ton; 
+                send_empty_message(amount, to , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
+                send_empty_message(refund_amount, response_address , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
             } else {
                 slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
                 cell body = begin_cell()
@@ -190,8 +192,10 @@ global cell send_packets_from_ton;
             }
 
             if (token_origin == token_origin::ton){
-                if ( jetton_master.preload_uint(2) == 0) {
-                    send_empty_message(amount,to, SEND_MODE_PAY_FEES_SEPARETELY);
+                if (jetton_master.preload_uint(2) == 0) {
+                    int refund_amount = msg_value - amount - gas::send_ton; 
+                    send_empty_message(amount,to, IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
+                    send_empty_message(refund_amount, response_address , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
                 } else {
                     slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
                     cell body = begin_cell()
@@ -207,6 +211,9 @@ global cell send_packets_from_ton;
                     send_simple_message(0, bridge_jetton_wallet, body, CARRY_REMAINING_GAS);
                 }
             }
+        } else {
+            ;; if not timeout, just refunds
+            send_empty_message(0, response_address, IGNORE_ERRORS + CARRY_REMAINING_GAS);
         }
 
         send_packets_from_ton~udict_delete?(64,seq);
@@ -246,6 +253,7 @@ global cell send_packets_from_ton;
         throw_unless(error::invalid_packet_opcode, (opcode_packet == op::send_to_cosmos) | (opcode_packet == op::send_to_ton));
 
         builder bodyBuilder = begin_cell();
+
         if (opcode_packet == op::send_to_ton) {
             bodyBuilder = bodyBuilder 
             .store_uint(op::receive_packet, 32)
@@ -261,6 +269,7 @@ global cell send_packets_from_ton;
             int seq = packet_slice~load_uint(64);
             int ack = packet_slice~load_uint(2);
             (slice stored_packet_data, int exist) = send_packets_from_ton.udict_get?(64, seq);
+            
             if (exist != -1) {
                 int refund_amount = msg_value - gas::bridge_recv_packet_failed;
                 var msg = begin_cell()
@@ -270,7 +279,7 @@ global cell send_packets_from_ton;
                     .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
                     .store_uint(op::excesses(), 32)
                     .store_uint(query_id, 64);
-                send_raw_message(msg.end_cell(), IGNORE_ERRORS + NORMAL);
+                send_raw_message(msg.end_cell(), IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
                 return ();
             }
             throw_unless(error::packet_does_not_exist, exist);
@@ -437,7 +446,7 @@ global cell send_packets_from_ton;
         throw_unless(error::invalid_native_amount, msg_value > amount + min_ton_for_execute);
         int remaining_gas = msg_value - amount - min_ton_for_execute;
         
-        cell emit_data = begin_cell()
+        builder emit_data_builder = begin_cell()
                             .store_uint(op::send_to_cosmos, 32)
                             .store_uint(next_packet_seq, 64)
                             .store_uint(token_origin::ton, 32)
@@ -449,11 +458,13 @@ global cell send_packets_from_ton;
                             .store_ref(
                                 begin_cell()
                                 .store_slice(sender_address) ;; local_sender
-                                .end_cell())
+                                .end_cell());
+
+        send_packets_from_ton~udict_set(64, next_packet_seq, emit_data_builder.end_cell().begin_parse());
+        
+        cell emit_data = emit_data_builder
                             .store_ref(universal_swap_msg_cell)
                             .end_cell();
-
-        send_packets_from_ton~udict_set(64, next_packet_seq, emit_data.begin_parse());
         next_packet_seq = next_packet_seq + 1;
 
         emit_log_simple(my_address().slice_hash(), emit_data, query_id);
@@ -465,7 +476,7 @@ global cell send_packets_from_ton;
             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
             .store_uint(op::excesses(), 32)
             .store_uint(query_id, 64);
-        send_raw_message(msg.end_cell(), IGNORE_ERRORS + NORMAL);
+        send_raw_message(msg.end_cell(), IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
         
         save_data();
         return ();
@@ -484,6 +495,23 @@ global cell send_packets_from_ton;
         in_msg_body~load_uint(64); ;; skip query_id
         cell new_contract = in_msg_body~load_ref();
         set_code(new_contract);
+        return ();
+    }
+
+    if (op == op::change_jetton_wallet_code) {
+        throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        in_msg_body~load_uint(64); ;; skip query_id
+        cell new_jetton_wallet_code = in_msg_body~load_ref();
+        jetton_wallet_code = new_jetton_wallet_code;
+        save_data();
+        return ();
+    }
+
+    if (op == op::change_light_client_master) {
+        throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        in_msg_body~load_uint(64); ;; skip query_id
+        light_client_master = in_msg_body~load_msg_addr();
+        save_data();
         return ();
     }
 

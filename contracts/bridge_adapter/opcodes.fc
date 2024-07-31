@@ -5,10 +5,10 @@ const op::ack_timeout = "op::ack_timeout"c;
 const op::send_to_cosmos = "op::send_to_cosmos"c;
 const op::timeout_send_packet = "op::timeout_send_packet"c;
 const op::bridge_ton = "op::bridge_ton"c;
+const op::change_jetton_wallet_code = "op::change_jetton_wallet_code"c;
+const op::change_light_client_master = "op::change_light_client_master"c;
 
 ;; admin op
 const op::set_paused = 1;
-
 const op::upgrade_contract = 2;
-
 const op::change_admin = 3;

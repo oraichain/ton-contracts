@@ -22,23 +22,25 @@ export abstract class Op {
 
     static provide_wallet_address = 0x2c76b973;
     static take_wallet_address = 0xd1735400;
-    static mint = 0x15;
+    static mint = 0x642b7d07;
     static change_admin = 3;
     static change_content = 4;
+    static top_up = 0xd372158c;
 }
 
-export type JettonMinterConfig = {
+export type TetherMinterConfig = {
     adminAddress: Address;
     jettonWalletCode: Cell;
     content: Cell;
 };
 
-export function jettonMinterConfigToCell(config: JettonMinterConfig): Cell {
+export function tetherMinterConfigToCell(config: TetherMinterConfig): Cell {
     return beginCell()
         .storeCoins(0)
         .storeAddress(config.adminAddress)
-        .storeRef(config.content)
+        .storeAddress(null)
         .storeRef(config.jettonWalletCode)
+        .storeRef(config.content)
         .endCell();
 }
 
@@ -48,27 +50,30 @@ export interface MintJettonInterface {
     amount: bigint;
 }
 
-export class JettonMinter implements Contract {
+export class TetherMinter implements Contract {
     constructor(
         readonly address: Address,
         readonly init?: { code: Cell; data: Cell },
     ) {}
 
     static createFromAddress(address: Address) {
-        return new JettonMinter(address);
+        return new TetherMinter(address);
     }
 
-    static createFromConfig(config: JettonMinterConfig, code: Cell, workchain = 0) {
-        const data = jettonMinterConfigToCell(config);
+    static createFromConfig(config: TetherMinterConfig, code: Cell, workchain = 0) {
+        const data = tetherMinterConfigToCell(config);
         const init = { code, data };
-        return new JettonMinter(contractAddress(workchain, init), init);
+        return new TetherMinter(contractAddress(workchain, init), init);
     }
 
     async sendDeploy(provider: ContractProvider, via: Sender, ops: ValueOps) {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             ...ops,
-            body: beginCell().endCell(),
+            body: beginCell()
+                .storeUint(Op.top_up, 32)
+                .storeUint(ops.queryId || 0, 64)
+                .endCell(),
         });
     }
 
@@ -98,22 +103,6 @@ export class JettonMinter implements Contract {
                         .endCell(),
                 )
                 .endCell(),
-        });
-    }
-
-    static changeAdminMessage(newOwner: Address) {
-        return beginCell()
-            .storeUint(Op.change_admin, 32)
-            .storeUint(0, 64) // op, queryId
-            .storeAddress(newOwner)
-            .endCell();
-    }
-
-    async sendChangeAdmin(provider: ContractProvider, via: Sender, newOwner: Address) {
-        await provider.internal(via, {
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: JettonMinter.changeAdminMessage(newOwner),
-            value: toNano('0.05'),
         });
     }
 

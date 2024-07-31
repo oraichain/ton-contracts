@@ -6,5 +6,6 @@ const int error::invalid_verify_receipt = 405;
 const int error::invalid_height = 406;
 const int error::not_match_address = 407;
 const int error::not_match_chain_id = 408;
-const int error::invalid_state = 409;
 const int error::invalid_sender = 409;
+const int error::client_expired = 410;
+const int error::unauthorized_sender = 411;
