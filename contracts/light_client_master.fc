@@ -13,6 +13,7 @@
 #include "common/gas.fc";
 #include "common/errors.fc";
 
+global slice admin; ;; update contract only for early stage
 ;; store in a header_ref
 global int trusting_period;
 global int trusted_height;
@@ -22,11 +23,13 @@ global cell light_client_code;
 ;; https://github.com/cosmos/ics23/blob/c7c728879896fb260fe76b208ea6a17c2b0132a3/js/src/generated/codecimpl.d.ts#L705
 global cell specs;
 
+
 () preload_data(slice ds) impure {
     trusting_period = ds~load_uint(32);
     trusted_height = ds~load_uint(64);
     light_client_code = ds~load_ref();
     specs = ds~load_ref();
+    admin = ds~load_msg_addr();
     chain_id = ds;
 }
 
@@ -40,6 +43,7 @@ global cell specs;
     return begin_cell()
             .store_uint(trusting_period, 32)
             .store_uint(trusted_height, 64)
+            .store_slice(admin)
             .store_slice(chain_id)
             .store_ref(light_client_code)
             .store_ref(specs)
@@ -232,7 +236,9 @@ global cell specs;
         slice slice_header = header.begin_parse();
         slice inner_header = slice_header~load_ref().begin_parse();
         int height = inner_header~load_uint(32);
-        trusted_height = height;
+        if (height > trusted_height) {
+            trusted_height = height;
+        }
         save_data();
         ;; refund excess money to user
         var msg = begin_cell()
@@ -279,6 +285,28 @@ global cell specs;
         return ();
     }
 
+    if (op == op::upgrade_contract) {
+        throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        cell new_contract = in_msg_body~load_ref();
+        set_code(new_contract);
+        return ();
+    }
+
+    if (op == op::change_light_client_code) {
+        throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        cell new_light_client_code = in_msg_body~load_ref();
+        light_client_code = new_light_client_code;
+        save_data();
+        return ();
+    }
+
+    if (op == op::change_admin) {
+        throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
+        admin = in_msg_body~load_msg_addr();
+        save_data();
+        return ();
+    }
+
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
 }
 
@@ -295,4 +323,15 @@ slice get_chain_id() method_id {
 cell get_light_client_code() method_id {
     load_data();
     return light_client_code;
+}
+
+slice get_admin_address() method_id {
+    load_data();
+    return admin;
+}
+
+slice get_light_client_address(int height) method_id {
+    load_data();
+    slice light_client_address = calculate_specific_light_client_address(height, chain_id, my_address(), trusting_period,light_client_code);
+    return light_client_address;
 }

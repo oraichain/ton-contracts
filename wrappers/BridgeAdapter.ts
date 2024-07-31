@@ -59,6 +59,7 @@ export const BridgeAdapterOpcodes = {
     callbackDenom: crc32('op::callback_denom'),
     bridgeTon: crc32('op::bridge_ton'),
     changeJettonWalletCode: crc32('op::change_jetton_wallet_code'),
+    changeLightClientMaster: crc32('op::change_light_client_master'),
     setPaused: 1,
     upgradeContract: 2,
     changeAdmin: 3,
@@ -253,6 +254,23 @@ export class BridgeAdapter implements Contract {
             ...ops,
             body: beginCell()
                 .storeUint(BridgeAdapterOpcodes.changeAdmin, 32)
+                .storeUint(ops.queryId ?? 0, 64)
+                .storeAddress(admin)
+                .endCell(),
+        });
+    }
+
+    async sendChangeLightClientMaster(
+        provider: ContractProvider,
+        via: Sender,
+        admin: Address,
+        ops: ValueOps,
+    ) {
+        await provider.internal(via, {
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            ...ops,
+            body: beginCell()
+                .storeUint(BridgeAdapterOpcodes.changeLightClientMaster, 32)
                 .storeUint(ops.queryId ?? 0, 64)
                 .storeAddress(admin)
                 .endCell(),

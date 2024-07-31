@@ -42,6 +42,7 @@ async function deploy() {
                 specs: cellSpecs!,
                 trustedHeight: 0,
                 trustingPeriod: 14 * 86400,
+                adminAddress: walletContract.address,
             },
             await compile('LightClientMaster'),
         ),
@@ -110,7 +111,7 @@ async function deploy() {
     // old old: EQArWlaBgdGClwJrAkQjQP_8zxIK_bdgbH-6qdl4f5JEfo3r
     // BRIDGE ADAPTER
     const tonBridge = BridgeAdapter.createFromAddress(
-        Address.parse('EQASlo5_ZTuknZ5oZkM7RmPXN2oNOKk3usg4NMYBDf2VsTwk'),
+        Address.parse('EQC-aFP0rJXwTgKZQJPbPfTSpBFc8wxOgKHWD9cPvOl_DnaY'),
     );
     const tonBridgeContract = client.open(tonBridge);
 

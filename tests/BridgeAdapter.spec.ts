@@ -247,6 +247,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                     trustedHeight: 0,
                     trustingPeriod: 14 * 86400,
                     specs: cellSpecs!,
+                    adminAddress: deployer.address,
                 },
                 lightClientMasterCode,
             ),
@@ -1007,6 +1008,22 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             expect(adminAddress.equals(newOwner.address)).toBeTruthy();
         });
 
+        it('should change light client master of contract', async () => {
+            const newContract = await blockchain.treasury('new_light_client_master');
+            await bridgeAdapter.sendChangeLightClientMaster(
+                deployer.getSender(),
+                newContract.address,
+                {
+                    value: toNano('0.01'),
+                },
+            );
+            const cell = await bridgeAdapter.getBridgeData();
+            const { lightClientMasterAddress } = BridgeAdapter.parseBridgeDataResponse(
+                cell.readCell(),
+            );
+            expect(lightClientMasterAddress.equals(newContract.address)).toBeTruthy();
+        });
+
         it('should change admin to multisig wallet', async () => {
             // arrange
             const _libs = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
@@ -1265,6 +1282,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
                     trustedHeight: 0,
                     trustingPeriod: 14 * 86400,
                     specs: cellSpecs!,
+                    adminAddress: deployer.address,
                 },
                 lightClientMasterCode,
             ),
