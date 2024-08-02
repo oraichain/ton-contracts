@@ -58,11 +58,13 @@ import * as lightClient_28353959 from './fixtures/light_client_28353959.json';
 import * as lightClient_28358436 from './fixtures/light_client_28358436.json';
 import * as lightClient_28359916 from './fixtures/light_client_28359916.json';
 import * as lightClient_28388309 from './fixtures/light_client_28388309.json';
+import * as lightClient_29129251 from './fixtures/light_client_29129251.json';
 
 import * as bridgeToTonProofsSrcCosmos from './fixtures/bridgeToTonProofs.json';
 import * as bridgeToTonProofsSrcTon from './fixtures/bridgeToTonProofs2.json';
 import * as bridgeToTonProofsTon from './fixtures/bridgeToTonProofs3.json';
 import * as bridgeToTonProofsTether from './fixtures/bridgeToTonProofs4.json';
+import * as bridgeToTonProofs5 from './fixtures/bridgeToTonProofs5.json';
 import * as multiplePacketProofs from './fixtures/multiplePacketProofs.json';
 import * as sendToCosmosTimeoutProof from './fixtures/sendToCosmosTimeoutProof.json';
 import * as sendToCosmosTimeoutOtherProof from './fixtures/sendToCosmosTimeoutOtherProof.json';
@@ -742,6 +744,97 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 proofs: getExistenceProofSnakeCell(existenceProofs)!,
                 packet,
                 provenHeight: 28353959,
+            },
+            { value: toNano('1') },
+        );
+        console.log('=====================================');
+        printTransactionFees(sendRecvResult.transactions);
+        let deployerAfterBalance = await deployer.getBalance();
+        const userTonBalance = await user.getBalance();
+        expect(userTonBalance).toBeGreaterThan(9000000n);
+        let updatedBalance = deployerAfterBalance - deployerBeforeBalance;
+        expect(updatedBalance).toBeGreaterThan(500000000);
+        expect(updatedBalance).toBeLessThan(622664000);
+        expect(userTonBalance).toBeLessThan(transferAmount);
+    });
+
+    it('should send ton to TON on failed case 02/08/2024', async () => {
+        const bridgeWasmAddress = 'orai159l8l9c5ckhqpuwdfgs9p4v599nqt3cjlfahalmtrhfuncnec2ms5mz60e';
+        bridgeAdapter = blockchain.openContract(
+            BridgeAdapter.createFromConfig(
+                {
+                    light_client_master: lightClientMaster.address,
+                    bridge_wasm_smart_contract: bridgeWasmAddress,
+                    jetton_wallet_code: jettonWalletCode,
+                    whitelist_denom: whitelistDenom.address,
+                    paused: Paused.UNPAUSED,
+                    admin: deployer.address,
+                },
+                bridgeAdapterCode,
+            ),
+        );
+
+        const deployBridgeResult = await bridgeAdapter.sendDeploy(deployer.getSender(), {
+            value: toNano('1'),
+        });
+        expect(deployBridgeResult.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: bridgeAdapter.address,
+            deploy: true,
+            success: true,
+        });
+
+        const bech32Address = fromBech32('orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd').data;
+        const packet = beginCell()
+            .storeUint(2928262747, 32)
+            .storeUint(29, 64)
+            .storeUint(TokenOrigin.TON, 32) // crcSrc
+            .storeUint(3000000000, 128) // amount
+            .storeUint(1722600052, 64) // timeout
+            .storeAddress(Address.parse('UQAW5Tsp2mMja-syAH_jw9j7a4dFICcaHHcq8xu0k-_YzpIW')) // remote_receiver
+            .storeAddress(null) // remote_denom
+            .storeRef(
+                beginCell()
+                    .storeUint(bech32Address.length, 8)
+                    .storeBuffer(Buffer.from(bech32Address))
+                    .endCell(),
+            )
+            .endCell();
+        const packet_cell = packet.hash();
+        console.log(BigInt('0x' + packet_cell.toString('hex')));
+
+        //#region script fetch data
+        const height = 29129250;
+        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        const queryClient = new QueryClient(tendermint37 as any);
+        const data = await getPacketProofs(queryClient, bridgeWasmAddress, height, 29n);
+        writeFileSync(
+            resolve(__dirname, './fixtures/bridgeToTonProofs5.json'),
+            JSON.stringify(data),
+        );
+        const { header, lastCommit, validators } = await createUpdateClientData(
+            'https://rpc.orai.io',
+            height + 1,
+        );
+        writeFileSync(
+            resolve(__dirname, `./fixtures/light_client_${height + 1}.json`),
+            JSON.stringify({ header, lastCommit, validators }),
+        );
+        //#endregion
+
+        let provenBlockHeight = height + 1;
+        await updateBlock(lightClient_29129251 as any, deployer);
+        const existenceProofs = Object.values(bridgeToTonProofs5)
+            .slice(0, 2)
+            .map(ExistenceProof.fromJSON);
+
+        let deployerBeforeBalance = (await deployer.getBalance()) - toNano('1');
+        const sendRecvResult = await bridgeAdapter.sendBridgeRecvPacket(
+            deployer.getSender(),
+            {
+                proofs: getExistenceProofSnakeCell(existenceProofs)!,
+                packet,
+                provenHeight: provenBlockHeight,
             },
             { value: toNano('1') },
         );

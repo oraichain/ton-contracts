@@ -67,7 +67,6 @@ global cell send_packets_from_ton;
     cell packet = body~load_ref();
     slice packet_slice = packet.begin_parse();
     (int opcode_packet, int seq, int token_origin, int amount, int timeout) = (packet_slice~load_uint(32), packet_slice~load_uint(64), packet_slice~load_uint(32), packet_slice~load_uint(128), packet_slice~load_uint(64));
-
     if (is_packet_existed == 0){
         cell emit_ack = begin_cell()
                         .store_uint(opcode_packet, 32)
@@ -126,8 +125,9 @@ global cell send_packets_from_ton;
         }
 
         if (token_origin == token_origin::ton){
+
             if (jetton_master.preload_uint(2) == 0) {
-                int refund_amount = msg_value - amount - gas::send_ton; 
+                int refund_amount = msg_value - gas::send_ton; 
                 send_empty_message(amount, to , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
                 send_empty_message(refund_amount, response_address , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
             } else {

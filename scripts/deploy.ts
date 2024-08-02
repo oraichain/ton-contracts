@@ -2,7 +2,7 @@ import { compile } from '@ton/blueprint';
 import { createTonWallet, waitSeqno } from './utils';
 import { Address, beginCell, Cell, toNano } from '@ton/core';
 import { WhitelistDenom } from '../wrappers/WhitelistDenom';
-import { BridgeAdapter, Paused } from '../wrappers/BridgeAdapter';
+import { BridgeAdapter, BridgeAdapterOpcodes, Paused } from '../wrappers/BridgeAdapter';
 import { LightClientMaster } from '../wrappers/LightClientMaster';
 import { iavlSpec, tendermintSpec } from '../wrappers/specs';
 import { getSpecCell } from '../wrappers';
@@ -115,14 +115,45 @@ async function deploy() {
     );
     const tonBridgeContract = client.open(tonBridge);
 
-    await tonBridgeContract.sendUpgradeContract(
-        walletContract.sender(key.secretKey),
-        await compile('BridgeAdapter'),
-        {
-            value: toNano('0.03'),
-        },
+    const code = await compile('BridgeAdapter');
+    console.log(
+        beginCell()
+            .storeUint(BridgeAdapterOpcodes.upgradeContract, 32)
+            .storeUint(0, 64)
+            .storeRef(code)
+            .endCell()
+            .toBoc()
+            .toString('hex'),
     );
-    await waitSeqno(walletContract, await walletContract.getSeqno());
+
+    // console.log(await lightClientMaster.getAdminAddress());
+
+    // await tonBridgeContract.sendChangeAdmin(
+    //     walletContract.sender(key.secretKey),
+    //     Address.parse('EQBgqE-BNL369F2ZxaFNzWj8rdhz15bJW5ILWJ46BT7_DATB'),
+    //     {
+    //         value: toNano('0.01'),
+    //     },
+    // );
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
+
+    // await lightClientMaster.sendChangeAdmin(
+    //     walletContract.sender(key.secretKey),
+    //     Address.parse('EQBgqE-BNL369F2ZxaFNzWj8rdhz15bJW5ILWJ46BT7_DATB'),
+    //     {
+    //         value: toNano('0.01'),
+    //     },
+    // );
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
+
+    // await tonBridgeContract.sendUpgradeContract(
+    //     walletContract.sender(key.secretKey),
+    //     await compile('BridgeAdapter'),
+    //     {
+    //         value: toNano('0.03'),
+    //     },
+    // );
+    // await waitSeqno(walletContract, await walletContract.getSeqno());
 
     // const tonBridge = BridgeAdapter.createFromConfig(
     //     {
