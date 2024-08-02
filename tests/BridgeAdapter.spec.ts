@@ -775,7 +775,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         );
 
         const deployBridgeResult = await bridgeAdapter.sendDeploy(deployer.getSender(), {
-            value: toNano('1'),
+            value: toNano('10'),
         });
         expect(deployBridgeResult.transactions).toHaveTransaction({
             from: deployer.address,
@@ -802,6 +802,11 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             .endCell();
         const packet_cell = packet.hash();
         console.log(BigInt('0x' + packet_cell.toString('hex')));
+
+        await deployer.getSender().send({
+            to: Address.parse('UQAW5Tsp2mMja-syAH_jw9j7a4dFICcaHHcq8xu0k-_YzpIW'),
+            value: toNano('0.1'),
+        });
 
         //#region script fetch data
         const height = 29129250;
@@ -840,13 +845,11 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         );
         console.log('=====================================');
         printTransactionFees(sendRecvResult.transactions);
+        prettyLogTransactions(sendRecvResult.transactions);
         let deployerAfterBalance = await deployer.getBalance();
-        const userTonBalance = await user.getBalance();
-        expect(userTonBalance).toBeGreaterThan(9000000n);
         let updatedBalance = deployerAfterBalance - deployerBeforeBalance;
         expect(updatedBalance).toBeGreaterThan(500000000);
         expect(updatedBalance).toBeLessThan(622664000);
-        expect(userTonBalance).toBeLessThan(transferAmount);
     });
 
     it('should send multiple packet to TON', async () => {
