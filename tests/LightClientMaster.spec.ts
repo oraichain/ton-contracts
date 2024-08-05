@@ -13,6 +13,7 @@ import {
 import { HashOp, LengthOp, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { crc32 } from '../crc32';
 import { iavlSpec, tendermintSpec } from '../wrappers/specs';
+import { LightClient } from '../wrappers';
 
 describe('LightClientMaster', () => {
     let code: Cell;
@@ -75,6 +76,7 @@ describe('LightClientMaster', () => {
         });
     });
 
+    // Notice: update to latest (not pruned height if the test failed)
     it('test light client master verify block hash', async () => {
         const testcase = async (blockNumber: any) => {
             const { header, lastCommit, validators } = await createUpdateClientData(
@@ -102,9 +104,27 @@ describe('LightClientMaster', () => {
             });
 
             console.log(`blockhash:`, LightClientMasterOpcodes.verify_block_hash);
-            expect(await lightClientMaster.getTrustedHeight()).toBe(blockNumber);
         };
-        await testcase(26185906);
-        await testcase(26265993);
-    });
+        await testcase(28859003);
+        expect(await lightClientMaster.getTrustedHeight()).toBe(28859003);
+        await testcase(28869004);
+        let address = await lightClientMaster.getLightClientAddress(28869004n);
+        let lightClientContract = LightClient.createFromAddress(address);
+        let lightClient = blockchain.openContract(lightClientContract);
+        let timestamp = await lightClient.getCreatedAt();
+        expect(Math.floor(new Date('2024-07-30T19:01:56.190013602Z').getTime() / 1000)).toBe(
+            timestamp,
+        );
+        expect(await lightClientMaster.getTrustedHeight()).toBe(28869004);
+
+        await testcase(28859004);
+        address = await lightClientMaster.getLightClientAddress(28859004n);
+        lightClientContract = LightClient.createFromAddress(address);
+        lightClient = blockchain.openContract(lightClientContract);
+        timestamp = await lightClient.getCreatedAt();
+        expect(Math.floor(new Date('2024-07-30T16:34:21.245505389Z').getTime() / 1000)).toBe(
+            timestamp,
+        );
+        expect(await lightClientMaster.getTrustedHeight()).toBe(28869004);
+    }, 10000);
 });

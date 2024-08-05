@@ -8,7 +8,7 @@ slice get_validator_hash(slice header) inline_ref {
 }
 
 ;; return_type (height, chain_id, next_validator_hash)
-(int, slice, slice, slice) get_data_from_header(slice header) inline_ref {
+(int, slice, slice, slice, slice) get_data_from_header(slice header) inline_ref {
     slice inner_header = header~load_ref().begin_parse();
     slice version = inner_header~load_ref().begin_parse();
     slice chain_id = inner_header~load_ref().begin_parse();
@@ -22,7 +22,7 @@ slice get_validator_hash(slice header) inline_ref {
     slice second_hashes = header~load_ref().begin_parse();
     second_hashes~load_ref();
     slice app_hash = second_hashes~load_ref().begin_parse();
-    return (height, chain_id, app_hash, validators_hash);
+    return (height, time, chain_id, app_hash, validators_hash);
 }
 
 (cell, cell, cell) parse_verify_light_client_body(slice ds) inline_ref {

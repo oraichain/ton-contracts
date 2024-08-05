@@ -117,6 +117,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             ...blockchain.verbosity,
             // vmLogs: 'vm_logs_gas',
         };
+        blockchain.now = 1651623658;
         // SET UP WHITELIST DENOM
         // THIS USDT token will be used for case we want to send USDT to Oraichain from TON
         usdtDeployer = await blockchain.treasury('usdt_deployer');
@@ -871,6 +872,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             ...blockchain.verbosity,
             // vmLogs: 'vm_logs_gas',
         };
+        blockchain.now = 1720603835;
         // SET UP WHITELIST DENOM
         // THIS USDT token will be used for case we want to send USDT to Oraichain from TON
         usdtDeployer = await blockchain.treasury('usdt_deployer');

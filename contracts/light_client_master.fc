@@ -22,6 +22,7 @@ global cell light_client_code;
 ;; https://github.com/cosmos/ics23/blob/c7c728879896fb260fe76b208ea6a17c2b0132a3/js/src/generated/codecimpl.d.ts#L705
 global cell specs;
 
+
 () preload_data(slice ds) impure {
     trusting_period = ds~load_uint(32);
     trusted_height = ds~load_uint(64);
@@ -232,7 +233,9 @@ global cell specs;
         slice slice_header = header.begin_parse();
         slice inner_header = slice_header~load_ref().begin_parse();
         int height = inner_header~load_uint(32);
-        trusted_height = height;
+        if (height > trusted_height) {
+            trusted_height = height;
+        }
         save_data();
         ;; refund excess money to user
         var msg = begin_cell()
@@ -292,7 +295,8 @@ slice get_chain_id() method_id {
     return chain_id;
 }
 
-cell get_light_client_code() method_id {
+slice get_light_client_address(int height) method_id {
     load_data();
-    return light_client_code;
+    slice light_client_address = calculate_specific_light_client_address(height, chain_id, my_address(), trusting_period,light_client_code);
+    return light_client_address;
 }

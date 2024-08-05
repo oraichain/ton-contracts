@@ -105,4 +105,14 @@ export class LightClientMaster implements Contract {
         const result = await provider.get('get_chain_id', []);
         return result.stack.readBuffer().toString('utf-8');
     }
+
+    async getLightClientAddress(provider: ContractProvider, height: bigint) {
+        const result = await provider.get('get_light_client_address', [
+            {
+                type: 'int',
+                value: height,
+            },
+        ]);
+        return result.stack.readAddress();
+    }
 }

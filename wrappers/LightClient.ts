@@ -96,13 +96,23 @@ export class LightClient implements Contract {
         return result.stack.readNumber();
     }
 
+    async getTrustingPeriod(provider: ContractProvider) {
+        const result = await provider.get('get_trusting_period', []);
+        return result.stack.readNumber();
+    }
+
+    async getCreatedAt(provider: ContractProvider) {
+        const result = await provider.get('get_created_at', []);
+        return result.stack.readNumber();
+    }
+
     async getChainId(provider: ContractProvider) {
         const result = await provider.get('get_chain_id', []);
         return result.stack.readBuffer().toString('utf-8');
     }
 
-    async getDataHash(provider: ContractProvider) {
-        const result = await provider.get('get_data_hash', []);
+    async getAppHash(provider: ContractProvider) {
+        const result = await provider.get('get_app_hash', []);
         return result.stack.readBuffer();
     }
 
