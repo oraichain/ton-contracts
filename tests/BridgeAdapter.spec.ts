@@ -809,23 +809,23 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             value: toNano('0.1'),
         });
 
-        //#region script fetch data
         const height = 29129250;
-        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
-        const queryClient = new QueryClient(tendermint37 as any);
-        const data = await getPacketProofs(queryClient, bridgeWasmAddress, height, 29n);
-        writeFileSync(
-            resolve(__dirname, './fixtures/bridgeToTonProofs5.json'),
-            JSON.stringify(data),
-        );
-        const { header, lastCommit, validators } = await createUpdateClientData(
-            'https://rpc.orai.io',
-            height + 1,
-        );
-        writeFileSync(
-            resolve(__dirname, `./fixtures/light_client_${height + 1}.json`),
-            JSON.stringify({ header, lastCommit, validators }),
-        );
+        //#region script fetch data
+        // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        // const queryClient = new QueryClient(tendermint37 as any);
+        // const data = await getPacketProofs(queryClient, bridgeWasmAddress, height, 29n);
+        // writeFileSync(
+        //     resolve(__dirname, './fixtures/bridgeToTonProofs5.json'),
+        //     JSON.stringify(data),
+        // );
+        // const { header, lastCommit, validators } = await createUpdateClientData(
+        //     'https://rpc.orai.io',
+        //     height + 1,
+        // );
+        // writeFileSync(
+        //     resolve(__dirname, `./fixtures/light_client_${height + 1}.json`),
+        //     JSON.stringify({ header, lastCommit, validators }),
+        // );
         //#endregion
 
         let provenBlockHeight = height + 1;
@@ -1286,6 +1286,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             ...blockchain.verbosity,
             // vmLogs: 'vm_logs_gas',
         };
+        blockchain.now = 1720603836;
 
         // SET UP WHITELIST DENOM
         // THIS USDT token will be used for case we want to send USDT to Oraichain from TON

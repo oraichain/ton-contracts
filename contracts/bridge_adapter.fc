@@ -192,7 +192,7 @@ global cell send_packets_from_ton;
 
             if (token_origin == token_origin::ton){
                 if (jetton_master.preload_uint(2) == 0) {
-                    int refund_amount = msg_value - amount - gas::send_ton; 
+                    int refund_amount = msg_value - gas::send_ton; 
                     send_empty_message(amount,to, IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
                     send_empty_message(refund_amount, response_address , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
                 } else {
