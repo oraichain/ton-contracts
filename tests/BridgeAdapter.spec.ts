@@ -851,6 +851,13 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         let updatedBalance = deployerAfterBalance - deployerBeforeBalance;
         expect(updatedBalance).toBeGreaterThan(500000000);
         expect(updatedBalance).toBeLessThan(622664000);
+
+        let receiverBalance = (
+            await blockchain.getContract(
+                Address.parse('UQAW5Tsp2mMja-syAH_jw9j7a4dFICcaHHcq8xu0k-_YzpIW'),
+            )
+        ).balance;
+        expect(receiverBalance).toBe(3000000000n);
     });
 
     it('should send multiple packet to TON', async () => {

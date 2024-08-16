@@ -127,8 +127,9 @@ global cell send_packets_from_ton;
         if (token_origin == token_origin::ton){
             if (jetton_master.preload_uint(2) == 0) {
                 int refund_amount = msg_value - gas::send_ton; 
-                send_empty_message(amount, to , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
-                send_empty_message(refund_amount, response_address , IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
+                cell empty_cell = begin_cell().end_cell();
+                send_message_nobounce(amount, to, empty_cell, IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
+                send_message_nobounce(refund_amount, response_address, empty_cell, IGNORE_ERRORS + SEND_MODE_PAY_FEES_SEPARETELY);
             } else {
                 slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master, jetton_wallet_code);
                 cell body = begin_cell()
