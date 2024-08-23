@@ -432,7 +432,7 @@ global cell send_packets_from_ton;
         int remote_receiver_address = ds~load_uint(remote_receiver_bits_len);
         
         cell memo = ds~load_ref();
-        throw_unless(error::invalid_native_amount, msg_value > amount + fee::bridge_ton);
+        throw_unless(error::invalid_native_amount, msg_value > (amount + fee::bridge_ton));
         int remaining_gas = msg_value - amount - fee::bridge_ton;
         
         builder emit_data_builder = begin_cell()
