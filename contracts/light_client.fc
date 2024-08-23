@@ -133,7 +133,6 @@ global slice light_client_master_address;
         validator = validators;
         created_at = timestamp;
         save_data();
-
         builder bodyBuilder = begin_cell();
         bodyBuilder = bodyBuilder 
                     .store_uint(op::finalize_verify_light_client, 32)
