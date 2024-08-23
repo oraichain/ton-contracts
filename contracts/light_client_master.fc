@@ -78,7 +78,7 @@ global cell specs;
     int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
 
     if (op == op::verify_block_hash) {
-        throw_unless(error::not_enough_gas, msg_value >= gas::update_block);
+        throw_unless(error::not_enough_gas, msg_value >= fee::update_block);
         ;; store block data
         slice ds = in_msg_body~load_ref().begin_parse();
         (cell header, cell validators_cell, cell commit) = parse_verify_light_client_body(ds);
