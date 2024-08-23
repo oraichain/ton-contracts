@@ -328,21 +328,15 @@ global cell send_packets_from_ton;
         int remote_receiver_byte_len = either_forward_payload~load_uint(8);
         int remote_receiver_bits_len = remote_receiver_byte_len << 3;
         int remote_receiver = either_forward_payload~load_uint(remote_receiver_bits_len);
-        
         slice ref_slice = either_forward_payload~load_ref().begin_parse();
-        slice jetton_master_address = ref_slice~load_msg_addr();
         int timeout = ref_slice~load_uint(64);
-
         cell memo = either_forward_payload~load_ref();
-        slice calculate_sender = calculate_user_jetton_wallet_address(my_address(), jetton_master_address, jetton_wallet_code);
-        ;; validate jetton_master_address is valid
-        throw_unless(error::unauthorized_sender, compare_address(sender_address ,calculate_sender));
-        slice from_jetton_address = calculate_user_jetton_wallet_address(from_address, from_address, jetton_wallet_code);
+        
         builder bodyBuilder = begin_cell()
                                 .store_uint(op::query_denom, 32)
                                 .store_uint(query_id, 64)
                                 .store_ref(begin_cell()
-                                    .store_slice(jetton_master_address)
+                                    .store_slice(sender_address)
                                     .store_coins(jetton_amount)
                                     .store_uint(timeout, 64)
                                     .store_uint(remote_receiver_byte_len, 8)
@@ -367,7 +361,7 @@ global cell send_packets_from_ton;
         throw_unless(error::unsupported_denom, existed);
         int is_root_from_ton = ds~load_int(8);
         
-        slice jetton_master_address = ds~load_msg_addr();
+        slice token_wallet = ds~load_msg_addr();
         int amount = ds~load_coins();
         int timeout = ds~load_uint(64);
         
@@ -386,7 +380,7 @@ global cell send_packets_from_ton;
                             .store_uint(timeout, 64)
                             .store_uint(remote_receiver_byte_len, 8)
                             .store_uint(remote_receiver_address, remote_receiver_bits_len)
-                            .store_slice(jetton_master_address)
+                            .store_slice(token_wallet)
                             .store_ref(
                                 begin_cell()
                                 .store_slice(response_address) ;; local_sender
@@ -401,14 +395,13 @@ global cell send_packets_from_ton;
         next_packet_seq = next_packet_seq + 1;
         ;; execute burn if not from ton
         if (is_root_from_ton == 0) {
-            slice bridge_jetton_wallet = calculate_user_jetton_wallet_address(my_address(), jetton_master_address, jetton_wallet_code);
             var msg_body = begin_cell()
                             .store_uint(op::burn(), 32)
                             .store_uint(query_id, 64)
                             .store_coins(amount)
                             .store_slice(response_address)
                             .end_cell();
-            send_simple_message(0, bridge_jetton_wallet, msg_body, CARRY_REMAINING_GAS);
+            send_simple_message(0, token_wallet, msg_body, CARRY_REMAINING_GAS);
         } else {
             ;; should refund manually
             var msg = begin_cell()
@@ -493,7 +486,7 @@ global cell send_packets_from_ton;
         set_code(new_contract);
         return ();
     }
-
+    ;; deprecated
     if (op == op::change_jetton_wallet_code) {
         throw_unless(error::unauthorized_sender, compare_address(admin, sender_address));
         in_msg_body~load_uint(64); ;; skip query_id
