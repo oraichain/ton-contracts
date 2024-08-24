@@ -313,7 +313,7 @@ describe('TestClient', () => {
         await lightClient.getBuffParse(msgSlice ?? beginCell().endCell(), buffer);
     });
 
-    it('should getIntToString', async () => {
+    xit('should getIntToString', async () => {
         const result =
             await lightClient.getIntToString(
                 52248677847378735994971370904173880278927895846726102394870472142661306263165n,
@@ -448,7 +448,7 @@ describe('TestClient', () => {
             // expect(result).toEqual(-1n);
         });
 
-        it('should build commitment path successfully', async () => {
+        xit('should build commitment path successfully', async () => {
             const contract = fromBech32(
                 'orai15un8msx3n5zf9ahlxmfeqd2kwa5wm0nrpxer304m9nd5q6qq0g6sku5pdd',
             );

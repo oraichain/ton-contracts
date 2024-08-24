@@ -7,8 +7,8 @@ import { toHex } from '@cosmjs/encoding';
 import { sha256 } from '@cosmjs/crypto';
 import { decodeTxRaw } from '@cosmjs/proto-signing';
 import { TxBody } from 'cosmjs-types/cosmos/tx/v1beta1/tx';
-
-describe('TxBodyProtobuf', () => {
+// deprecated
+xdescribe('TxBodyProtobuf', () => {
     let code: Cell;
     beforeAll(async () => {
         code = await compile('TestClient');
@@ -33,7 +33,10 @@ describe('TxBodyProtobuf', () => {
 
         deployer = await blockchain.treasury('deployer');
 
-        const deployResult = await TxBodyProtobufEncode.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployResult = await TxBodyProtobufEncode.sendDeploy(
+            deployer.getSender(),
+            toNano('0.05'),
+        );
 
         expect(deployResult.transactions).toHaveTransaction({
             from: deployer.address,
@@ -71,7 +74,9 @@ describe('TxBodyProtobuf', () => {
             }
         }
 
-        expect(buffer.toString('hex')).toBe(Buffer.from(TxBody.encode(decodedTx.body).finish()).toString('hex'));
+        expect(buffer.toString('hex')).toBe(
+            Buffer.from(TxBody.encode(decodedTx.body).finish()).toString('hex'),
+        );
     });
     xit('slice to TxBodyEncode', async () => {
         console.log(
@@ -101,7 +106,9 @@ describe('TxBodyProtobuf', () => {
             }
         }
 
-        expect(buffer.toString('hex')).toBe(Buffer.from(TxBody.encode(decodedTx.body).finish()).toString('hex'));
+        expect(buffer.toString('hex')).toBe(
+            Buffer.from(TxBody.encode(decodedTx.body).finish()).toString('hex'),
+        );
     });
 
     it('test with memo', async () => {
@@ -122,6 +129,8 @@ describe('TxBodyProtobuf', () => {
             }
         }
 
-        expect(buffer.toString('hex')).toBe(Buffer.from(TxBody.encode(decodedTx.body).finish()).toString('hex'));
+        expect(buffer.toString('hex')).toBe(
+            Buffer.from(TxBody.encode(decodedTx.body).finish()).toString('hex'),
+        );
     });
 });
