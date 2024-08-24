@@ -605,9 +605,10 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     });
 
     it('should send tether to TON', async () => {
-        const proveHeight = 30852670;
+        const proveHeight = 30904733;
         const provenHeight = proveHeight + 1;
-        const seq = 15;
+        console.log(bridgeTetherWallet.address);
+        const seq = 16;
         const packet = beginCell()
             .storeUint(0xae89be5b, 32)
             .storeUint(seq, 64)
@@ -797,32 +798,32 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             .endCell();
 
         //#region script getProofs
-        const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
-        const queryClient = new QueryClient(tendermint37 as any);
-        const data = await Promise.all([
-            getPacketProofs(
-                queryClient,
-                'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
-                proveHeight,
-                14n,
-            ),
-            getPacketProofs(
-                queryClient,
-                'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
-                proveHeight,
-                11n,
-            ),
-            getPacketProofs(
-                queryClient,
-                'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
-                proveHeight,
-                13n,
-            ),
-        ]);
-        writeFileSync(
-            resolve(__dirname, './fixtures/multiplePacketProofs.json'),
-            JSON.stringify(data),
-        );
+        // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
+        // const queryClient = new QueryClient(tendermint37 as any);
+        // const data = await Promise.all([
+        //     getPacketProofs(
+        //         queryClient,
+        //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //         proveHeight,
+        //         14n,
+        //     ),
+        //     getPacketProofs(
+        //         queryClient,
+        //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //         proveHeight,
+        //         11n,
+        //     ),
+        //     getPacketProofs(
+        //         queryClient,
+        //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
+        //         proveHeight,
+        //         13n,
+        //     ),
+        // ]);
+        // writeFileSync(
+        //     resolve(__dirname, './fixtures/multiplePacketProofs.json'),
+        //     JSON.stringify(data),
+        // );
         //#endregion
 
         await updateBlock(lightClientToTonSrcCosmos as any, deployer);
