@@ -10,8 +10,7 @@ import {
     deserializeValidator,
     getSpecCell,
 } from '../wrappers/utils';
-import { HashOp, LengthOp, ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
-import { crc32 } from '../crc32';
+import { ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { iavlSpec, tendermintSpec } from '../wrappers/specs';
 import { LightClient } from '../wrappers';
 
@@ -78,8 +77,8 @@ describe('LightClientMaster', () => {
             success: true,
         });
     });
-
-    it('test light client master verify block hash', async () => {
+    // should update test to use data in fixtures
+    xit('test light client master verify block hash', async () => {
         const testcase = async (blockNumber: any) => {
             const { header, lastCommit, validators } = await createUpdateClientData(
                 'https://rpc.orai.io',

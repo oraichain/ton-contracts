@@ -1,5 +1,4 @@
 const int error::not_enough_gas = 1111;
-
 ;; this is config rooted from Tether USD contract
 const error::invalid_message = 49;
 const int error::wrong_workchain = 333;
