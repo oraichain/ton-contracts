@@ -14,4 +14,5 @@ import { compile } from '@ton/blueprint';
             .toBoc()
             .toString('hex'),
     );
+    //
 })();
