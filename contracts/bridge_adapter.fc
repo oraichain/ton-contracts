@@ -329,6 +329,7 @@ global cell send_packets_from_ton;
         int remote_receiver_bits_len = remote_receiver_byte_len << 3;
         int remote_receiver = either_forward_payload~load_uint(remote_receiver_bits_len);
         slice ref_slice = either_forward_payload~load_ref().begin_parse();
+        slice jetton_master_address = ref_slice~load_msg_addr();
         int timeout = ref_slice~load_uint(64);
         cell memo = either_forward_payload~load_ref();
         
@@ -337,6 +338,7 @@ global cell send_packets_from_ton;
                                 .store_uint(query_id, 64)
                                 .store_ref(begin_cell()
                                     .store_slice(sender_address)
+                                    .store_slice(jetton_master_address)
                                     .store_coins(jetton_amount)
                                     .store_uint(timeout, 64)
                                     .store_uint(remote_receiver_byte_len, 8)
@@ -362,6 +364,7 @@ global cell send_packets_from_ton;
         int is_root_from_ton = ds~load_int(8);
         
         slice token_wallet = ds~load_msg_addr();
+        slice jetton_master_wallet = ds~load_msg_addr();
         int amount = ds~load_coins();
         int timeout = ds~load_uint(64);
         
@@ -380,7 +383,7 @@ global cell send_packets_from_ton;
                             .store_uint(timeout, 64)
                             .store_uint(remote_receiver_byte_len, 8)
                             .store_uint(remote_receiver_address, remote_receiver_bits_len)
-                            .store_slice(token_wallet)
+                            .store_slice(is_root_from_ton ? token_wallet : jetton_master_wallet)
                             .store_ref(
                                 begin_cell()
                                 .store_slice(response_address) ;; local_sender

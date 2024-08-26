@@ -64,7 +64,7 @@ import * as bridgeToTonProofsTon from './fixtures/bridgeToTonTonNative.json';
 import * as multiplePacketProofs from './fixtures/multiplePacketProofs.json';
 
 import * as lightClient_28353959 from './fixtures/light_client_28353959.json';
-import * as lightClient_28358436 from './fixtures/light_client_28358436.json';
+import * as lightClientAckTonJettonTimeout from './fixtures/lightClientAckTonJettonTimeout.json';
 import * as lightClient_28359916 from './fixtures/light_client_28359916.json';
 import * as sendToCosmosTimeoutProof from './fixtures/sendToCosmosTimeoutProof.json';
 import * as sendToCosmosTimeoutOtherProof from './fixtures/sendToCosmosTimeoutOtherProof.json';
@@ -450,7 +450,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             jettonMinterSrcTon: jettonMinterSrcTon.address,
             bridgeJettonWalletSrcTon: bridgeJettonWalletSrcTon.address,
             bridgeJettonWalletSrcCosmos: bridgeJettonWalletSrcCosmos.toString(),
-            bridgeTetherWallet,
+            bridgeTetherWallet: bridgeTetherWallet.address,
             user: user.address,
             srcCosmos: TokenOrigin.COSMOS,
             srcTon: TokenOrigin.TON,
@@ -458,9 +458,9 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     });
 
     it('should send jetton token_origin::cosmos to TON', async () => {
-        const proveHeight = 30833482;
+        const proveHeight = 31113432;
         const provenHeight = proveHeight + 1;
-        const seq = 14;
+        const seq = 17;
         console.log({
             remoteDenom: jettonMinterSrcCosmos.address,
             remoteReceiver: user.address,
@@ -509,7 +509,6 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         //     JSON.stringify({ header, lastCommit, validators }),
         // );
         // #endregion;
-
         await updateBlock(lightClientToTonSrcCosmos as any, deployer);
         const existenceProofs = Object.values(bridgeToTonProofsSrcCosmos)
             .slice(0, 2)
@@ -537,12 +536,12 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             jettonMinterSrcTon: jettonMinterSrcTon.address,
             bridgeJettonWalletSrcTon: bridgeJettonWalletSrcTon.address,
         });
-        const proveHeight = 30824290;
+        const proveHeight = 31113433;
         const provenHeight = proveHeight + 1;
-
+        const seq = 18;
         const packet = beginCell()
             .storeUint(0xae89be5b, 32)
-            .storeUint(11, 64)
+            .storeUint(seq, 64)
             .storeUint(TokenOrigin.TON, 32)
             .storeUint(transferAmount, 128)
             .storeUint(timeout, 64)
@@ -566,7 +565,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         //     queryClient,
         //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
         //     proveHeight,
-        //     11n,
+        //     BigInt(seq),
         // );
         // writeFileSync(
         //     resolve(__dirname, './fixtures/bridgeToTonSrcTonProofs.json'),
@@ -605,10 +604,10 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     });
 
     it('should send tether to TON', async () => {
-        const proveHeight = 30904733;
+        const proveHeight = 31113440;
         const provenHeight = proveHeight + 1;
         console.log(bridgeTetherWallet.address);
-        const seq = 16;
+        const seq = 19;
         const packet = beginCell()
             .storeUint(0xae89be5b, 32)
             .storeUint(seq, 64)
@@ -673,9 +672,9 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     });
 
     it('should send ton to TON', async () => {
-        const proveHeight = 30824304;
+        const proveHeight = 31113447;
         const provenHeight = proveHeight + 1;
-        const seq = 13;
+        const seq = 20;
         const packet = beginCell()
             .storeUint(0xae89be5b, 32)
             .storeUint(seq, 64)
@@ -746,11 +745,11 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     });
 
     it('should send multiple packet to TON', async () => {
-        const proveHeight = 30833482;
+        const proveHeight = 31113447;
         const provenHeight = proveHeight + 1;
         const sendJettonSrcCosmosPacket = beginCell()
             .storeUint(0xae89be5b, 32) // op
-            .storeUint(14, 64) // seq
+            .storeUint(17, 64) // seq
             .storeUint(TokenOrigin.COSMOS, 32) // token_origin
             .storeUint(transferAmount, 128) // remote_amount
             .storeUint(timeout, 64) // timeout_timestamp
@@ -767,7 +766,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
 
         const sendJettonSrcTonPacket = beginCell()
             .storeUint(0xae89be5b, 32)
-            .storeUint(11, 64)
+            .storeUint(18, 64)
             .storeUint(TokenOrigin.TON, 32)
             .storeUint(transferAmount, 128)
             .storeUint(timeout, 64)
@@ -783,7 +782,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
 
         const sendTonPacket = beginCell()
             .storeUint(0xae89be5b, 32)
-            .storeUint(13, 64)
+            .storeUint(20, 64)
             .storeUint(TokenOrigin.TON, 32) // crcSrc
             .storeUint(transferAmount, 128) // amount
             .storeUint(timeout, 64) // timeout
@@ -805,19 +804,19 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         //         queryClient,
         //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
         //         proveHeight,
-        //         14n,
+        //         17n,
         //     ),
         //     getPacketProofs(
         //         queryClient,
         //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
         //         proveHeight,
-        //         11n,
+        //         18n,
         //     ),
         //     getPacketProofs(
         //         queryClient,
         //         'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
         //         proveHeight,
-        //         13n,
+        //         20n,
         //     ),
         // ]);
         // writeFileSync(
@@ -826,7 +825,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         // );
         //#endregion
 
-        await updateBlock(lightClientToTonSrcCosmos as any, deployer);
+        await updateBlock(lightClientBridgeToTonTonNative as any, deployer);
         const existenceProofs = Object.values(multiplePacketProofs)
             .slice(0, 3) // cut the default property
             .flat()
@@ -933,6 +932,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 {
                     fwdAmount: toNano(1),
                     jettonAmount: toNano(333),
+                    jettonMaster: tetherMinterContract.address,
                     toAddress: bridgeAdapter.address,
                     timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
                     remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
@@ -1448,11 +1448,12 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         });
     });
 
-    xit('Test send jetton token from ton to bridge adapter', async () => {
+    it('Test send jetton token from ton to bridge adapter', async () => {
+        const bridgeJettonWallet = await usdtMinterContract.getWalletAddress(bridgeAdapter.address);
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
             {
-                denom: usdtMinterContract.address,
+                denom: bridgeJettonWallet,
                 permission: true,
                 isRootFromTon: true,
             },
@@ -1472,6 +1473,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             {
                 fwdAmount: toNano(1),
                 jettonAmount: toNano(333),
+                jettonMaster: tetherMinterContract.address,
                 toAddress: bridgeAdapter.address,
                 timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
                 remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
@@ -1553,6 +1555,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             {
                 fwdAmount: toNano(1),
                 jettonAmount: toNano(333),
+                jettonMaster: tetherMinterContract.address,
                 toAddress: bridgeAdapter.address,
                 timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
                 remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
@@ -1647,6 +1650,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             {
                 fwdAmount: toNano(0.15),
                 jettonAmount: toNano(5),
+                jettonMaster: jettonMinterSrcCosmos.address,
                 toAddress: bridgeAdapter.address,
                 timeout: BigInt(calculateIbcTimeoutTimestamp(3600)),
                 remoteReceiver: 'orai1ehmhqcn8erf3dgavrca69zgp4rtxj5kqgtcnyd',
@@ -1713,11 +1717,12 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         const userJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
             deployer.address, // this is "user" treasury
         );
+        const bridgeJettonWallet = await jettonMinterSrcCosmos.getWalletAddress(
+            bridgeAdapter.address,
+        );
         const userJettonWalletBalance = JettonWallet.createFromAddress(userJettonWallet);
         const wallet = blockchain.openContract(userJettonWalletBalance);
 
-        console.log(deployer.getSender().address);
-        console.log(jettonMinterSrcCosmos.address);
         await jettonMinterSrcCosmos.sendMint(
             deployer.getSender(),
             {
@@ -1735,7 +1740,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
             {
-                denom: jettonMinterSrcCosmos.address,
+                denom: bridgeJettonWallet,
                 permission: true,
                 isRootFromTon: false,
             },
@@ -1754,6 +1759,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             {
                 fwdAmount: toNano(1),
                 jettonAmount: 10_000_000n,
+                jettonMaster: jettonMinterSrcCosmos.address,
                 toAddress: bridgeAdapter.address,
                 timeout: BigInt(timeout),
                 remoteReceiver: 'orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx',
@@ -1774,6 +1780,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         });
         expect(await jettonMinterSrcCosmos.getTotalsupply()).toBe(10_000_000_000n - 10_000_000n);
 
+        console.log(deployer.getSender().address, jettonMinterSrcCosmos.address);
         //#region script fetch data
         // const tendermint37 = await Tendermint37Client.connect('https://rpc.orai.io');
         // const queryClient = new QueryClient(tendermint37 as any);
@@ -1820,19 +1827,19 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     });
 
     it('Test timeout send jetton token from ton to bridge adapter', async () => {
-        const height = 28358435;
-        const timeout = 1720603835;
-        const bridgeUsdtAddress = await usdtMinterContract.getWalletAddress(bridgeAdapter.address);
+        const height = 31117871;
+        const timeout = 1724646494;
+        blockchain.now = 1724646500;
+        const bridgeJettonWallet = await usdtMinterContract.getWalletAddress(bridgeAdapter.address);
         console.log({
-            minter: usdtMinterContract.address,
-            bridgeUsdtAddress,
+            denom: usdtMinterContract.address,
             sender: usdtDeployer.getSender().address,
+            bridgeJettonWallet,
         });
-
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
             {
-                denom: bridgeUsdtAddress,
+                denom: bridgeJettonWallet,
                 permission: true,
                 isRootFromTon: true,
             },
@@ -1840,7 +1847,6 @@ describe('Ton->Cosmos BridgeAdapter', () => {
                 value: toNano(0.1),
             },
         );
-
         expect(result.transactions).toHaveTransaction({
             op: WhitelistDenomOpcodes.setDenom,
             success: true,
@@ -1860,21 +1866,47 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         usdtDeployerJettonWallet = blockchain.openContract(usdtJettonWallet);
         const beforeJettonBalance = (await usdtDeployerJettonWallet.getBalance()).amount;
 
-        result = await usdtDeployerJettonWallet.sendTransfer(
+        await usdtDeployerJettonWallet.sendTransfer(
             usdtDeployer.getSender(),
             {
                 fwdAmount: toNano(1),
                 jettonAmount: 10_000_000n,
+                jettonMaster: usdtMinterContract.address,
                 toAddress: bridgeAdapter.address,
                 timeout: BigInt(timeout),
-                remoteReceiver: 'orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx',
+                remoteReceiver: 'orai1w0emvx75v79x2rm0afcw7sn8hqt5f4fhtd3pw7',
                 memo: beginCell()
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
                     .storeRef(beginCell().storeBuffer(Buffer.from('channel-0')).endCell())
                     .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
                     .storeRef(
                         beginCell()
-                            .storeBuffer(Buffer.from('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx'))
+                            .storeBuffer(Buffer.from('orai1w0emvx75v79x2rm0afcw7sn8hqt5f4fhtd3pw7'))
+                            .endCell(),
+                    )
+                    .endCell(),
+            },
+            {
+                value: toNano(2),
+                queryId: 0,
+            },
+        );
+        result = await usdtDeployerJettonWallet.sendTransfer(
+            usdtDeployer.getSender(),
+            {
+                fwdAmount: toNano(1),
+                jettonAmount: 10_000_000n,
+                jettonMaster: usdtMinterContract.address,
+                toAddress: bridgeAdapter.address,
+                timeout: BigInt(timeout),
+                remoteReceiver: 'orai1w0emvx75v79x2rm0afcw7sn8hqt5f4fhtd3pw7',
+                memo: beginCell()
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('channel-0')).endCell())
+                    .storeRef(beginCell().storeBuffer(Buffer.from('')).endCell())
+                    .storeRef(
+                        beginCell()
+                            .storeBuffer(Buffer.from('orai1w0emvx75v79x2rm0afcw7sn8hqt5f4fhtd3pw7'))
                             .endCell(),
                     )
                     .endCell(),
@@ -1887,7 +1919,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         printTransactionFees(result.transactions);
 
         const afterJettonBalance = (await usdtDeployerJettonWallet.getBalance()).amount;
-        expect(-afterJettonBalance + beforeJettonBalance).toBe(10_000_000n);
+        expect(-afterJettonBalance + beforeJettonBalance).toBe(20_000_000n);
 
         const bodyCell = result.transactions[result.transactions.length - 2].externals[0].body;
         expect(BigInt(bodyCell.asSlice().loadUint(32))).toBe(BigInt('0xa64c12a3'));
@@ -1911,7 +1943,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         //     queryClient,
         //     'orai1gzuxckyhl3qs2r4ccgy8nfh9p8200y6ug2kphp888lvlp7wkk23s6crhz7',
         //     height,
-        //     1n,
+        //     2n,
         // );
         // writeFileSync(
         //     resolve(__dirname, './fixtures/sendToCosmosTimeoutProof.json'),
@@ -1922,15 +1954,15 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         //     height + 1,
         // );
         // writeFileSync(
-        //     resolve(__dirname, `./fixtures/light_client_${height + 1}.json`),
+        //     resolve(__dirname, `./fixtures/lightClientAckTonJettonTimeout.json`),
         //     JSON.stringify({ header, lastCommit, validators }),
         // );
         //#endregion
-
-        await updateBlock(lightClient_28358436 as any, deployer);
+        await updateBlock(lightClientAckTonJettonTimeout as any, deployer);
+        // console.log(await lightClientMaster.getTrustedHeight());
         const sendToCosmosPacket = beginCell()
             .storeUint(0xa64c12a3, 32) // op
-            .storeUint(1, 64) // seq
+            .storeUint(2, 64) // seq
             .storeUint(Ack.Timeout, 2)
             .endCell();
         const existenceProofs = Object.values(sendToCosmosTimeoutProof)
@@ -1948,6 +1980,6 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         printTransactionFees(result1.transactions);
 
         const afterAfterJettonBalance = (await usdtDeployerJettonWallet.getBalance()).amount;
-        expect(afterAfterJettonBalance - beforeJettonBalance).toBe(0n);
+        expect(beforeJettonBalance - afterAfterJettonBalance).toBe(10_000_000n);
     });
 });
