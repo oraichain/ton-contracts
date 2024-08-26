@@ -22,6 +22,7 @@ import {
     TransferRequest,
 } from '@oraichain/ton-multiowner/dist/wrappers/Multisig';
 import { Order } from '@oraichain/ton-multiowner/dist/wrappers/Order';
+import { Op } from '@oraichain/ton-multiowner/dist/wrappers/Constants';
 import * as MultisigBuild from '@oraichain/ton-multiowner/dist/build/Multisig.compiled.json';
 import * as OrderRawBuild from '@oraichain/ton-multiowner/dist/build/Order.compiled.json';
 
@@ -1100,6 +1101,149 @@ describe('Cosmos->Ton BridgeAdapter', () => {
                 (await bridgeAdapter.getBridgeData()).readCell(),
             );
             expect(bridgeData.paused).toEqual(Paused.PAUSED);
+        });
+
+        it('should bridgeAdapter update and revert by multisig wallet', async () => {
+            // arrange
+            const _libs = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
+            let order_code_raw = Cell.fromBoc(Buffer.from(OrderRawBuild.hex, 'hex'))[0];
+            _libs.set(BigInt(`0x${order_code_raw.hash().toString('hex')}`), order_code_raw);
+            const libs = beginCell().storeDictDirect(_libs).endCell();
+            blockchain.libs = libs;
+            const multiSigCode = Cell.fromBoc(Buffer.from(MultisigBuild.hex, 'hex'))[0];
+            const owner1 = await blockchain.treasury('owner1');
+            const owner2 = await blockchain.treasury('owner2');
+            const owner3 = await blockchain.treasury('owner3');
+            const owner4 = await blockchain.treasury('owner4');
+            const proposer = await blockchain.treasury('proposer');
+            const multisigConfig: MultisigConfig = {
+                threshold: 3,
+                signers: [owner1.address, owner2.address, owner3.address, owner4.address],
+                proposers: [proposer.address],
+                allowArbitrarySeqno: false,
+            };
+            const multiSigWallet = blockchain.openContract(
+                Multisig.createFromConfig(multisigConfig, multiSigCode),
+            );
+            await multiSigWallet.sendDeploy(deployer.getSender(), toNano('1'));
+            console.log({
+                owner1: owner1.address,
+                owner2: owner2.address,
+                owner3: owner3.address,
+                owner4: owner4.address,
+                proposer: proposer.address,
+            });
+            console.log(await multiSigWallet.getMultisigData());
+            // act
+            const bridgeAdapterOldCode = Cell.fromBoc(
+                Buffer.from(
+                    'b5ee9c7201022a0100094d000114ff00f4a413f4bcf2c80b0102016202030202cb0405020120282902012006070201621a1b02012008090201f4181904add76d176fd99916380492f81f0686981f80880b8d8492f81f07d201801698f90c1087be812c2dd718110c1080d727ddddd474818c085dcfc208a780309f97a7809ed9e70410839b1684e29105d718110c108579aee42dd40a170b0c001568c083e910c407e910c6ea04fc3121821029b92700bef2e457810bc1f845c000f2f4d33fd430d0d33fd4d43020d0d31f810bb8228210a64c12a3ba238210ae89be5bbab1f2f4c8028210ae89be5bba8e1f3035f84603c8cb3f5006cf1612cccc13ccc98210b4d4739a58cb1f12cb3fcce30ec970f841588040db3cf8488040f4866fa532f82391028ae85b0d270e0f01fe3101821008f0d180bef2e457810bc1f845c000f2f4d33ffa00fa40d30721aa0266d701d401d0fa40d33f3002d430f828f847523070546004131503c8cb0358fa0201cf1601cf16c921c8cb0113f40012f400cb00c9f9007074c8cb02ca07cbffc9d00a810bb90bf0061af2f4c85006cf16c9c85006cf165006fa0215cb3f12100498e302218210f21d3c89bae3023220c0018e9730810bb9f8425003f00612f2f4d33f31d30030f865db3ce020c0028e1430810bb9f8425003f00612f2f4d33f31d430fb04e0208210f941c229ba1112171300de6c12d33fd30130f849128040f40e6fa120c3ff8e2b5f060182100bebc200a18210d53276db708010c8cb055005cf1658fa0213cb6a12cb1fcb3fc973fb00db31e037810bc05007f2f4c85006cf1615cb01c9f84603c8cb3f5006cf1612cccc13ccc98210b4d4739a58cb1f12cb3fcc002ef8488040f47c6fa520c0ff9702f00e5230be309132e2580104db3c170142cb074300cf0113cc12ccc9821048328798c8cb1f12cb3fccc970f843588040db3c2701fc6c21810bb9f8435003f00612f2f4d33fd430d0d207810bbb58f2f4d207fa40fa00d33fd30721aa0266d701d4d430d0c821cf16c9299682101f886e35968210123a01b1e2f8448210a64c12a3c8cb1fcb3fcb1f5280cb7f17cb3f15cb075003cf0125cf1613cc20c9d0f844f8498040f416f86912ccc9f844a4f86404c0001401fe3121820afaf080bef2e457810bc1f845c000f2f4d33fd430d08209312d0001fa00d33fd30721aa0266d701d430810bbd5367a052a0bcf2f45185a15006a1c829cf16c97082101f886e35f8448210a64c12a3c8cb1fcb3fcb1f17cb7f15cb3f13cb074500cf0112cb01cc20c9d0f844f8498040f416f86913ccc9f844a4f8641603b68e9630810bb9f8425003f00612f2f4d33f31d430f867db3ce0208210c6bffa9bba8e9730810bb9f8425003f00612f2f4d33f31fa4030f861db3ce0c0038e96810bb9f8425003f00612f2f4d33f31fa4030f862db3ce05b840ff2f017171702f68ecef828f847414070546004131503c8cb0358fa0201cf1601cf16c921c8cb0113f40012f400cb00c9f9007074c8cb02ca07cbffc9d08210595f07bcc8cb1f5250cb3f58fa0258cf16c970598040db3c8e236c218210d53276db708010c8cb055003cf1622fa0212cb6acb1f5220cb3fc98042fb00e2f828f901022715014c830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb00db3c170196f828f9015112830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb008210d53276db708010c8cb055005cf165003fa0213cb6acb1fcb3fc973fb00db3c170058f849c8f400c9f848c8f400c9f847f846f845f844c8f841cf16f842cf16f843cf16cb3fcb00ccccccccc9ed54000f201035c8b5c2cfe0003b321b67409eaa43298c1400dbc088b000398ca6005bc880b2c1c85bb98c60006b5ed44d0fa4001f861fa4001f862fa4001f863d33f01f864d30001f865d401f866d401f867d401d0f40430f868d401d0f40430f869d1802e1501d33fd430d0d300fa40d43020d0d31fd33fd31fd37fd33f08c0008e3b7125c8cb1f5250cb3fcb01c9f828f901511a830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb00810bbef2f0de248210ae89be5bbae30235038210a64c12a3bae3025f0881c1d04fc07fa40fa4030f8235009be8e3f10375f0732728210ae89be5bc8cb1f13cb3f12cb01c9f828f90102830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb00e0f84852408040f40e6fa131e300228210123a01b1bae3000282101f886e35ba955b10266c32e30d03d0f84852408040f4161e1f202104fe05d30701aa02d70131fa40d301d430d0fa403001c0028f58810bbff8235006be15f2f4258210123a01b1ba8eb56d708210178d4519c8cb1f5290cb3f25fa02cb0126cf1670fa02f400c98015c8cb1f5280cb3f25cf1629fa02ccc97052228040db3cde0582101f886e35ba926c61e30d8e8d10245f046c223270018042db3c272426250080718210ae89be5bc8cb1f5250cb3fcb01c9f828f901511a830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb00810bbaf2f0016a6d708210178d4519c8cb1f52b0cb3f24fa02cb0128cf1670fa02f400c98015c8cb1f52a0cb3f22cf162bfa02ccc97052928040db3c2702dc26d70b01c0008ee238f828f847417070546004131503c8cb0358fa0201cf1601cf16c921c8cb0113f40012f400cb00c9f9007074c8cb02ca07cbffc9d06d6d82100f8a7ea5c8cb1f5290cb3f500afa025007cf165005cf1617f40070fa0214f400c97040338040db3c01e30d50032722006ef8687001c8cb1f13cb3f12cb01c9f828f90102830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb00022a36078208989680a1c8c954168873db3c443673db3c2323002c718010c8cb055004cf165004fa0212cb6accc901fb0003f224d70b01c0008f123434048208989680a1503473db3c5973db3c8edc36f828f847415070546004131503c8cb0358fa0201cf1601cf16c921c8cb0113f40012f400cb00c9f9007074c8cb02ca07cbffc9d06d6d82100f8a7ea5c8cb1f17cb3f5005fa0258cf1658cf1613f40070fa02f400c970598040db3ce22626270014e2f8498040f45b30f8690028708018c8cb055003cf165003fa02cb6ac901fb00002c718018c8cb055004cf165004fa0212cb6accc901fb00001bbfea7f808fc24c0207a0737d09840041bea5cf808fc23fc237c22fc22647c20e78b7c21678b7c21e78b659fe580666664c',
+                    'hex',
+                ),
+            )[0];
+            const bridgeAdapter = blockchain.openContract(
+                BridgeAdapter.createFromConfig(
+                    {
+                        admin: multiSigWallet.address,
+                        light_client_master: lightClientMaster.address,
+                        whitelist_denom: whitelistDenom.address,
+                        bridge_wasm_smart_contract: bridgeWasmAddress,
+                        jetton_wallet_code: jettonWalletCode,
+                        paused: 0,
+                    },
+                    bridgeAdapterOldCode,
+                ),
+            );
+            await bridgeAdapter.sendDeploy(deployer.getSender(), { value: toNano(0.1) });
+            console.log({
+                bridgeAdapter: bridgeAdapter.address,
+                multisigWallet: multiSigWallet.address,
+            });
+            blockchain.now = Math.floor(Date.now() / 1000);
+            const expiration = blockchain.now + 1000;
+
+            // Update new code
+            const updateMessageBoc: Cell = Cell.fromBoc(
+                Buffer.from(
+                    'b5ee9c7241022801000883000118000000020000000000000000010114ff00f4a413f4bcf2c80b0202016203250202cc0415020120051204add76d176fd99916380492f81f0686981f80500b8d8492f81f07d201801698f90c1087be812c2dd718110c1080d727ddddd474818c085dcfc208a780309f97a78066d9e70410839b1684e29105d718110c108579aee42dd406110a0b04fc3121821029b92700bef2e457810bc1f845c000f2f4d33fd430d0d33fd4d43020d0d31f810bb8228210a64c12a3ba238210ae89be5bbab1f2f4c8028210ae89be5bba8e1f3035f84603c8cb3f5006cf1612cccc13ccc98210b4d4739a58cb1f12cb3fcce30ec970f841588040db3cf8488040f4866fa532f82391028ae85b0722080900de6c12d33fd30130f849128040f40e6fa120c3ff8e2b5f060182100bebc200a18210d53276db708010c8cb055005cf1658fa0213cb6a12cb1fcb3fc973fb00db31e037810bc05007f2f4c85006cf1615cb01c9f84603c8cb3f5006cf1612cccc13ccc98210b4d4739a58cb1f12cb3fcc002ef8488040f47c6fa520c0ff9702f0075230be309132e2580104db3c1101c83101821008f0d180bef2e457810bc1f845c000f2f4d33ffa00fa40d30721aa0266d701d401d0fa40d33f3002d430c85007cf16c9c8500acf1601cf165006fa0215cb3f12cb074300cf01cc12ccc9821048328798c8cb1f12cb3fccc970f843588040db3c220498e302218210f21d3c89bae3023220c0018e9730810bb9f8425003f00612f2f4d33f31d30030f865db3ce020c0028e1430810bb9f8425003f00612f2f4d33f31d430fb04e0208210f941c229ba0c0e111001fe6c21810bb9f8435003f00612f2f4d33fd430d0d207810bbb58f2f4d207fa40fa40fa00d33fd30721aa0266d701d4d430d0c821cf16c92a9682101f886e35968210123a01b1e2f8448210a64c12a3c8cb1fcb3fcb1f5280cb7f17cb3f15cb075003cf01279235259105e215cf1612cc20c9d0f844f8498040f416f86913ccc90d02eaf844a4f86404c0008e9a8210595f07bcc8cb1f5250cb3f01fa0201cf16c970598040db3c8e2330318210d53276db708010c8cb055003cf1622fa0212cb6acb1f5220cb3fc98042fb00e2f828f90102830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb00db3c221101fe3121820afaf080bef2e457810bc1f845c000f2f4d33fd430d0fa00d33fd30721aa0266d701d430810bbd26820afaf080a05290bcf2f45175a1820afaf080a1c829cf16c97082101f886e35f8448210a64c12a3c8cb1fcb3fcb1f18cb7f16cb3f14cb0758cf0113cb01cc20c9d0f844f8498040f416f86913ccc9f844a4f8640f0196f828f9015112830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb008210d53276db708010c8cb055005cf165003fa0213cb6acb1fcb3fc973fb00db3c1103b68e9630810bb9f8425003f00612f2f4d33f31d430f867db3ce0208210c6bffa9bba8e9730810bb9f8425003f00612f2f4d33f31fa4030f861db3ce0c0038e96810bb9f8425003f00612f2f4d33f31fa4030f862db3ce05b840ff2f01111110058f849c8f400c9f848c8f400c9f847f846f845f844c8f841cf16f842cf16f843cf16cb3fcb00ccccccccc9ed54020158131400150c083e910c407e910c6ea0000f201035c8b5c2cfe002012016190201201718003b4c86d9d027aa90ca63050036f0222c000e63298016f2202cb07216ee6318006b4ed44d0fa4001f861fa4001f862fa4001f863d33f01f864d30001f865d401f866d401f867d401d0f40430f868d401d0f40430f869d1802e1d00e99fea186869807d206a181068698fe99fe98fe9bfe99f846000471db892e4658fa928659fe580e4fc147c80a88d4183b8c006646581e580e58409e5ff90b74b381965b0e59fcb1938ac65b0e67164b87d804085df79786f1241085744df2ddd71811a81c10853260951dd71812f8441a2004fc07fa40fa4030f8235009be8e3f10375f0732728210ae89be5bc8cb1f13cb3f12cb01c9f828f90102830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb00e0f84852408040f40e6fa131e300228210123a01b1bae3000282101f886e35ba955b10266c32e30d03d0f84852408040f4161b1c1d1f0080718210ae89be5bc8cb1f5250cb3fcb01c9f828f901511a830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb00810bbaf2f0016a6d708210178d4519c8cb1f52b0cb3f24fa02cb0128cf1670fa02f400c98015c8cb1f52a0cb3f22cf162bfa02ccc97052928040db3c22039c26d70b01c0008f1536078208989680a1c8c954168873db3c443673db3c8eac386d6d82100f8a7ea5c8cb1f5290cb3f500afa0258cf165005cf1617f40070fa0213f400c97040448040db3ce250031e1e22002c718010c8cb055004cf165004fa0212cb6accc901fb00006ef8687001c8cb1f13cb3f12cb01c9f828f90102830771800cc8cb03cb01cb0813cbff216e967032cb61cb3f96327158cb61cce2c970fb0004fe05d30701aa02d70131fa40d301d430d0fa403001c0028f58810bbff8235006be15f2f4258210123a01b1ba8eb56d708210178d4519c8cb1f5290cb3f25fa02cb0126cf1670fa02f400c98015c8cb1f5280cb3f25cf1629fa02ccc97052228040db3cde0582101f886e35ba926c61e30d8e8d10245f046c223270018042db3c22212324038a24d70b01c0008f123434048208989680a1503473db3c5973db3c8ea8366d6d82100f8a7ea5c8cb1f17cb3f58fa0258cf1658cf1613f40070fa0212f400c970598040db3ce2232322002c718018c8cb055004cf165004fa0212cb6accc901fb000028708018c8cb055003cf165003fa02cb6ac901fb000014e2f8498040f45b30f8690201202627001bbfea7f8057c24c0207a0737d09840041bea5cf8057c23fc237c22fc22647c20e78b7c21678b7c21e78b659fe580666664c59823327',
+                    'hex',
+                ),
+            )[0];
+            const updateCode: TransferRequest = {
+                type: 'transfer',
+                sendMode: 1,
+                message: internal_relaxed({
+                    to: bridgeAdapter.address,
+                    value: toNano('0.05'),
+                    body: updateMessageBoc,
+                }),
+            };
+
+            const updateOrderResult = await multiSigWallet.sendNewOrder(
+                proposer.getSender(),
+                [updateCode],
+                expiration,
+            );
+            expect(updateOrderResult.transactions).toHaveTransaction({
+                op: Op.multisig.new_order,
+                from: proposer.address,
+                to: multiSigWallet.address,
+                success: true,
+            });
+            const orderAddress = await multiSigWallet.getOrderAddress(0n);
+            const orderContract = blockchain.openContract(Order.createFromAddress(orderAddress));
+            await orderContract.sendApprove(owner1.getSender(), 0);
+            await orderContract.sendApprove(owner2.getSender(), 1);
+            const lastApproveTx = await orderContract.sendApprove(owner3.getSender(), 2);
+            expect(lastApproveTx.transactions).toHaveTransaction({
+                from: multiSigWallet.address,
+                to: bridgeAdapter.address,
+                op: BridgeAdapterOpcodes.upgradeContract,
+                success: true,
+            });
+
+            // Revert old version
+            const revertCodeRequest: TransferRequest = {
+                type: 'transfer',
+                sendMode: 1,
+                message: internal_relaxed({
+                    to: bridgeAdapter.address,
+                    value: toNano('0.05'),
+                    body: beginCell()
+                        .storeUint(BridgeAdapterOpcodes.upgradeContract, 32)
+                        .storeUint(0, 64)
+                        .storeRef(bridgeAdapterOldCode)
+                        .endCell(),
+                }),
+            };
+            blockchain.now = Math.floor(Date.now() / 1000);
+            const revertOrderResult = await multiSigWallet.sendNewOrder(
+                proposer.getSender(),
+                [revertCodeRequest],
+                expiration,
+            );
+            expect(revertOrderResult.transactions).toHaveTransaction({
+                op: Op.multisig.new_order,
+                from: proposer.address,
+                to: multiSigWallet.address,
+                success: true,
+            });
+            const revertOrderAddress = await multiSigWallet.getOrderAddress(1n);
+            const revertOrderContract = blockchain.openContract(
+                Order.createFromAddress(revertOrderAddress),
+            );
+            await revertOrderContract.sendApprove(owner1.getSender(), 0);
+            await revertOrderContract.sendApprove(owner2.getSender(), 1);
+            const lastApproveRevertTx = await revertOrderContract.sendApprove(
+                owner3.getSender(),
+                2,
+            );
+            expect(lastApproveRevertTx.transactions).toHaveTransaction({
+                from: multiSigWallet.address,
+                to: bridgeAdapter.address,
+                op: BridgeAdapterOpcodes.upgradeContract,
+                success: true,
+            });
         });
     });
 });
