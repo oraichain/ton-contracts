@@ -116,6 +116,7 @@ async function deploy() {
     const tonBridgeContract = client.open(tonBridge);
 
     const code = await compile('BridgeAdapter');
+    // BOC update Contract
     console.log(
         beginCell()
             .storeUint(BridgeAdapterOpcodes.upgradeContract, 32)
