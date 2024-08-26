@@ -41,6 +41,7 @@ export interface SendTransferInterface {
     toAddress: Address;
     fwdAmount: bigint;
     jettonAmount: bigint;
+    jettonMaster: Address;
     remoteReceiver: string; // cosmos address
     timeout: bigint;
     memo: Cell;
@@ -78,7 +79,9 @@ export class JettonWallet implements Contract {
             .storeCoins(data.fwdAmount)
             .storeUint(Buffer.from(remoteCosmosData).length, 8)
             .storeBuffer(Buffer.from(remoteCosmosData))
-            .storeRef(beginCell().storeUint(data.timeout, 64).endCell())
+            .storeRef(
+                beginCell().storeAddress(data.jettonMaster).storeUint(data.timeout, 64).endCell(),
+            )
             .storeRef(data.memo)
             .endCell();
     }
