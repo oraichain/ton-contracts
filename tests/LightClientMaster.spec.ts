@@ -13,6 +13,8 @@ import {
 import { ProofSpec } from 'cosmjs-types/cosmos/ics23/v1/proofs';
 import { iavlSpec, tendermintSpec } from '../wrappers/specs';
 import { LightClient } from '../wrappers';
+import { readFileSync } from 'fs';
+import path from 'path';
 
 describe('LightClientMaster', () => {
     let code: Cell;
@@ -77,12 +79,14 @@ describe('LightClientMaster', () => {
             success: true,
         });
     });
+
     // should update test to use data in fixtures
-    xit('test light client master verify block hash', async () => {
+    it('test light client master verify block hash', async () => {
         const testcase = async (blockNumber: any) => {
-            const { header, lastCommit, validators } = await createUpdateClientData(
-                'https://rpc.orai.io',
-                blockNumber,
+            const { header, lastCommit, validators } = JSON.parse(
+                readFileSync(
+                    path.join(__dirname, `fixtures/light_client_${blockNumber}.json`),
+                ).toString('utf-8'),
             );
             const user = await blockchain.treasury('user');
             let result = await lightClientMaster.sendVerifyBlockHash(
@@ -106,6 +110,7 @@ describe('LightClientMaster', () => {
 
             console.log(`blockhash:`, LightClientMasterOpcodes.verify_block_hash);
         };
+
         await testcase(28859003);
         expect(await lightClientMaster.getTrustedHeight()).toBe(28859003);
         await testcase(28869004);
