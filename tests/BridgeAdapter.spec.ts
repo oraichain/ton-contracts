@@ -1324,12 +1324,10 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     };
 
     beforeAll(async () => {
-        // lightClientMasterCode = Cell.fromBoc(
-        //     Buffer.from(DEFAULT_LIGHT_CLIENT_MASTER_BOC, 'base64'),
-        // )[0];
-        // bridgeAdapterCode = Cell.fromBoc(Buffer.from(DEFAULT_BRIDGE_ADAPTER_BOC, 'base64'))[0];
-        lightClientMasterCode = await compile('LightClientMaster');
-        bridgeAdapterCode = await compile('BridgeAdapter');
+        lightClientMasterCode = Cell.fromBoc(
+            Buffer.from(DEFAULT_LIGHT_CLIENT_MASTER_BOC, 'base64'),
+        )[0];
+        bridgeAdapterCode = Cell.fromBoc(Buffer.from(DEFAULT_BRIDGE_ADAPTER_BOC, 'base64'))[0];
         jettonWalletCode = await compile('JettonWallet');
         jettonMinterCode = await compile('JettonMinter');
         whitelistDenomCode = await compile('WhitelistDenom');
@@ -2041,7 +2039,7 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     it('Test timeout send jetton token from ton to bridge adapter', async () => {
         const height = 31117871;
         const timeout = 1724646494;
-        blockchain.now = 1724646400;
+        blockchain.now = 1724646500;
         const bridgeJettonWallet = await usdtMinterContract.getWalletAddress(bridgeAdapter.address);
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
@@ -2057,6 +2055,11 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         expect(result.transactions).toHaveTransaction({
             op: WhitelistDenomOpcodes.setDenom,
             success: true,
+        });
+        console.log({
+            denom: usdtMinterContract.address,
+            sender: usdtDeployer.getSender().address,
+            bridgeJettonWallet,
         });
         console.log(
             Buffer.from(fromBech32('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx').data).toString(
