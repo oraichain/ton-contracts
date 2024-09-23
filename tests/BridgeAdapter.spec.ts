@@ -1627,35 +1627,35 @@ describe('Ton->Cosmos BridgeAdapter', () => {
             value: toNano('10'),
         });
 
-        // const newBridgeAdapterCode = await compile('BridgeAdapter');
-        // const upgradeBridgeAdapterTx = await bridgeAdapter.sendUpgradeContract(
-        //     deployer.getSender(),
-        //     newBridgeAdapterCode,
-        //     {
-        //         value: toNano('0.1'),
-        //     },
-        // );
-        // expect(upgradeBridgeAdapterTx.transactions).toHaveTransaction({
-        //     from: deployer.address,
-        //     to: bridgeAdapter.address,
-        //     success: true,
-        //     op: BridgeAdapterOpcodes.upgradeContract,
-        // });
+        const newBridgeAdapterCode = await compile('BridgeAdapter');
+        const upgradeBridgeAdapterTx = await bridgeAdapter.sendUpgradeContract(
+            deployer.getSender(),
+            newBridgeAdapterCode,
+            {
+                value: toNano('0.1'),
+            },
+        );
+        expect(upgradeBridgeAdapterTx.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: bridgeAdapter.address,
+            success: true,
+            op: BridgeAdapterOpcodes.upgradeContract,
+        });
 
-        // const newLightClientMasterCode = await compile('LightClientMaster');
-        // const upgradeLightClientMasterTx = await lightClientMaster.sendUpgradeContract(
-        //     deployer.getSender(),
-        //     newLightClientMasterCode,
-        //     {
-        //         value: toNano('0.1'),
-        //     },
-        // );
-        // expect(upgradeLightClientMasterTx.transactions).toHaveTransaction({
-        //     from: deployer.address,
-        //     to: lightClientMaster.address,
-        //     success: true,
-        //     op: LightClientMasterOpcodes.upgrade_contract,
-        // });
+        const newLightClientMasterCode = await compile('LightClientMaster');
+        const upgradeLightClientMasterTx = await lightClientMaster.sendUpgradeContract(
+            deployer.getSender(),
+            newLightClientMasterCode,
+            {
+                value: toNano('0.1'),
+            },
+        );
+        expect(upgradeLightClientMasterTx.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: lightClientMaster.address,
+            success: true,
+            op: LightClientMasterOpcodes.upgrade_contract,
+        });
     });
 
     it('Test send jetton token from ton to bridge adapter', async () => {
