@@ -77,6 +77,7 @@ import { QueryClient } from '@cosmjs/stargate';
 import { SerializedCommit, SerializedHeader, SerializedValidator } from '../wrappers/@types';
 import { calculateIbcTimeoutTimestamp } from '../scripts/utils';
 import { TetherMinter } from '../wrappers/TetherMinter';
+import { DEFAULT_BRIDGE_ADAPTER_BOC, DEFAULT_LIGHT_CLIENT_MASTER_BOC } from './constant';
 
 describe('Cosmos->Ton BridgeAdapter', () => {
     let lightClientMasterCode: Cell;
@@ -121,8 +122,10 @@ describe('Cosmos->Ton BridgeAdapter', () => {
     };
 
     beforeAll(async () => {
-        lightClientMasterCode = await compile('LightClientMaster');
-        bridgeAdapterCode = await compile('BridgeAdapter');
+        lightClientMasterCode = Cell.fromBoc(
+            Buffer.from(DEFAULT_LIGHT_CLIENT_MASTER_BOC, 'base64'),
+        )[0];
+        bridgeAdapterCode = Cell.fromBoc(Buffer.from(DEFAULT_BRIDGE_ADAPTER_BOC, 'base64'))[0];
         jettonWalletCode = await compile('JettonWallet');
         jettonMinterCode = await compile('JettonMinter');
         whitelistDenomCode = await compile('WhitelistDenom');
@@ -155,7 +158,7 @@ describe('Cosmos->Ton BridgeAdapter', () => {
             ...blockchain.verbosity,
             // vmLogs: 'vm_logs_gas',
         };
-
+        blockchain.now = 1724673151;
         // SET UP WHITELIST DENOM
         // THIS USDT token will be used for case we want to send USDT to Oraichain from TON
         usdtDeployer = await blockchain.treasury('usdt_deployer');
@@ -420,6 +423,37 @@ describe('Cosmos->Ton BridgeAdapter', () => {
         await deployer.getSender().send({
             to: bridgeJettonWalletSrcTon.address,
             value: toNano('10'),
+        });
+
+        // Upgrade bridge adapter and light client master
+        const newBridgeAdapterCode = await compile('BridgeAdapter');
+        const upgradeBridgeAdapterTx = await bridgeAdapter.sendUpgradeContract(
+            deployer.getSender(),
+            newBridgeAdapterCode,
+            {
+                value: toNano('0.1'),
+            },
+        );
+        expect(upgradeBridgeAdapterTx.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: bridgeAdapter.address,
+            success: true,
+            op: BridgeAdapterOpcodes.upgradeContract,
+        });
+
+        const newLightClientMasterCode = await compile('LightClientMaster');
+        const upgradeLightClientMasterTx = await lightClientMaster.sendUpgradeContract(
+            deployer.getSender(),
+            newLightClientMasterCode,
+            {
+                value: toNano('0.1'),
+            },
+        );
+        expect(upgradeLightClientMasterTx.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: lightClientMaster.address,
+            success: true,
+            op: LightClientMasterOpcodes.upgrade_contract,
         });
     });
 
@@ -1290,8 +1324,10 @@ describe('Ton->Cosmos BridgeAdapter', () => {
     };
 
     beforeAll(async () => {
-        lightClientMasterCode = await compile('LightClientMaster');
-        bridgeAdapterCode = await compile('BridgeAdapter');
+        lightClientMasterCode = Cell.fromBoc(
+            Buffer.from(DEFAULT_LIGHT_CLIENT_MASTER_BOC, 'base64'),
+        )[0];
+        bridgeAdapterCode = Cell.fromBoc(Buffer.from(DEFAULT_BRIDGE_ADAPTER_BOC, 'base64'))[0];
         jettonWalletCode = await compile('JettonWallet');
         jettonMinterCode = await compile('JettonMinter');
         whitelistDenomCode = await compile('WhitelistDenom');
@@ -1589,6 +1625,36 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         await deployer.getSender().send({
             to: bridgeJettonWalletSrcTon.address,
             value: toNano('10'),
+        });
+
+        const newBridgeAdapterCode = await compile('BridgeAdapter');
+        const upgradeBridgeAdapterTx = await bridgeAdapter.sendUpgradeContract(
+            deployer.getSender(),
+            newBridgeAdapterCode,
+            {
+                value: toNano('0.1'),
+            },
+        );
+        expect(upgradeBridgeAdapterTx.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: bridgeAdapter.address,
+            success: true,
+            op: BridgeAdapterOpcodes.upgradeContract,
+        });
+
+        const newLightClientMasterCode = await compile('LightClientMaster');
+        const upgradeLightClientMasterTx = await lightClientMaster.sendUpgradeContract(
+            deployer.getSender(),
+            newLightClientMasterCode,
+            {
+                value: toNano('0.1'),
+            },
+        );
+        expect(upgradeLightClientMasterTx.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: lightClientMaster.address,
+            success: true,
+            op: LightClientMasterOpcodes.upgrade_contract,
         });
     });
 
@@ -1975,11 +2041,6 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         const timeout = 1724646494;
         blockchain.now = 1724646500;
         const bridgeJettonWallet = await usdtMinterContract.getWalletAddress(bridgeAdapter.address);
-        console.log({
-            denom: usdtMinterContract.address,
-            sender: usdtDeployer.getSender().address,
-            bridgeJettonWallet,
-        });
         let result = await whitelistDenom.sendSetDenom(
             deployer.getSender(),
             {
@@ -1994,6 +2055,11 @@ describe('Ton->Cosmos BridgeAdapter', () => {
         expect(result.transactions).toHaveTransaction({
             op: WhitelistDenomOpcodes.setDenom,
             success: true,
+        });
+        console.log({
+            denom: usdtMinterContract.address,
+            sender: usdtDeployer.getSender().address,
+            bridgeJettonWallet,
         });
         console.log(
             Buffer.from(fromBech32('orai1rchnkdpsxzhquu63y6r4j4t57pnc9w8ehdhedx').data).toString(

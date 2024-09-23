@@ -236,6 +236,8 @@ global cell specs;
         slice slice_header = header.begin_parse();
         slice inner_header = slice_header~load_ref().begin_parse();
         int height = inner_header~load_uint(32);
+        slice light_client_address = calculate_specific_light_client_address(height, chain_id, my_address(), trusting_period, light_client_code);
+        throw_unless(error::invalid_sender, compare_address(light_client_address, sender_address));
         if (height > trusted_height) {
             trusted_height = height;
         }
